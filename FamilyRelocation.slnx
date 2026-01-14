@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/FamilyRelocation.API/FamilyRelocation.API.csproj" />
+    <Project Path="src/FamilyRelocation.Application/FamilyRelocation.Application.csproj" />
+    <Project Path="src/FamilyRelocation.Domain/FamilyRelocation.Domain.csproj" />
+    <Project Path="src/FamilyRelocation.Infrastructure/FamilyRelocation.Infrastructure.csproj" />
+  </Folder>
+</Solution>
