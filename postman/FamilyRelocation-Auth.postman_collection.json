@@ -1,0 +1,432 @@
+{
+	"info": {
+		"_postman_id": "family-relocation-auth-collection",
+		"name": "FamilyRelocation Auth API",
+		"description": "Collection for testing AWS Cognito authentication endpoints in the FamilyRelocation API.\n\n## Setup\n1. Set the `baseUrl` variable to your API URL (default: http://localhost:5000)\n2. Set test user credentials in `testEmail` and `testPassword` variables\n\n## Typical Test Flows\n\n### New User Flow\n1. Login (will return NEW_PASSWORD_REQUIRED challenge)\n2. Respond to Challenge (set new password)\n3. Use returned tokens for authenticated requests\n\n### Existing User Flow\n1. Login\n2. Use returned tokens\n3. Refresh tokens when needed\n\n### Password Reset Flow\n1. Forgot Password (request reset code)\n2. Confirm Forgot Password (submit code + new password)\n3. Login with new password",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Login",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"var jsonData = pm.response.json();",
+							"",
+							"if (jsonData.accessToken) {",
+							"    pm.collectionVariables.set('accessToken', jsonData.accessToken);",
+							"    pm.collectionVariables.set('idToken', jsonData.idToken);",
+							"    pm.collectionVariables.set('refreshToken', jsonData.refreshToken);",
+							"    pm.test('Login successful - tokens saved', function() {",
+							"        pm.expect(jsonData.accessToken).to.be.a('string');",
+							"        pm.expect(jsonData.idToken).to.be.a('string');",
+							"        pm.expect(jsonData.refreshToken).to.be.a('string');",
+							"    });",
+							"} else if (jsonData.challengeName) {",
+							"    pm.collectionVariables.set('challengeSession', jsonData.session);",
+							"    pm.collectionVariables.set('challengeName', jsonData.challengeName);",
+							"    pm.test('Challenge required - session saved', function() {",
+							"        pm.expect(jsonData.challengeName).to.be.a('string');",
+							"        pm.expect(jsonData.session).to.be.a('string');",
+							"    });",
+							"    console.log('Challenge required: ' + jsonData.challengeName);",
+							"    console.log('Use \"Respond to Challenge\" request next');",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"email\": \"{{testEmail}}\",\n    \"password\": \"{{testPassword}}\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/auth/login",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"auth",
+						"login"
+					]
+				},
+				"description": "Authenticate with email and password.\n\n**Success Response (200):**\n- `accessToken`: JWT for API authorization\n- `idToken`: JWT containing user claims\n- `refreshToken`: Token for refreshing access\n- `expiresIn`: Token expiration in seconds\n\n**Challenge Response (200):**\nIf the user needs to change password (NEW_PASSWORD_REQUIRED):\n- `challengeName`: Type of challenge\n- `session`: Session token for challenge response\n- `message`: Instructions\n\n**Error Responses:**\n- 400: Email not verified\n- 401: Invalid credentials"
+			}
+		},
+		{
+			"name": "Respond to Challenge",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"var jsonData = pm.response.json();",
+							"",
+							"if (jsonData.accessToken) {",
+							"    pm.collectionVariables.set('accessToken', jsonData.accessToken);",
+							"    pm.collectionVariables.set('idToken', jsonData.idToken);",
+							"    pm.collectionVariables.set('refreshToken', jsonData.refreshToken);",
+							"    pm.test('Challenge completed - tokens saved', function() {",
+							"        pm.expect(jsonData.accessToken).to.be.a('string');",
+							"    });",
+							"    // Clear challenge variables",
+							"    pm.collectionVariables.unset('challengeSession');",
+							"    pm.collectionVariables.unset('challengeName');",
+							"} else if (jsonData.challengeName) {",
+							"    pm.collectionVariables.set('challengeSession', jsonData.session);",
+							"    pm.collectionVariables.set('challengeName', jsonData.challengeName);",
+							"    pm.test('Additional challenge required', function() {",
+							"        pm.expect(jsonData.challengeName).to.be.a('string');",
+							"    });",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"email\": \"{{testEmail}}\",\n    \"challengeName\": \"{{challengeName}}\",\n    \"session\": \"{{challengeSession}}\",\n    \"newPassword\": \"{{newPassword}}\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/auth/respond-to-challenge",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"auth",
+						"respond-to-challenge"
+					]
+				},
+				"description": "Respond to an authentication challenge (e.g., NEW_PASSWORD_REQUIRED).\n\nUse this after Login returns a challenge response.\n\n**Required Variables:**\n- `challengeName`: From login response\n- `challengeSession`: From login response (saved automatically)\n- `newPassword`: Set this variable before running\n\n**Success Response (200):**\nReturns tokens same as Login success."
+			}
+		},
+		{
+			"name": "Refresh Token",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"// Extract the 'sub' (user ID) from the idToken to use as username",
+							"var idToken = pm.collectionVariables.get('idToken');",
+							"if (idToken) {",
+							"    try {",
+							"        var payload = idToken.split('.')[1];",
+							"        var decoded = JSON.parse(atob(payload));",
+							"        pm.collectionVariables.set('cognitoUsername', decoded.sub);",
+							"        console.log('Extracted Cognito username (sub): ' + decoded.sub);",
+							"    } catch (e) {",
+							"        console.log('Could not decode idToken: ' + e.message);",
+							"    }",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"var jsonData = pm.response.json();",
+							"",
+							"if (jsonData.accessToken) {",
+							"    pm.collectionVariables.set('accessToken', jsonData.accessToken);",
+							"    pm.collectionVariables.set('idToken', jsonData.idToken);",
+							"    pm.test('Tokens refreshed successfully', function() {",
+							"        pm.expect(jsonData.accessToken).to.be.a('string');",
+							"        pm.expect(jsonData.idToken).to.be.a('string');",
+							"    });",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"username\": \"{{cognitoUsername}}\",\n    \"refreshToken\": \"{{refreshToken}}\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/auth/refresh",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"auth",
+						"refresh"
+					]
+				},
+				"description": "Refresh access tokens using a refresh token.\n\n**Important:** The `username` must be the Cognito user ID (sub/UUID), not the email. The pre-request script automatically extracts this from the saved idToken.\n\n**Success Response (200):**\n- `accessToken`: New JWT for API authorization\n- `idToken`: New JWT containing user claims\n- `expiresIn`: Token expiration in seconds\n\n*Note: Refresh tokens are not rotated in Cognito by default.*"
+			}
+		},
+		{
+			"name": "Forgot Password",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Forgot password request sent', function() {",
+							"    pm.response.to.have.status(200);",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.message).to.include('password reset code');",
+							"});",
+							"console.log('Check email for reset code, then use \"Confirm Forgot Password\" request');"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"email\": \"{{testEmail}}\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/auth/forgot-password",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"auth",
+						"forgot-password"
+					]
+				},
+				"description": "Request a password reset code.\n\nA verification code will be sent to the user's email if the account exists.\n\n**Success Response (200):**\nAlways returns success message to prevent email enumeration.\n\n**Next Step:**\nUse the code from email with \"Confirm Forgot Password\" request."
+			}
+		},
+		{
+			"name": "Confirm Forgot Password",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Password reset successful', function() {",
+							"    pm.response.to.have.status(200);",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.message).to.include('reset successfully');",
+							"});",
+							"console.log('Password reset complete. You can now login with the new password.');"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"email\": \"{{testEmail}}\",\n    \"code\": \"{{resetCode}}\",\n    \"newPassword\": \"{{newPassword}}\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/auth/confirm-forgot-password",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"auth",
+						"confirm-forgot-password"
+					]
+				},
+				"description": "Complete password reset with verification code.\n\n**Required Variables:**\n- `resetCode`: Code received via email (set manually)\n- `newPassword`: The new password to set\n\n**Password Requirements:**\nMust meet Cognito password policy (typically 8+ chars, uppercase, lowercase, number, special char).\n\n**Error Responses:**\n- 400: Invalid/expired code or password doesn't meet requirements"
+			}
+		},
+		{
+			"name": "Resend Confirmation",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Confirmation code resent', function() {",
+							"    pm.response.to.have.status(200);",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.message).to.include('confirmation code');",
+							"});",
+							"console.log('Check email for confirmation code, then use \"Confirm Email\" request');"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"email\": \"{{testEmail}}\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/auth/resend-confirmation",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"auth",
+						"resend-confirmation"
+					]
+				},
+				"description": "Resend email verification code for unconfirmed accounts.\n\n**Use Case:**\nWhen login returns \"Email not verified\" error.\n\n**Success Response (200):**\nAlways returns success message to prevent email enumeration.\n\n**Error Response:**\n- 400: Email is already verified"
+			}
+		},
+		{
+			"name": "Confirm Email",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Email confirmed successfully', function() {",
+							"    pm.response.to.have.status(200);",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.message).to.include('verified successfully');",
+							"});",
+							"console.log('Email verified. You can now login.');"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"email\": \"{{testEmail}}\",\n    \"code\": \"{{confirmationCode}}\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/auth/confirm-email",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"auth",
+						"confirm-email"
+					]
+				},
+				"description": "Verify email address with confirmation code.\n\n**Required Variables:**\n- `confirmationCode`: Code received via email (set manually)\n\n**Error Responses:**\n- 400: Invalid/expired code or already verified"
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:5000",
+			"type": "string"
+		},
+		{
+			"key": "testEmail",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "testPassword",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "newPassword",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "accessToken",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "idToken",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "refreshToken",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "challengeSession",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "challengeName",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "cognitoUsername",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "resetCode",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "confirmationCode",
+			"value": "",
+			"type": "string"
+		}
+	]
+}
