@@ -5,4 +5,8 @@
     <Project Path="src/FamilyRelocation.Domain/FamilyRelocation.Domain.csproj" />
     <Project Path="src/FamilyRelocation.Infrastructure/FamilyRelocation.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/FamilyRelocation.API.Tests/FamilyRelocation.API.Tests.csproj" />
+    <Project Path="tests/FamilyRelocation.IntegrationTests/FamilyRelocation.IntegrationTests.csproj" />
+  </Folder>
 </Solution>
