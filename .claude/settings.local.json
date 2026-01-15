@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl.exe:*)",
+      "Bash(curl:*)",
+      "Bash(REFRESH_TOKEN=\"eyJjdHkiOiJKV1QiLCJlbmMiOiJBMjU2R0NNIiwiYWxnIjoiUlNBLU9BRVAifQ.BtcnDZYE6kwxWr_63w-QKH3n7UjajScXDj1CLsa9jkeEPQuXQ03i4XnseqC4kC6WN4g5emwnJEg6svo-cW_78mmnd49MJIFZlP_dDh5O1Pk1630IvBhF2U--wFR3ySLiPan10-JGGJb6LGsP0y6JhEXEg0rrk1X8Gn3Cd_lsMVGrxAyF1TE75vMJttvTSEIglEHO2buHFg4Q8Rwygn8461YnUwszNTcpt6BkiH9TYSgtGZ-CQBszYmkDlqz0kTGtD6pWJursILMgb0AyxI1FuV2Gv3shuVdN4Ffv-Z7pW_X1VnTg9pLuQjKkpzJzCRvQ0DZ2jnJmYI0vgU6hckyoAw.hSdGU8KpUnB-uEhy.57smk4dgExOjmgq_ZB5ikk2IvFTid9AlXNi8s3DH61lN3Mtxw-WQgNIyfkjPj582QGr8K7iKZhPpx4xNKvW1L9sSbV2_KtnfOEZ8w_x_aQuztlxJovoZokpmeqIexM8e5UCNOec6ULwnSYegLFGjJE8NnNE-jeObRvFxJ3MJ4vmHkhnQ2wqr1X4IPpNDIUjmm9QlWb5tmA96cRwsua8LUsT-kN8T3g6jaMmu-ALR9afsbdcpkeiZEzDfJxr71YmsxvVNVGWPA1xEs8zs853kQddSqbykuPmvdAfFtrGyn-HBwBwcdfU7zTH5-ty1VYx8r78zfqCk-Xu9FBDX1Fv3yumSG6K4qAGsKsSyXr1LSBGqrB0ElKBqPOfcRDmAcTE5FNJysrA1hisnIVko4LgxDwhfupwdoY48jVDLiEfQrqI6BAM8XkbYIPPwRBiT0PM-M63ju_LbMmDjNb6yvRqbJ7okEIiHrSlC4JfISjXduMb4fAzHJzIVEtmctO9thTjN5Y-61jfvlgKaiSjsYg6aTXd6KXXIxKFJcUFmE63zZC8pNdIJ5NKTXzv5J1coZctKNx_SeU9fSS2e7EdaCsj4uNxKQPe0kGZPqN9542tNWd06V9gJCZtzmL_d1Bsi3q0hekzKjVAIbTyaHXrm8AvjC1meNRGbQZ8gn-W2bi5Vd-cfoVZ10SDOzZLdcnRxrG-e60JGPynFTdxH2y2CF8dSqZFZaE5OS_6okZ5E8CNac_oCCVZyUyYxQlIUpb4AULzD2iR-Md-NpPhGWxKqtLjAeNH6ImJvCmH89y9PCPVKYicb61uG8QhRKpa9GLU72AMl70AL-iPvkONMnCEYwOy0fs3_Smh-Qvw2Zyh-nChSBjTJTJOWbX5aRaxKwTFdZWx3qZinBU_LYRAlYnbrwvLGQLweHDjeJqAE3ivaNl_N8UT9W2VCEjxUfQg5SOJdjfMqXzQ2vOJU9LPps0GabAfKV3hrsCQguOGenLCZ1MNqrpOYsN4df056dHkQ9MWQGZMfkc8j-MZd-H4D84kzTgOGAw9tczYveWVDgxKEX2DgsPIHBPvJPRqYiSDoNlxmLs6O6KPoP566tzepeQuajRBcThMZ4i7j1982_7hvhTv5BSPa_TmyLFVUt1_mCjvyTQ5UKBsgbjJXPV1ff_V854tFBYBZPSo6s2u1PRXw5e1_LIncEAK0G-8k4zubRmsuJMFbejnUIrHFtSzyYMoklEkBCAs94DPKR4Aaub6gep9bV-JXkww_O67EuUi4eAa2W8WECMNhF329imCjAj0m1RIwrI0DczON3oj9DtEdR8wyK9axJLRhGA1IVROvEA.3gVysgKcckmJHlvqG7PQiw\")",
+      "Bash(__NEW_LINE_3f1c45ee14420bfe__ curl -s -X POST http://localhost:5140/api/auth/refresh -H \"Content-Type: application/json\" -d \"{\"\"email\"\":\"\"adrottenberg@gmail.com\"\",\"\"refreshToken\"\":\"\"$REFRESH_TOKEN\"\"}\")",
+      "Bash(dotnet run)"
+    ]
+  }
+}
