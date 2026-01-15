@@ -57,18 +57,26 @@ public class ConfirmEmailRequest
     public required string Code { get; set; }
 }
 
-// Auth Challenges (e.g., NEW_PASSWORD_REQUIRED)
+// Auth Challenges (e.g., NEW_PASSWORD_REQUIRED, SMS_MFA, SOFTWARE_TOKEN_MFA)
 public class ChallengeResponse
 {
     public required string ChallengeName { get; set; }
     public required string Session { get; set; }
     public required string Message { get; set; }
+    public required string[] RequiredFields { get; set; }
 }
 
 public class ChallengeRequest
 {
     public required string Email { get; set; }
-    public required string Session { get; set; }
     public required string ChallengeName { get; set; }
-    public required string NewPassword { get; set; }
+    public required string Session { get; set; }
+    /// <summary>
+    /// Challenge responses using abstracted field names:
+    /// - newPassword: For NEW_PASSWORD_REQUIRED challenge
+    /// - mfaCode: For SMS_MFA challenge
+    /// - totpCode: For SOFTWARE_TOKEN_MFA challenge
+    /// - mfaSelection: For SELECT_MFA_TYPE challenge
+    /// </summary>
+    public Dictionary<string, string> Responses { get; set; } = new();
 }

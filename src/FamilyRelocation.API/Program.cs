@@ -1,3 +1,4 @@
+using FamilyRelocation.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 
@@ -9,9 +10,8 @@ builder.Services.AddOpenApi();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Add AWS services
-builder.Services.AddDefaultAWSOptions(builder.Configuration.GetAWSOptions());
-builder.Services.AddAWSService<Amazon.CognitoIdentityProvider.IAmazonCognitoIdentityProvider>();
+// Add Infrastructure services (AWS Cognito, etc.)
+builder.Services.AddInfrastructure(builder.Configuration);
 
 // Add JWT authentication
 var cognitoAuthority = builder.Configuration["AWS:Cognito:Authority"]

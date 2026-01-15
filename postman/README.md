@@ -57,6 +57,7 @@ When a user is created in AWS Cognito with a temporary password, they must chang
 1. **Run "Login"**
    - This will return a `NEW_PASSWORD_REQUIRED` challenge
    - The session token is automatically saved to `challengeSession`
+   - The response includes `requiredFields` indicating what data is needed
 
 2. **Set `newPassword` variable**
    - Go to Variables tab and set `newPassword` to the desired new password
@@ -65,6 +66,50 @@ When a user is created in AWS Cognito with a temporary password, they must chang
 3. **Run "Respond to Challenge"**
    - This completes the password change
    - On success, tokens are automatically saved
+
+## Challenge Types and Response Fields
+
+The API supports multiple authentication challenge types. When login returns a challenge, the response includes:
+- `challengeName`: The type of challenge (e.g., `NEW_PASSWORD_REQUIRED`)
+- `session`: Session token to use when responding
+- `message`: User-friendly message explaining what's needed
+- `requiredFields`: Array of field names to include in your response
+
+### Supported Challenges
+
+| Challenge | Required Field | Description |
+|-----------|----------------|-------------|
+| `NEW_PASSWORD_REQUIRED` | `newPassword` | Set a new password (first login with temp password) |
+| `SMS_MFA` | `mfaCode` | Enter SMS verification code |
+| `SOFTWARE_TOKEN_MFA` | `totpCode` | Enter code from authenticator app |
+| `SELECT_MFA_TYPE` | `mfaSelection` | Choose MFA method (`SMS_MFA` or `SOFTWARE_TOKEN_MFA`) |
+
+### Challenge Response Format
+
+When responding to a challenge, use the `responses` object with the appropriate field:
+
+```json
+{
+    "email": "user@example.com",
+    "challengeName": "NEW_PASSWORD_REQUIRED",
+    "session": "session-token-from-login",
+    "responses": {
+        "newPassword": "NewSecurePassword123!"
+    }
+}
+```
+
+For SMS MFA:
+```json
+{
+    "email": "user@example.com",
+    "challengeName": "SMS_MFA",
+    "session": "session-token-from-login",
+    "responses": {
+        "mfaCode": "123456"
+    }
+}
+```
 
 ### Test Flow 2: Existing User Login
 

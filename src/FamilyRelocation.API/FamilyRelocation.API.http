@@ -17,6 +17,10 @@ Content-Type: application/json
 
 ### Respond to Challenge (NEW_PASSWORD_REQUIRED)
 # Use after login returns a challenge - update session from login response
+# The 'responses' field uses abstracted field names:
+#   - newPassword: for NEW_PASSWORD_REQUIRED
+#   - mfaCode: for SMS_MFA
+#   - totpCode: for SOFTWARE_TOKEN_MFA
 @challengeSession = paste-session-from-login-response
 POST {{baseUrl}}/api/auth/respond-to-challenge
 Content-Type: application/json
@@ -25,7 +29,24 @@ Content-Type: application/json
     "email": "{{testEmail}}",
     "challengeName": "NEW_PASSWORD_REQUIRED",
     "session": "{{challengeSession}}",
-    "newPassword": "{{newPassword}}"
+    "responses": {
+        "newPassword": "{{newPassword}}"
+    }
+}
+
+### Respond to Challenge (SMS_MFA)
+# Example for SMS MFA challenge
+@mfaCode = 123456
+POST {{baseUrl}}/api/auth/respond-to-challenge
+Content-Type: application/json
+
+{
+    "email": "{{testEmail}}",
+    "challengeName": "SMS_MFA",
+    "session": "{{challengeSession}}",
+    "responses": {
+        "mfaCode": "{{mfaCode}}"
+    }
 }
 
 ### Refresh Token

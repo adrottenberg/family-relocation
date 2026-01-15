@@ -1,9 +1,7 @@
-using System.Security.Cryptography;
-using System.Text;
-using Amazon.CognitoIdentityProvider;
-using Amazon.CognitoIdentityProvider.Model;
-using AuthModels = FamilyRelocation.API.Models.Auth;
+using FamilyRelocation.Application.Auth;
+using FamilyRelocation.Application.Auth.Models;
 using Microsoft.AspNetCore.Mvc;
+using AuthModels = FamilyRelocation.API.Models.Auth;
 
 namespace FamilyRelocation.API.Controllers;
 
@@ -11,34 +9,15 @@ namespace FamilyRelocation.API.Controllers;
 [Route("api/auth")]
 public class AuthController : ControllerBase
 {
-    private readonly IAmazonCognitoIdentityProvider _cognitoClient;
-    private readonly string _clientId;
-    private readonly string? _clientSecret;
+    private readonly IAuthenticationService _authService;
 
-    public AuthController(IAmazonCognitoIdentityProvider cognitoClient, IConfiguration configuration)
+    public AuthController(IAuthenticationService authService)
     {
-        _cognitoClient = cognitoClient;
-        _clientId = configuration["AWS:Cognito:ClientId"]
-            ?? throw new InvalidOperationException("AWS:Cognito:ClientId configuration is required");
-        _clientSecret = configuration["AWS:Cognito:ClientSecret"];
-    }
-
-    private string? ComputeSecretHash(string username)
-    {
-        if (string.IsNullOrEmpty(_clientSecret))
-            return null;
-
-        var message = username + _clientId;
-        var keyBytes = Encoding.UTF8.GetBytes(_clientSecret);
-        var messageBytes = Encoding.UTF8.GetBytes(message);
-
-        using var hmac = new HMACSHA256(keyBytes);
-        var hashBytes = hmac.ComputeHash(messageBytes);
-        return Convert.ToBase64String(hashBytes);
+        _authService = authService;
     }
 
     [HttpPost("login")]
-    public async Task<ActionResult<AuthModels.LoginResponse>> Login([FromBody] AuthModels.LoginRequest request)
+    public async Task<IActionResult> Login([FromBody] AuthModels.LoginRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Email))
             return BadRequest(new { message = "Email is required" });
@@ -46,64 +25,114 @@ public class AuthController : ControllerBase
         if (string.IsNullOrWhiteSpace(request.Password))
             return BadRequest(new { message = "Password is required" });
 
-        try
+        var result = await _authService.LoginAsync(request.Email, request.Password);
+
+        if (result.Challenge != null)
         {
-            var authParameters = new Dictionary<string, string>
+            return Ok(new AuthModels.ChallengeResponse
             {
-                { "USERNAME", request.Email },
-                { "PASSWORD", request.Password }
-            };
-
-            var secretHash = ComputeSecretHash(request.Email);
-            if (secretHash != null)
-                authParameters["SECRET_HASH"] = secretHash;
-
-            var authRequest = new InitiateAuthRequest
-            {
-                AuthFlow = AuthFlowType.USER_PASSWORD_AUTH,
-                ClientId = _clientId,
-                AuthParameters = authParameters
-            };
-
-            var response = await _cognitoClient.InitiateAuthAsync(authRequest);
-
-            // Check if a challenge is required (e.g., NEW_PASSWORD_REQUIRED)
-            if (!string.IsNullOrEmpty(response.ChallengeName))
-            {
-                return Ok(new AuthModels.ChallengeResponse
-                {
-                    ChallengeName = response.ChallengeName,
-                    Session = response.Session,
-                    Message = response.ChallengeName == "NEW_PASSWORD_REQUIRED"
-                        ? "Password change required. Use POST /api/auth/respond-to-challenge to set a new password."
-                        : $"Challenge required: {response.ChallengeName}"
-                });
-            }
-
-            return Ok(new AuthModels.LoginResponse
-            {
-                AccessToken = response.AuthenticationResult.AccessToken,
-                IdToken = response.AuthenticationResult.IdToken,
-                RefreshToken = response.AuthenticationResult.RefreshToken,
-                ExpiresIn = response.AuthenticationResult.ExpiresIn ?? 3600
+                ChallengeName = result.Challenge.ChallengeName,
+                Session = result.Challenge.Session,
+                Message = result.Challenge.Message,
+                RequiredFields = result.Challenge.RequiredFields
             });
         }
-        catch (NotAuthorizedException)
+
+        if (!result.Success)
         {
-            return Unauthorized(new { message = "Invalid email or password" });
+            return result.ErrorType switch
+            {
+                AuthErrorType.InvalidCredentials => Unauthorized(new { message = result.ErrorMessage }),
+                AuthErrorType.UserNotConfirmed => BadRequest(new { message = result.ErrorMessage }),
+                AuthErrorType.PasswordResetRequired => BadRequest(new { message = result.ErrorMessage }),
+                _ => BadRequest(new { message = result.ErrorMessage })
+            };
         }
-        catch (UserNotFoundException)
+
+        return Ok(new AuthModels.LoginResponse
         {
-            return Unauthorized(new { message = "Invalid email or password" });
-        }
-        catch (UserNotConfirmedException)
+            AccessToken = result.Tokens!.AccessToken,
+            IdToken = result.Tokens.IdToken,
+            RefreshToken = result.Tokens.RefreshToken,
+            ExpiresIn = result.Tokens.ExpiresIn
+        });
+    }
+
+    [HttpPost("respond-to-challenge")]
+    public async Task<IActionResult> RespondToChallenge([FromBody] AuthModels.ChallengeRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Email))
+            return BadRequest(new { message = "Email is required" });
+
+        if (string.IsNullOrWhiteSpace(request.Session))
+            return BadRequest(new { message = "Session is required" });
+
+        if (string.IsNullOrWhiteSpace(request.ChallengeName))
+            return BadRequest(new { message = "Challenge name is required" });
+
+        if (request.Responses == null || request.Responses.Count == 0)
+            return BadRequest(new { message = "Challenge responses are required" });
+
+        var result = await _authService.RespondToChallengeAsync(new ChallengeResponseRequest
         {
-            return BadRequest(new { message = "Email not verified. Use POST /api/auth/resend-confirmation to receive a new code." });
-        }
-        catch (PasswordResetRequiredException)
+            Email = request.Email,
+            ChallengeName = request.ChallengeName,
+            Session = request.Session,
+            Responses = request.Responses
+        });
+
+        if (result.Challenge != null)
         {
-            return BadRequest(new { message = "Password reset is required. Use POST /api/auth/forgot-password to initiate reset." });
+            return Ok(new AuthModels.ChallengeResponse
+            {
+                ChallengeName = result.Challenge.ChallengeName,
+                Session = result.Challenge.Session,
+                Message = result.Challenge.Message,
+                RequiredFields = result.Challenge.RequiredFields
+            });
         }
+
+        if (!result.Success)
+        {
+            return result.ErrorType switch
+            {
+                AuthErrorType.InvalidPassword => BadRequest(new { message = result.ErrorMessage }),
+                AuthErrorType.InvalidSession => Unauthorized(new { message = result.ErrorMessage }),
+                _ => BadRequest(new { message = result.ErrorMessage })
+            };
+        }
+
+        return Ok(new AuthModels.LoginResponse
+        {
+            AccessToken = result.Tokens!.AccessToken,
+            IdToken = result.Tokens.IdToken,
+            RefreshToken = result.Tokens.RefreshToken,
+            ExpiresIn = result.Tokens.ExpiresIn
+        });
+    }
+
+    [HttpPost("refresh")]
+    public async Task<IActionResult> Refresh([FromBody] AuthModels.RefreshTokenRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Username))
+            return BadRequest(new { message = "Username is required" });
+
+        if (string.IsNullOrWhiteSpace(request.RefreshToken))
+            return BadRequest(new { message = "Refresh token is required" });
+
+        var result = await _authService.RefreshTokensAsync(request.Username, request.RefreshToken);
+
+        if (!result.Success)
+        {
+            return Unauthorized(new { message = result.ErrorMessage });
+        }
+
+        return Ok(new AuthModels.RefreshTokenResponse
+        {
+            AccessToken = result.Tokens!.AccessToken,
+            IdToken = result.Tokens.IdToken,
+            ExpiresIn = result.Tokens.ExpiresIn
+        });
     }
 
     [HttpPost("forgot-password")]
@@ -112,36 +141,18 @@ public class AuthController : ControllerBase
         if (string.IsNullOrWhiteSpace(request.Email))
             return BadRequest(new { message = "Email is required" });
 
-        try
+        var result = await _authService.RequestPasswordResetAsync(request.Email);
+
+        if (!result.Success)
         {
-            var forgotRequest = new ForgotPasswordRequest
+            return result.ErrorType switch
             {
-                ClientId = _clientId,
-                Username = request.Email
+                AuthErrorType.TooManyRequests => BadRequest(new { message = result.ErrorMessage }),
+                _ => Ok(new { message = result.Message ?? result.ErrorMessage })
             };
+        }
 
-            var secretHash = ComputeSecretHash(request.Email);
-            if (secretHash != null)
-                forgotRequest.SecretHash = secretHash;
-
-            await _cognitoClient.ForgotPasswordAsync(forgotRequest);
-
-            return Ok(new { message = "If an account exists with this email, a password reset code has been sent." });
-        }
-        catch (UserNotFoundException)
-        {
-            // Return same message to prevent email enumeration
-            return Ok(new { message = "If an account exists with this email, a password reset code has been sent." });
-        }
-        catch (LimitExceededException)
-        {
-            return BadRequest(new { message = "Too many requests. Please try again later." });
-        }
-        catch (InvalidParameterException)
-        {
-            // User has no verified email/phone - return same generic message to prevent enumeration
-            return Ok(new { message = "If an account exists with this email, a password reset code has been sent." });
-        }
+        return Ok(new { message = result.Message });
     }
 
     [HttpPost("confirm-forgot-password")]
@@ -156,36 +167,14 @@ public class AuthController : ControllerBase
         if (string.IsNullOrWhiteSpace(request.NewPassword))
             return BadRequest(new { message = "New password is required" });
 
-        try
-        {
-            var confirmRequest = new ConfirmForgotPasswordRequest
-            {
-                ClientId = _clientId,
-                Username = request.Email,
-                ConfirmationCode = request.Code,
-                Password = request.NewPassword
-            };
+        var result = await _authService.ConfirmPasswordResetAsync(request.Email, request.Code, request.NewPassword);
 
-            var secretHash = ComputeSecretHash(request.Email);
-            if (secretHash != null)
-                confirmRequest.SecretHash = secretHash;
+        if (!result.Success)
+        {
+            return BadRequest(new { message = result.ErrorMessage });
+        }
 
-            await _cognitoClient.ConfirmForgotPasswordAsync(confirmRequest);
-
-            return Ok(new { message = "Password has been reset successfully. You can now log in." });
-        }
-        catch (CodeMismatchException)
-        {
-            return BadRequest(new { message = "Invalid verification code" });
-        }
-        catch (ExpiredCodeException)
-        {
-            return BadRequest(new { message = "Verification code has expired. Please request a new one." });
-        }
-        catch (InvalidPasswordException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
+        return Ok(new { message = result.Message });
     }
 
     [HttpPost("resend-confirmation")]
@@ -194,36 +183,18 @@ public class AuthController : ControllerBase
         if (string.IsNullOrWhiteSpace(request.Email))
             return BadRequest(new { message = "Email is required" });
 
-        try
+        var result = await _authService.ResendConfirmationCodeAsync(request.Email);
+
+        if (!result.Success)
         {
-            var resendRequest = new ResendConfirmationCodeRequest
+            return result.ErrorType switch
             {
-                ClientId = _clientId,
-                Username = request.Email
+                AuthErrorType.TooManyRequests => BadRequest(new { message = result.ErrorMessage }),
+                _ => BadRequest(new { message = result.ErrorMessage })
             };
+        }
 
-            var secretHash = ComputeSecretHash(request.Email);
-            if (secretHash != null)
-                resendRequest.SecretHash = secretHash;
-
-            await _cognitoClient.ResendConfirmationCodeAsync(resendRequest);
-
-            return Ok(new { message = "If an account exists with this email, a confirmation code has been sent." });
-        }
-        catch (UserNotFoundException)
-        {
-            // Return same message to prevent email enumeration
-            return Ok(new { message = "If an account exists with this email, a confirmation code has been sent." });
-        }
-        catch (InvalidParameterException)
-        {
-            // User is already confirmed
-            return BadRequest(new { message = "This email is already verified." });
-        }
-        catch (LimitExceededException)
-        {
-            return BadRequest(new { message = "Too many requests. Please try again later." });
-        }
+        return Ok(new { message = result.Message });
     }
 
     [HttpPost("confirm-email")]
@@ -235,146 +206,13 @@ public class AuthController : ControllerBase
         if (string.IsNullOrWhiteSpace(request.Code))
             return BadRequest(new { message = "Verification code is required" });
 
-        try
+        var result = await _authService.ConfirmEmailAsync(request.Email, request.Code);
+
+        if (!result.Success)
         {
-            var confirmSignUpRequest = new ConfirmSignUpRequest
-            {
-                ClientId = _clientId,
-                Username = request.Email,
-                ConfirmationCode = request.Code
-            };
-
-            var secretHash = ComputeSecretHash(request.Email);
-            if (secretHash != null)
-                confirmSignUpRequest.SecretHash = secretHash;
-
-            await _cognitoClient.ConfirmSignUpAsync(confirmSignUpRequest);
-
-            return Ok(new { message = "Email verified successfully. You can now log in." });
+            return BadRequest(new { message = result.ErrorMessage });
         }
-        catch (CodeMismatchException)
-        {
-            return BadRequest(new { message = "Invalid verification code" });
-        }
-        catch (ExpiredCodeException)
-        {
-            return BadRequest(new { message = "Verification code has expired. Use /api/auth/resend-confirmation to get a new one." });
-        }
-        catch (NotAuthorizedException)
-        {
-            return BadRequest(new { message = "This email is already verified." });
-        }
-    }
 
-    [HttpPost("respond-to-challenge")]
-    public async Task<ActionResult<AuthModels.LoginResponse>> RespondToChallenge([FromBody] AuthModels.ChallengeRequest request)
-    {
-        if (string.IsNullOrWhiteSpace(request.Session))
-            return BadRequest(new { message = "Session is required" });
-
-        if (string.IsNullOrWhiteSpace(request.ChallengeName))
-            return BadRequest(new { message = "Challenge name is required" });
-
-        if (string.IsNullOrWhiteSpace(request.NewPassword))
-            return BadRequest(new { message = "New password is required" });
-
-        try
-        {
-            var challengeResponses = new Dictionary<string, string>
-            {
-                { "NEW_PASSWORD", request.NewPassword },
-                { "USERNAME", request.Email }
-            };
-
-            var secretHash = ComputeSecretHash(request.Email);
-            if (secretHash != null)
-                challengeResponses["SECRET_HASH"] = secretHash;
-
-            var response = await _cognitoClient.RespondToAuthChallengeAsync(new RespondToAuthChallengeRequest
-            {
-                ClientId = _clientId,
-                ChallengeName = request.ChallengeName,
-                Session = request.Session,
-                ChallengeResponses = challengeResponses
-            });
-
-            // Check if another challenge is required
-            if (!string.IsNullOrEmpty(response.ChallengeName))
-            {
-                return Ok(new AuthModels.ChallengeResponse
-                {
-                    ChallengeName = response.ChallengeName,
-                    Session = response.Session,
-                    Message = $"Additional challenge required: {response.ChallengeName}"
-                });
-            }
-
-            return Ok(new AuthModels.LoginResponse
-            {
-                AccessToken = response.AuthenticationResult.AccessToken,
-                IdToken = response.AuthenticationResult.IdToken,
-                RefreshToken = response.AuthenticationResult.RefreshToken,
-                ExpiresIn = response.AuthenticationResult.ExpiresIn ?? 3600
-            });
-        }
-        catch (InvalidPasswordException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (NotAuthorizedException)
-        {
-            return Unauthorized(new { message = "Session expired. Please login again." });
-        }
-        catch (InvalidParameterException)
-        {
-            return BadRequest(new { message = "Invalid session. Please login again." });
-        }
-        catch (CodeMismatchException)
-        {
-            return BadRequest(new { message = "Invalid or expired session. Please login again." });
-        }
-    }
-
-    [HttpPost("refresh")]
-    public async Task<ActionResult<AuthModels.RefreshTokenResponse>> Refresh([FromBody] AuthModels.RefreshTokenRequest request)
-    {
-        if (string.IsNullOrWhiteSpace(request.Username))
-            return BadRequest(new { message = "Username is required" });
-
-        if (string.IsNullOrWhiteSpace(request.RefreshToken))
-            return BadRequest(new { message = "Refresh token is required" });
-
-        try
-        {
-            var authParameters = new Dictionary<string, string>
-            {
-                { "REFRESH_TOKEN", request.RefreshToken }
-            };
-
-            // SECRET_HASH must be computed using the Cognito username (sub/UUID), not email alias
-            var secretHash = ComputeSecretHash(request.Username);
-            if (secretHash != null)
-                authParameters["SECRET_HASH"] = secretHash;
-
-            var authRequest = new InitiateAuthRequest
-            {
-                AuthFlow = AuthFlowType.REFRESH_TOKEN_AUTH,
-                ClientId = _clientId,
-                AuthParameters = authParameters
-            };
-
-            var response = await _cognitoClient.InitiateAuthAsync(authRequest);
-
-            return Ok(new AuthModels.RefreshTokenResponse
-            {
-                AccessToken = response.AuthenticationResult.AccessToken,
-                IdToken = response.AuthenticationResult.IdToken,
-                ExpiresIn = response.AuthenticationResult.ExpiresIn ?? 3600
-            });
-        }
-        catch (NotAuthorizedException)
-        {
-            return Unauthorized(new { message = "Invalid or expired refresh token" });
-        }
+        return Ok(new { message = result.Message });
     }
 }

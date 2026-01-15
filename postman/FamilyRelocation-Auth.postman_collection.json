@@ -106,7 +106,7 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"email\": \"{{testEmail}}\",\n    \"challengeName\": \"{{challengeName}}\",\n    \"session\": \"{{challengeSession}}\",\n    \"newPassword\": \"{{newPassword}}\"\n}"
+					"raw": "{\n    \"email\": \"{{testEmail}}\",\n    \"challengeName\": \"{{challengeName}}\",\n    \"session\": \"{{challengeSession}}\",\n    \"responses\": {\n        \"newPassword\": \"{{newPassword}}\"\n    }\n}"
 				},
 				"url": {
 					"raw": "{{baseUrl}}/api/auth/respond-to-challenge",
@@ -119,7 +119,7 @@
 						"respond-to-challenge"
 					]
 				},
-				"description": "Respond to an authentication challenge (e.g., NEW_PASSWORD_REQUIRED).\n\nUse this after Login returns a challenge response.\n\n**Required Variables:**\n- `challengeName`: From login response\n- `challengeSession`: From login response (saved automatically)\n- `newPassword`: Set this variable before running\n\n**Success Response (200):**\nReturns tokens same as Login success."
+				"description": "Respond to an authentication challenge (e.g., NEW_PASSWORD_REQUIRED, SMS_MFA).\n\nUse this after Login returns a challenge response.\n\n**Required Variables:**\n- `challengeName`: From login response\n- `challengeSession`: From login response (saved automatically)\n\n**Response Field Names:**\nUse these abstracted field names in the `responses` object:\n- `newPassword`: For NEW_PASSWORD_REQUIRED challenge\n- `mfaCode`: For SMS_MFA challenge\n- `totpCode`: For SOFTWARE_TOKEN_MFA challenge\n- `mfaSelection`: For SELECT_MFA_TYPE challenge\n\n**Success Response (200):**\nReturns tokens same as Login success."
 			}
 		},
 		{
