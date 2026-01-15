@@ -1,6 +1,82 @@
-@FamilyRelocation.API_HostAddress = http://localhost:5140
+@baseUrl = https://localhost:7267
 
-GET {{FamilyRelocation.API_HostAddress}}/weatherforecast/
-Accept: application/json
+# Variables - Update these for testing
+@testEmail = your-email@example.com
+@testPassword = YourPassword123!
+@newPassword = NewPassword123!
 
-###
+### Login
+# Returns tokens on success, or a challenge if password change required
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+    "email": "{{testEmail}}",
+    "password": "{{testPassword}}"
+}
+
+### Respond to Challenge (NEW_PASSWORD_REQUIRED)
+# Use after login returns a challenge - update session from login response
+@challengeSession = paste-session-from-login-response
+POST {{baseUrl}}/api/auth/respond-to-challenge
+Content-Type: application/json
+
+{
+    "email": "{{testEmail}}",
+    "challengeName": "NEW_PASSWORD_REQUIRED",
+    "session": "{{challengeSession}}",
+    "newPassword": "{{newPassword}}"
+}
+
+### Refresh Token
+# Use the Cognito username (sub/UUID) from the idToken, not email
+@cognitoUsername = paste-sub-from-id-token
+@refreshToken = paste-refresh-token-here
+POST {{baseUrl}}/api/auth/refresh
+Content-Type: application/json
+
+{
+    "username": "{{cognitoUsername}}",
+    "refreshToken": "{{refreshToken}}"
+}
+
+### Forgot Password
+# Sends password reset code to email
+POST {{baseUrl}}/api/auth/forgot-password
+Content-Type: application/json
+
+{
+    "email": "{{testEmail}}"
+}
+
+### Confirm Forgot Password
+# Complete password reset with code from email
+@resetCode = 123456
+POST {{baseUrl}}/api/auth/confirm-forgot-password
+Content-Type: application/json
+
+{
+    "email": "{{testEmail}}",
+    "code": "{{resetCode}}",
+    "newPassword": "{{newPassword}}"
+}
+
+### Resend Confirmation Code
+# Resend email verification code for unverified accounts
+POST {{baseUrl}}/api/auth/resend-confirmation
+Content-Type: application/json
+
+{
+    "email": "{{testEmail}}"
+}
+
+### Confirm Email
+# Verify email with confirmation code
+@confirmationCode = 123456
+POST {{baseUrl}}/api/auth/confirm-email
+Content-Type: application/json
+
+{
+    "email": "{{testEmail}}",
+    "code": "{{confirmationCode}}"
+}
