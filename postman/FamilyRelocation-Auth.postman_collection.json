@@ -2,7 +2,7 @@
 	"info": {
 		"_postman_id": "family-relocation-auth-collection",
 		"name": "FamilyRelocation Auth API",
-		"description": "Collection for testing AWS Cognito authentication endpoints in the FamilyRelocation API.\n\n## Setup\n1. Set the `baseUrl` variable to your API URL (default: http://localhost:5000)\n2. Set test user credentials in `testEmail` and `testPassword` variables\n\n## Typical Test Flows\n\n### New User Flow\n1. Login (will return NEW_PASSWORD_REQUIRED challenge)\n2. Respond to Challenge (set new password)\n3. Use returned tokens for authenticated requests\n\n### Existing User Flow\n1. Login\n2. Use returned tokens\n3. Refresh tokens when needed\n\n### Password Reset Flow\n1. Forgot Password (request reset code)\n2. Confirm Forgot Password (submit code + new password)\n3. Login with new password",
+		"description": "Collection for testing AWS Cognito authentication endpoints in the FamilyRelocation API.\n\n## Setup\n1. Set the `baseUrl` variable to your API URL (default: https://localhost:7267)\n   - HTTPS: https://localhost:7267\n   - HTTP: http://localhost:5140\n2. Set test user credentials in `testEmail` and `testPassword` variables\n\n## Running the API\nTo run with HTTPS enabled:\n```\ndotnet run --project src/FamilyRelocation.API --launch-profile https\n```\n\n## Typical Test Flows\n\n### New User Flow\n1. Login (will return NEW_PASSWORD_REQUIRED challenge)\n2. Respond to Challenge (set new password)\n3. Use returned tokens for authenticated requests\n\n### Existing User Flow\n1. Login\n2. Use returned tokens\n3. Refresh tokens when needed\n\n### Password Reset Flow\n1. Forgot Password (request reset code)\n2. Confirm Forgot Password (submit code + new password)\n3. Login with new password",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
@@ -370,7 +370,7 @@
 	"variable": [
 		{
 			"key": "baseUrl",
-			"value": "http://localhost:5000",
+			"value": "https://localhost:7267",
 			"type": "string"
 		},
 		{

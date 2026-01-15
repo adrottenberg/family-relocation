@@ -2,6 +2,18 @@
 
 This folder contains a Postman collection for testing the AWS Cognito authentication endpoints.
 
+## Running the API
+
+Before testing, start the API with HTTPS enabled:
+
+```bash
+dotnet run --project src/FamilyRelocation.API --launch-profile https
+```
+
+This starts the API on:
+- **HTTPS**: https://localhost:7267
+- **HTTP**: http://localhost:5140
+
 ## Importing the Collection
 
 ### Step 1: Open Postman
@@ -28,7 +40,7 @@ Before running the tests, you need to set up the collection variables:
 
 | Variable | Description | Example |
 |----------|-------------|---------|
-| `baseUrl` | Your API base URL | `http://localhost:5000` |
+| `baseUrl` | Your API base URL | `https://localhost:7267` (HTTPS) or `http://localhost:5140` (HTTP) |
 | `testEmail` | Email of your test user | `testuser@example.com` |
 | `testPassword` | Password for your test user | `TempPassword123!` |
 | `newPassword` | New password (for challenges/resets) | `NewSecurePass123!` |
