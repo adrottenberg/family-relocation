@@ -325,6 +325,14 @@ public class AuthController : ControllerBase
         {
             return Unauthorized(new { message = "Session expired. Please login again." });
         }
+        catch (InvalidParameterException)
+        {
+            return BadRequest(new { message = "Invalid session. Please login again." });
+        }
+        catch (CodeMismatchException)
+        {
+            return BadRequest(new { message = "Invalid or expired session. Please login again." });
+        }
     }
 
     [HttpPost("refresh")]
