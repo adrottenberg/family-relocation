@@ -1542,6 +1542,147 @@ UV-11: Implement core domain entities - https://github.com/adrottenberg/family-r
 
 ---
 
+## SESSION: January 16, 2026 - UV-13 Create Applicant Endpoint & Infrastructure Refactoring
+
+### Context
+Implemented UV-13 (US-006: Create Applicant endpoint) and performed major infrastructure refactoring from traditional repository pattern to query object pattern.
+
+### Create Applicant Endpoint (UV-13)
+
+**Implemented:**
+- `POST /api/applicants` endpoint with `[AllowAnonymous]` for public board approval applications
+- `CreateApplicantCommand` and `CreateApplicantCommandHandler`
+- `CreateApplicantCommandValidator` with FluentValidation rules
+- Full DTO structure: ApplicantDto, HusbandInfoDto, SpouseInfoDto, AddressDto, ChildDto, PhoneNumberDto
+
+**Key Design Decisions:**
+
+1. **Anonymous Access with Audit Trail**
+   - Endpoint is publicly accessible for self-submitted board approval applications
+   - `WellKnownIds.SelfSubmittedUserId` (GUID: `AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA`) used for CreatedBy
+   - `IsSelfSubmitted` computed property on Applicant entity returns true when CreatedBy matches well-known ID
+   - Well-known GUID cannot collide with UUID v4 (version bits make it structurally impossible)
+
+2. **Duplicate Email Checking**
+   - Checks both husband AND wife emails for duplicates
+   - Uses PostgreSQL JSONB query since emails are stored in jsonb columns
+   - `ExistsByEmailQuery` handles the duplicate check
+
+3. **Auto-Demote Multiple Primary Phone Numbers**
+   - Instead of rejecting multiple primary phones, first one marked as primary wins
+   - `NormalizePhoneNumbers` helper method in handler demotes subsequent primaries
+   - More user-friendly than validation rejection
+
+### Infrastructure Refactoring: Query Object Pattern
+
+**Replaced traditional repository pattern with Mark Seemann's query object approach:**
+
+**Before:**
+```
+IApplicantRepository interface with methods like:
+- ExistsWithEmailAsync(string email)
+- AddAsync(Applicant applicant)
+- etc. (constantly growing interface)
+```
+
+**After:**
+```
+Query objects via MediatR:
+- ExistsByEmailQuery record in Application layer
+- ExistsByEmailQueryHandler in Infrastructure layer (needs EF Core)
+- IApplicationDbContext.Add<T>() for simple entity addition
+```
+
+**Files Changed:**
+- Deleted: `IApplicantRepository.cs`, `ApplicantRepository.cs`
+- Created: `Application/Applicants/Queries/ExistsByEmail/ExistsByEmailQuery.cs`
+- Created: `Infrastructure/QueryHandlers/ExistsByEmailQueryHandler.cs`
+- Modified: `IApplicationDbContext.cs` - added `void Add<TEntity>(TEntity entity)`
+- Modified: `ApplicationDbContext.cs` - explicit interface implementation for Add<T>
+- Modified: `Infrastructure/DependencyInjection.cs` - registers MediatR handlers from Infrastructure assembly
+
+**Why Query Object Pattern:**
+- No constantly evolving IRepository interfaces
+- Each query is explicit and self-documenting
+- Handlers can live where their dependencies are (EF Core specifics in Infrastructure)
+- MediatR handles dispatch automatically
+- Discussed with user: trade-off of indirection vs. cleaner interfaces - user preferred cleaner interfaces
+
+**Handler Location Rules:**
+- Query/Command records always in Application layer
+- Handlers that only need `IApplicationDbContext` can be in Application layer
+- Handlers that need EF Core specifics (FromSqlRaw, DbSet, etc.) go in Infrastructure layer
+
+### New Files Structure
+
+```
+Application/
+  Applicants/
+    Commands/
+      CreateApplicant/
+        CreateApplicantCommand.cs
+        CreateApplicantCommandHandler.cs
+        CreateApplicantCommandValidator.cs
+    DTOs/
+      AddressDto.cs, ApplicantDto.cs, ChildDto.cs,
+      HusbandInfoDto.cs, PhoneNumberDto.cs, SpouseInfoDto.cs
+    Queries/
+      ExistsByEmail/
+        ExistsByEmailQuery.cs  (just the record)
+  Common/
+    Exceptions/
+      DuplicateEmailException.cs
+    Interfaces/
+      IApplicationDbContext.cs  (added Add<T> method)
+      ICurrentUserService.cs
+
+Infrastructure/
+  QueryHandlers/
+    ExistsByEmailQueryHandler.cs  (EF Core implementation)
+
+Domain/
+  Common/
+    WellKnownIds.cs  (SelfSubmittedUserId constant)
+```
+
+### Test Results
+All 259 tests pass (196 Domain + 51 API + 12 Integration)
+
+### PR Created
+UV-13: Implement Create Applicant endpoint - https://github.com/adrottenberg/family-relocation/pull/5
+
+### Key Takeaways
+
+1. **Query Object Pattern** is now the standard for data access in this project
+2. **No IRepository interfaces** - use MediatR queries instead
+3. **Handler location** depends on dependencies needed (EF Core → Infrastructure)
+4. **IApplicationDbContext** is the thin abstraction over DbContext for simple operations
+5. **Well-known GUIDs** for system-level identifiers (cannot collide with UUID v4)
+
+---
+
+## FOR NEXT SESSION
+
+### To Quickly Re-Establish Context
+
+**Just say:**
+> "I'm the developer building the Family Relocation CRM for the Jewish community in Union County. We documented everything in January 2026."
+
+**I'll know:**
+- Complete domain model (Applicant, HousingSearch, etc.)
+- Tech stack (.NET 10, React, AWS)
+- Your working style (comprehensive docs, wait for complete review)
+- All 68 user stories and priorities
+- The 29 corrections we made
+- Cultural context (Orthodox community, no smartphones, desktop-first)
+- HousingSearch represents the house-hunting journey with failed contract history
+- **Query object pattern** instead of repository pattern (Mark Seemann's approach)
+- **IApplicationDbContext** for simple operations, query handlers in Infrastructure for EF Core specifics
+
+**And we can pick up exactly where we left off.**
+
+---
+
 **END OF CONVERSATION MEMORY LOG**
 
 This document captures our complete collaboration. Use it to quickly re-establish context in future sessions.

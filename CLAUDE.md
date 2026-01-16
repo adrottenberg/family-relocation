@@ -35,14 +35,41 @@ Four-layer Clean Architecture with strict dependency rules:
 ```
 FamilyRelocation.API          → Controllers, middleware, Program.cs
     ↓
-FamilyRelocation.Application  → CQRS commands/queries, handlers, DTOs, validators (MediatR)
+FamilyRelocation.Application  → CQRS commands/queries, DTOs, validators (MediatR)
     ↓
-FamilyRelocation.Infrastructure → EF Core, repositories, AWS services (S3, SES, Cognito)
+FamilyRelocation.Infrastructure → EF Core, query handlers, AWS services (S3, SES, Cognito)
     ↓
 FamilyRelocation.Domain       → Entities, value objects, domain events (ZERO external dependencies)
 ```
 
 **Key constraint**: Domain layer has NO NuGet packages - pure C# only.
+
+## Query Object Pattern (Mark Seemann's Approach)
+
+We use query objects instead of traditional repository interfaces:
+
+```
+Application Layer:
+  - Query/Command records (e.g., ExistsByEmailQuery, CreateApplicantCommand)
+  - Command handlers that don't need EF Core specifics
+  - IApplicationDbContext for simple operations (Add, SaveChanges, IQueryable access)
+
+Infrastructure Layer:
+  - Query handlers that need EF Core (e.g., FromSqlRaw for JSONB queries)
+  - Located in Infrastructure/QueryHandlers/
+```
+
+**Why this pattern:**
+- No constantly evolving IRepository interfaces
+- Each query is explicit and self-documenting
+- Handlers can live where their dependencies are (EF Core in Infrastructure)
+- MediatR handles dispatch automatically
+
+**IApplicationDbContext provides:**
+- `IQueryable<Applicant> Applicants` - for LINQ queries
+- `IQueryable<HousingSearch> HousingSearches` - for LINQ queries
+- `void Add<TEntity>(TEntity entity)` - for adding entities
+- `Task<int> SaveChangesAsync()` - for persistence
 
 ## Ubiquitous Language (Required Terms)
 
