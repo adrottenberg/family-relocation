@@ -215,7 +215,8 @@ public class JsonSerializationTests
         var contractPrice = new Money(450000);
         var contractDate = new DateTime(2026, 1, 10, 0, 0, 0, DateTimeKind.Utc);
         var failedDate = new DateTime(2026, 1, 15, 0, 0, 0, DateTimeKind.Utc);
-        var attempt = new FailedContractAttempt(propertyId, contractPrice, contractDate, failedDate, "Inspection issues");
+        var contract = new Contract(propertyId, contractPrice, contractDate);
+        var attempt = new FailedContractAttempt(contract, failedDate, "Inspection issues");
 
         // Act
         var json = JsonSerializer.Serialize(attempt, _options);
@@ -234,10 +235,12 @@ public class JsonSerializationTests
     public void FailedContractAttemptList_ShouldSerializeAndDeserialize()
     {
         // Arrange
+        var contract1 = new Contract(Guid.NewGuid(), new Money(450000), DateTime.UtcNow.AddDays(-30));
+        var contract2 = new Contract(Guid.NewGuid(), new Money(475000), DateTime.UtcNow.AddDays(-15));
         var attempts = new List<FailedContractAttempt>
         {
-            new(Guid.NewGuid(), new Money(450000), DateTime.UtcNow.AddDays(-30), DateTime.UtcNow.AddDays(-20), "Financing fell through"),
-            new(Guid.NewGuid(), new Money(475000), DateTime.UtcNow.AddDays(-15), DateTime.UtcNow.AddDays(-5), "Seller backed out")
+            new(contract1, DateTime.UtcNow.AddDays(-20), "Financing fell through"),
+            new(contract2, DateTime.UtcNow.AddDays(-5), "Seller backed out")
         };
 
         // Act

@@ -6,40 +6,34 @@ namespace FamilyRelocation.Domain.ValueObjects;
 /// </summary>
 public sealed record FailedContractAttempt
 {
-    public Guid PropertyId { get; }
-    public Money ContractPrice { get; }
-    public DateTime ContractDate { get; }
+    public Contract Contract { get; }
     public DateTime FailedDate { get; }
     public string? Reason { get; }
 
     // Private parameterless constructor for EF Core
     private FailedContractAttempt()
     {
-        PropertyId = Guid.Empty;
-        ContractPrice = Money.Zero;
-        ContractDate = DateTime.MinValue;
+        Contract = null!;
         FailedDate = DateTime.MinValue;
     }
 
     public FailedContractAttempt(
-        Guid propertyId,
-        Money contractPrice,
-        DateTime contractDate,
+        Contract contract,
         DateTime failedDate,
         string? reason = null)
     {
-        if (propertyId == Guid.Empty)
-            throw new ArgumentException("Property ID is required", nameof(propertyId));
-
-        PropertyId = propertyId;
-        ContractPrice = contractPrice ?? throw new ArgumentNullException(nameof(contractPrice));
-        ContractDate = contractDate;
+        Contract = contract ?? throw new ArgumentNullException(nameof(contract));
         FailedDate = failedDate;
         Reason = reason?.Trim();
     }
 
-    public int DaysUnderContract => (FailedDate - ContractDate).Days;
+    // Convenience accessors
+    public Guid PropertyId => Contract.PropertyId;
+    public Money ContractPrice => Contract.Price;
+    public DateTime ContractDate => Contract.ContractDate;
+
+    public int DaysUnderContract => (FailedDate - Contract.ContractDate).Days;
 
     public override string ToString() =>
-        $"Contract on {ContractDate:d} for {ContractPrice} - Failed: {Reason ?? "No reason given"}";
+        $"Contract on {Contract.ContractDate:d} for {Contract.Price} - Failed: {Reason ?? "No reason given"}";
 }

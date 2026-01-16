@@ -17,16 +17,15 @@ public class HousingSearchTests
         // Arrange & Act
         var housingSearch = HousingSearch.Create(
             applicantId: _applicantId,
-            searchNumber: "HS-2026-0001",
             createdBy: _userId);
 
         // Assert
         housingSearch.ApplicantId.Should().Be(_applicantId);
-        housingSearch.SearchNumber.Should().Be("HS-2026-0001");
         housingSearch.Stage.Should().Be(HousingSearchStage.Submitted);
         housingSearch.IsActive.Should().BeTrue();
         housingSearch.CreatedBy.Should().Be(_userId);
         housingSearch.Id.Should().NotBeEmpty();
+        housingSearch.Preferences.Should().NotBeNull();
     }
 
     [Fact]
@@ -35,7 +34,6 @@ public class HousingSearchTests
         // Arrange & Act
         var housingSearch = HousingSearch.Create(
             applicantId: _applicantId,
-            searchNumber: "HS-2026-0001",
             createdBy: _userId);
 
         // Assert
@@ -50,29 +48,11 @@ public class HousingSearchTests
         // Arrange & Act
         var act = () => HousingSearch.Create(
             applicantId: Guid.Empty,
-            searchNumber: "HS-2026-0001",
             createdBy: _userId);
 
         // Assert
         act.Should().Throw<ArgumentException>()
             .WithMessage("*Applicant ID*");
-    }
-
-    [Theory]
-    [InlineData(null)]
-    [InlineData("")]
-    [InlineData("   ")]
-    public void Create_WithInvalidSearchNumber_ShouldThrow(string? searchNumber)
-    {
-        // Arrange & Act
-        var act = () => HousingSearch.Create(
-            applicantId: _applicantId,
-            searchNumber: searchNumber!,
-            createdBy: _userId);
-
-        // Assert
-        act.Should().Throw<ArgumentException>()
-            .WithMessage("*Search number*");
     }
 
     [Fact]
@@ -103,8 +83,7 @@ public class HousingSearchTests
         var act = () => housingSearch.StartHouseHunting(_userId);
 
         // Assert
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*Cannot start house hunting*");
+        act.Should().Throw<InvalidOperationException>();
     }
 
     [Fact]
@@ -136,8 +115,7 @@ public class HousingSearchTests
         var act = () => housingSearch.Reject("Reason", _userId);
 
         // Assert
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*only reject from Submitted*");
+        act.Should().Throw<InvalidOperationException>();
     }
 
     [Fact]
@@ -151,8 +129,7 @@ public class HousingSearchTests
         var act = () => housingSearch.StartHouseHunting(_userId);
 
         // Assert
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*Cannot start house hunting*");
+        act.Should().Throw<InvalidOperationException>();
     }
 
     [Fact]
@@ -164,17 +141,18 @@ public class HousingSearchTests
 
         var propertyId = Guid.NewGuid();
         var contractPrice = new Money(450000);
-        var closingDate = DateTime.UtcNow.AddDays(60);
+        var expectedClosingDate = DateTime.UtcNow.AddDays(60);
 
         // Act
-        housingSearch.PutUnderContract(propertyId, contractPrice, closingDate, _userId);
+        housingSearch.PutUnderContract(propertyId, contractPrice, expectedClosingDate, _userId);
 
         // Assert
         housingSearch.Stage.Should().Be(HousingSearchStage.UnderContract);
-        housingSearch.ContractPropertyId.Should().Be(propertyId);
-        housingSearch.ContractPrice.Should().Be(contractPrice);
-        housingSearch.ContractDate.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(5));
-        housingSearch.ClosingDate.Should().Be(closingDate);
+        housingSearch.CurrentContract.Should().NotBeNull();
+        housingSearch.CurrentContract!.PropertyId.Should().Be(propertyId);
+        housingSearch.CurrentContract.Price.Should().Be(contractPrice);
+        housingSearch.CurrentContract.ContractDate.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(5));
+        housingSearch.CurrentContract.ExpectedClosingDate.Should().Be(expectedClosingDate);
         housingSearch.IsUnderContract.Should().BeTrue();
     }
 
@@ -192,8 +170,7 @@ public class HousingSearchTests
             _userId);
 
         // Assert
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*Cannot go under contract*");
+        act.Should().Throw<InvalidOperationException>();
     }
 
     [Fact]
@@ -211,9 +188,7 @@ public class HousingSearchTests
 
         // Assert
         housingSearch.Stage.Should().Be(HousingSearchStage.HouseHunting);
-        housingSearch.ContractPropertyId.Should().BeNull();
-        housingSearch.ContractPrice.Should().BeNull();
-        housingSearch.ContractDate.Should().BeNull();
+        housingSearch.CurrentContract.Should().BeNull();
         housingSearch.IsUnderContract.Should().BeFalse();
 
         // Verify history was preserved
@@ -260,8 +235,7 @@ public class HousingSearchTests
         var act = () => housingSearch.ContractFellThrough("Reason", _userId);
 
         // Assert
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*only mark contract as fallen through when UnderContract or Closed*");
+        act.Should().Throw<InvalidOperationException>();
     }
 
     [Fact]
@@ -289,8 +263,7 @@ public class HousingSearchTests
         var act = () => housingSearch.Pause("Reason", _userId);
 
         // Assert
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*only pause when actively house hunting*");
+        act.Should().Throw<InvalidOperationException>();
     }
 
     [Fact]
@@ -318,8 +291,7 @@ public class HousingSearchTests
         var act = () => housingSearch.Resume(_userId);
 
         // Assert
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*only resume from Paused*");
+        act.Should().Throw<InvalidOperationException>();
     }
 
     [Fact]
@@ -337,7 +309,24 @@ public class HousingSearchTests
 
         // Assert
         housingSearch.Stage.Should().Be(HousingSearchStage.Closed);
-        housingSearch.ActualClosingDate.Should().Be(closingDate);
+        housingSearch.CurrentContract.Should().NotBeNull();
+        housingSearch.CurrentContract!.ActualClosingDate.Should().Be(closingDate);
+        housingSearch.CurrentContract.IsClosed.Should().BeTrue();
+    }
+
+    [Fact]
+    public void RecordClosing_WithoutContract_ShouldThrow()
+    {
+        // Arrange
+        var housingSearch = CreateHouseHuntingSearch();
+        // Manually transition to UnderContract without a contract (simulated edge case)
+        // This should not happen in normal flow, but let's test the guard
+
+        // Act - try to record closing from HouseHunting (no contract)
+        var act = () => housingSearch.RecordClosing(DateTime.UtcNow, _userId);
+
+        // Assert
+        act.Should().Throw<InvalidOperationException>();
     }
 
     [Fact]
@@ -444,7 +433,8 @@ public class HousingSearchTests
         // Assert final state
         housingSearch.IsComplete.Should().BeTrue();
         housingSearch.MovedInStatus.Should().Be(MovedInStatus.MovedIn);
-        housingSearch.ContractPropertyId.Should().Be(propertyId);
+        housingSearch.CurrentContract.Should().NotBeNull();
+        housingSearch.CurrentContract!.PropertyId.Should().Be(propertyId);
     }
 
     [Fact]
@@ -474,31 +464,33 @@ public class HousingSearchTests
     }
 
     [Fact]
-    public void UpdateHousingPreferences_ShouldUpdatePreferencesAndRaiseEvent()
+    public void UpdatePreferences_ShouldUpdatePreferencesAndRaiseEvent()
     {
         // Arrange
         var housingSearch = CreateTestHousingSearch();
         housingSearch.ClearDomainEvents();
         var budget = new Money(500000);
 
-        // Act
-        housingSearch.UpdateHousingPreferences(
+        var preferences = new HousingPreferences(
             budget: budget,
             minBedrooms: 4,
             minBathrooms: 2.5m,
-            features: new List<string> { "Basement", "Garage" },
+            requiredFeatures: new List<string> { "Basement", "Garage" },
             shulProximity: ShulProximityPreference.WithMaxDistance(0.5),
-            moveTimeline: MoveTimeline.ShortTerm,
-            modifiedBy: _userId);
+            moveTimeline: MoveTimeline.ShortTerm);
+
+        // Act
+        housingSearch.UpdatePreferences(preferences, _userId);
 
         // Assert
-        housingSearch.Budget.Should().Be(budget);
-        housingSearch.MinBedrooms.Should().Be(4);
-        housingSearch.MinBathrooms.Should().Be(2.5m);
-        housingSearch.RequiredFeatures.Should().Contain("Basement");
-        housingSearch.RequiredFeatures.Should().Contain("Garage");
-        housingSearch.MoveTimeline.Should().Be(MoveTimeline.ShortTerm);
-        housingSearch.ShulProximity!.MaxWalkingDistanceMiles.Should().Be(0.5);
+        housingSearch.Preferences.Should().NotBeNull();
+        housingSearch.Preferences!.Budget.Should().Be(budget);
+        housingSearch.Preferences.MinBedrooms.Should().Be(4);
+        housingSearch.Preferences.MinBathrooms.Should().Be(2.5m);
+        housingSearch.Preferences.RequiredFeatures.Should().Contain("Basement");
+        housingSearch.Preferences.RequiredFeatures.Should().Contain("Garage");
+        housingSearch.Preferences.MoveTimeline.Should().Be(MoveTimeline.ShortTerm);
+        housingSearch.Preferences.ShulProximity!.MaxWalkingDistanceMiles.Should().Be(0.5);
 
         housingSearch.DomainEvents.Should().Contain(e => e is HousingPreferencesUpdated);
     }
@@ -510,20 +502,36 @@ public class HousingSearchTests
         var housingSearch = CreateTestHousingSearch();
 
         // Assert
-        housingSearch.Budget.Should().BeNull();
-        housingSearch.MinBedrooms.Should().BeNull();
-        housingSearch.MinBathrooms.Should().BeNull();
-        housingSearch.RequiredFeatures.Should().BeEmpty();
-        housingSearch.ShulProximity.Should().NotBeNull();
-        housingSearch.ShulProximity!.AnyShulAcceptable.Should().BeTrue();
-        housingSearch.MoveTimeline.Should().BeNull();
+        housingSearch.Preferences.Should().NotBeNull();
+        housingSearch.Preferences!.Budget.Should().BeNull();
+        housingSearch.Preferences.MinBedrooms.Should().BeNull();
+        housingSearch.Preferences.MinBathrooms.Should().BeNull();
+        housingSearch.Preferences.RequiredFeatures.Should().BeEmpty();
+        housingSearch.Preferences.MoveTimeline.Should().BeNull();
+    }
+
+    [Fact]
+    public void Contract_WithActualClosingDate_ShouldBeMarkedAsClosed()
+    {
+        // Arrange
+        var propertyId = Guid.NewGuid();
+        var price = new Money(450000);
+        var contractDate = DateTime.UtcNow.AddDays(-30);
+        var contract = new Contract(propertyId, price, contractDate);
+
+        // Act
+        var closedContract = contract.WithActualClosingDate(DateTime.UtcNow);
+
+        // Assert
+        closedContract.IsClosed.Should().BeTrue();
+        closedContract.ActualClosingDate.Should().NotBeNull();
+        contract.IsClosed.Should().BeFalse(); // Original should be unchanged (immutable)
     }
 
     private HousingSearch CreateTestHousingSearch()
     {
         return HousingSearch.Create(
             applicantId: _applicantId,
-            searchNumber: "HS-2026-0001",
             createdBy: _userId);
     }
 

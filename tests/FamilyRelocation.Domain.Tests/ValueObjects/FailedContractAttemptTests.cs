@@ -5,6 +5,17 @@ namespace FamilyRelocation.Domain.Tests.ValueObjects;
 
 public class FailedContractAttemptTests
 {
+    private Contract CreateTestContract(
+        Guid? propertyId = null,
+        Money? price = null,
+        DateTime? contractDate = null)
+    {
+        return new Contract(
+            propertyId ?? Guid.NewGuid(),
+            price ?? new Money(450000),
+            contractDate ?? DateTime.UtcNow.AddDays(-30));
+    }
+
     [Fact]
     public void Constructor_WithValidData_ShouldCreateAttempt()
     {
@@ -14,11 +25,13 @@ public class FailedContractAttemptTests
         var contractDate = DateTime.UtcNow.AddDays(-30);
         var failedDate = DateTime.UtcNow;
         var reason = "Inspection issues";
+        var contract = new Contract(propertyId, contractPrice, contractDate);
 
         // Act
-        var attempt = new FailedContractAttempt(propertyId, contractPrice, contractDate, failedDate, reason);
+        var attempt = new FailedContractAttempt(contract, failedDate, reason);
 
         // Assert
+        attempt.Contract.Should().Be(contract);
         attempt.PropertyId.Should().Be(propertyId);
         attempt.ContractPrice.Should().Be(contractPrice);
         attempt.ContractDate.Should().Be(contractDate);
@@ -27,29 +40,11 @@ public class FailedContractAttemptTests
     }
 
     [Fact]
-    public void Constructor_WithEmptyPropertyId_ShouldThrow()
+    public void Constructor_WithNullContract_ShouldThrow()
     {
         // Arrange & Act
         var act = () => new FailedContractAttempt(
-            Guid.Empty,
-            new Money(450000),
-            DateTime.UtcNow.AddDays(-30),
-            DateTime.UtcNow,
-            "Reason");
-
-        // Assert
-        act.Should().Throw<ArgumentException>()
-            .WithMessage("*Property ID*");
-    }
-
-    [Fact]
-    public void Constructor_WithNullContractPrice_ShouldThrow()
-    {
-        // Arrange & Act
-        var act = () => new FailedContractAttempt(
-            Guid.NewGuid(),
             null!,
-            DateTime.UtcNow.AddDays(-30),
             DateTime.UtcNow,
             "Reason");
 
@@ -62,9 +57,7 @@ public class FailedContractAttemptTests
     {
         // Arrange & Act
         var attempt = new FailedContractAttempt(
-            Guid.NewGuid(),
-            new Money(450000),
-            DateTime.UtcNow.AddDays(-30),
+            CreateTestContract(),
             DateTime.UtcNow,
             null);
 
@@ -78,12 +71,8 @@ public class FailedContractAttemptTests
         // Arrange
         var contractDate = DateTime.UtcNow.AddDays(-45);
         var failedDate = DateTime.UtcNow;
-        var attempt = new FailedContractAttempt(
-            Guid.NewGuid(),
-            new Money(450000),
-            contractDate,
-            failedDate,
-            "Reason");
+        var contract = new Contract(Guid.NewGuid(), new Money(450000), contractDate);
+        var attempt = new FailedContractAttempt(contract, failedDate, "Reason");
 
         // Act & Assert
         attempt.DaysUnderContract.Should().Be(45);
@@ -99,8 +88,9 @@ public class FailedContractAttemptTests
         var failedDate = new DateTime(2026, 1, 15, 12, 0, 0, DateTimeKind.Utc);
         var reason = "Inspection issues";
 
-        var attempt1 = new FailedContractAttempt(propertyId, contractPrice, contractDate, failedDate, reason);
-        var attempt2 = new FailedContractAttempt(propertyId, contractPrice, contractDate, failedDate, reason);
+        var contract = new Contract(propertyId, contractPrice, contractDate);
+        var attempt1 = new FailedContractAttempt(contract, failedDate, reason);
+        var attempt2 = new FailedContractAttempt(contract, failedDate, reason);
 
         // Act & Assert
         attempt1.Should().Be(attempt2);
@@ -114,8 +104,10 @@ public class FailedContractAttemptTests
         var contractDate = new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc);
         var failedDate = new DateTime(2026, 1, 15, 12, 0, 0, DateTimeKind.Utc);
 
-        var attempt1 = new FailedContractAttempt(Guid.NewGuid(), contractPrice, contractDate, failedDate, "Reason 1");
-        var attempt2 = new FailedContractAttempt(Guid.NewGuid(), contractPrice, contractDate, failedDate, "Reason 2");
+        var contract1 = new Contract(Guid.NewGuid(), contractPrice, contractDate);
+        var contract2 = new Contract(Guid.NewGuid(), contractPrice, contractDate);
+        var attempt1 = new FailedContractAttempt(contract1, failedDate, "Reason 1");
+        var attempt2 = new FailedContractAttempt(contract2, failedDate, "Reason 2");
 
         // Act & Assert
         attempt1.Should().NotBe(attempt2);
@@ -125,10 +117,12 @@ public class FailedContractAttemptTests
     public void ToString_ShouldReturnFormattedString()
     {
         // Arrange
-        var attempt = new FailedContractAttempt(
+        var contract = new Contract(
             Guid.NewGuid(),
             new Money(450000),
-            new DateTime(2026, 1, 1),
+            new DateTime(2026, 1, 1));
+        var attempt = new FailedContractAttempt(
+            contract,
             new DateTime(2026, 1, 15),
             "Financing fell through");
 
@@ -144,10 +138,12 @@ public class FailedContractAttemptTests
     public void ToString_WithNoReason_ShouldShowNoReasonGiven()
     {
         // Arrange
-        var attempt = new FailedContractAttempt(
+        var contract = new Contract(
             Guid.NewGuid(),
             new Money(450000),
-            new DateTime(2026, 1, 1),
+            new DateTime(2026, 1, 1));
+        var attempt = new FailedContractAttempt(
+            contract,
             new DateTime(2026, 1, 15),
             null);
 

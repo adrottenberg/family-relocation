@@ -34,37 +34,23 @@ public class HousingSearch : Entity<Guid>
     public Guid ApplicantId { get; private set; }
     public virtual Applicant Applicant { get; private set; } = null!;
 
-    // Search Number (e.g., "HS-2026-0001")
-    public string SearchNumber { get; private set; } = null!;
-
     // Status
     public HousingSearchStage Stage { get; private set; }
     public DateTime StageChangedDate { get; private set; }
 
-    // Current Contract (when under contract)
-    public Guid? ContractPropertyId { get; private set; }
-    public Money? ContractPrice { get; private set; }
-    public DateTime? ContractDate { get; private set; }
+    // Current Contract
+    public Contract? CurrentContract { get; private set; }
 
     // Failed Contract History
     private readonly List<FailedContractAttempt> _failedContracts = new();
     public IReadOnlyList<FailedContractAttempt> FailedContracts => _failedContracts.AsReadOnly();
 
-    // Closing
-    public DateTime? ClosingDate { get; private set; }
-    public DateTime? ActualClosingDate { get; private set; }
-
     // Move In
     public MovedInStatus? MovedInStatus { get; private set; }
     public DateTime? MovedInDate { get; private set; }
 
-    // Housing Preferences (what they're looking for in this search)
-    public Money? Budget { get; private set; }
-    public int? MinBedrooms { get; private set; }
-    public decimal? MinBathrooms { get; private set; }
-    public List<string> RequiredFeatures { get; private set; } = new();
-    public ShulProximityPreference? ShulProximity { get; private set; }
-    public MoveTimeline? MoveTimeline { get; private set; }
+    // Housing Preferences
+    public HousingPreferences? Preferences { get; private set; }
 
     // Notes
     public string? Notes { get; private set; }
@@ -83,24 +69,18 @@ public class HousingSearch : Entity<Guid>
     /// </summary>
     public static HousingSearch Create(
         Guid applicantId,
-        string searchNumber,
         Guid createdBy)
     {
         if (applicantId == Guid.Empty)
             throw new ArgumentException("Applicant ID is required", nameof(applicantId));
 
-        if (string.IsNullOrWhiteSpace(searchNumber))
-            throw new ArgumentException("Search number is required", nameof(searchNumber));
-
         var housingSearch = new HousingSearch
         {
             HousingSearchId = Guid.NewGuid(),
             ApplicantId = applicantId,
-            SearchNumber = searchNumber,
             Stage = HousingSearchStage.Submitted,
             StageChangedDate = DateTime.UtcNow,
-            RequiredFeatures = new List<string>(),
-            ShulProximity = ShulProximityPreference.NoPreference(),
+            Preferences = HousingPreferences.Default(),
             IsActive = true,
             CreatedBy = createdBy,
             CreatedDate = DateTime.UtcNow,
@@ -140,8 +120,12 @@ public class HousingSearch : Entity<Guid>
     /// </summary>
     public void StartHouseHunting(Guid modifiedBy)
     {
+        // Business rule: StartHouseHunting is only for initial start or resuming
+        // Use ContractFellThrough to return to house hunting after a failed contract
         if (Stage != HousingSearchStage.Submitted && Stage != HousingSearchStage.Paused)
-            throw new InvalidOperationException($"Cannot start house hunting from {Stage} stage.");
+            throw new InvalidOperationException(
+                $"StartHouseHunting can only be called from Submitted or Paused stage. " +
+                $"Use ContractFellThrough to return to house hunting from {Stage}.");
 
         TransitionTo(HousingSearchStage.HouseHunting, modifiedBy);
     }
@@ -151,9 +135,6 @@ public class HousingSearch : Entity<Guid>
     /// </summary>
     public void Reject(string? reason, Guid modifiedBy)
     {
-        if (Stage != HousingSearchStage.Submitted)
-            throw new InvalidOperationException("Can only reject from Submitted stage.");
-
         if (!string.IsNullOrWhiteSpace(reason))
         {
             Notes = string.IsNullOrEmpty(Notes)
@@ -169,9 +150,6 @@ public class HousingSearch : Entity<Guid>
     /// </summary>
     public void Pause(string? reason, Guid modifiedBy)
     {
-        if (Stage != HousingSearchStage.HouseHunting)
-            throw new InvalidOperationException("Can only pause when actively house hunting.");
-
         if (!string.IsNullOrWhiteSpace(reason))
         {
             Notes = string.IsNullOrEmpty(Notes)
@@ -187,9 +165,6 @@ public class HousingSearch : Entity<Guid>
     /// </summary>
     public void Resume(Guid modifiedBy)
     {
-        if (Stage != HousingSearchStage.Paused)
-            throw new InvalidOperationException("Can only resume from Paused stage.");
-
         TransitionTo(HousingSearchStage.HouseHunting, modifiedBy);
     }
 
@@ -202,13 +177,11 @@ public class HousingSearch : Entity<Guid>
         DateTime? expectedClosingDate,
         Guid modifiedBy)
     {
-        if (Stage != HousingSearchStage.HouseHunting)
-            throw new InvalidOperationException($"Cannot go under contract from {Stage} stage. Must be in HouseHunting stage.");
-
-        ContractPropertyId = propertyId;
-        ContractPrice = contractPrice;
-        ContractDate = DateTime.UtcNow;
-        ClosingDate = expectedClosingDate;
+        CurrentContract = new Contract(
+            propertyId,
+            contractPrice,
+            DateTime.UtcNow,
+            expectedClosingDate);
 
         TransitionTo(HousingSearchStage.UnderContract, modifiedBy);
     }
@@ -218,27 +191,24 @@ public class HousingSearch : Entity<Guid>
     /// </summary>
     public void ContractFellThrough(string? reason, Guid modifiedBy)
     {
+        // Business rule: Can only mark contract as fallen through when there's a contract
         if (Stage != HousingSearchStage.UnderContract && Stage != HousingSearchStage.Closed)
-            throw new InvalidOperationException("Can only mark contract as fallen through when UnderContract or Closed.");
+            throw new InvalidOperationException(
+                "Can only mark contract as fallen through when UnderContract or Closed.");
 
         // Preserve the failed contract in history
-        if (ContractPropertyId.HasValue && ContractPrice != null && ContractDate.HasValue)
+        if (CurrentContract != null)
         {
             var failedContract = new FailedContractAttempt(
-                propertyId: ContractPropertyId.Value,
-                contractPrice: ContractPrice,
-                contractDate: ContractDate.Value,
+                contract: CurrentContract,
                 failedDate: DateTime.UtcNow,
                 reason: reason);
 
             _failedContracts.Add(failedContract);
         }
 
-        // Clear current contract info
-        ContractPropertyId = null;
-        ContractPrice = null;
-        ContractDate = null;
-        ClosingDate = null;
+        // Clear current contract
+        CurrentContract = null;
 
         TransitionTo(HousingSearchStage.HouseHunting, modifiedBy);
     }
@@ -248,10 +218,10 @@ public class HousingSearch : Entity<Guid>
     /// </summary>
     public void RecordClosing(DateTime closingDate, Guid modifiedBy)
     {
-        if (Stage != HousingSearchStage.UnderContract)
-            throw new InvalidOperationException("Can only record closing when UnderContract.");
+        if (CurrentContract == null)
+            throw new InvalidOperationException("Cannot record closing without a contract.");
 
-        ActualClosingDate = closingDate;
+        CurrentContract = CurrentContract.WithActualClosingDate(closingDate);
         TransitionTo(HousingSearchStage.Closed, modifiedBy);
     }
 
@@ -260,9 +230,6 @@ public class HousingSearch : Entity<Guid>
     /// </summary>
     public void RecordMovedIn(DateTime movedInDate, Guid modifiedBy)
     {
-        if (Stage != HousingSearchStage.Closed)
-            throw new InvalidOperationException("Can only record move-in when in Closed stage.");
-
         MovedInDate = movedInDate;
         TransitionTo(HousingSearchStage.MovedIn, modifiedBy);
     }
@@ -291,21 +258,9 @@ public class HousingSearch : Entity<Guid>
     /// <summary>
     /// Update housing preferences for this search
     /// </summary>
-    public void UpdateHousingPreferences(
-        Money? budget,
-        int? minBedrooms,
-        decimal? minBathrooms,
-        List<string>? features,
-        ShulProximityPreference? shulProximity,
-        MoveTimeline? moveTimeline,
-        Guid modifiedBy)
+    public void UpdatePreferences(HousingPreferences preferences, Guid modifiedBy)
     {
-        Budget = budget;
-        MinBedrooms = minBedrooms;
-        MinBathrooms = minBathrooms;
-        RequiredFeatures = features ?? new List<string>();
-        ShulProximity = shulProximity ?? ShulProximityPreference.NoPreference();
-        MoveTimeline = moveTimeline;
+        Preferences = preferences ?? HousingPreferences.Default();
         ModifiedBy = modifiedBy;
         ModifiedDate = DateTime.UtcNow;
 
@@ -335,7 +290,7 @@ public class HousingSearch : Entity<Guid>
     /// <summary>
     /// Check if housing search is currently under contract
     /// </summary>
-    public bool IsUnderContract => Stage == HousingSearchStage.UnderContract && ContractPropertyId.HasValue;
+    public bool IsUnderContract => Stage == HousingSearchStage.UnderContract && CurrentContract != null;
 
     /// <summary>
     /// Check if housing search is complete (moved in)
