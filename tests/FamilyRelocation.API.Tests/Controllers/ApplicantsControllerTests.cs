@@ -1,6 +1,7 @@
 using FamilyRelocation.API.Controllers;
 using FamilyRelocation.Application.Applicants.Commands.CreateApplicant;
 using FamilyRelocation.Application.Applicants.DTOs;
+using FamilyRelocation.Application.Applicants.Queries.GetApplicantById;
 using FamilyRelocation.Application.Common.Exceptions;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -110,6 +111,75 @@ public class ApplicantsControllerTests
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }
+
+    #region GetById Tests
+
+    [Fact]
+    public async Task GetById_WhenApplicantExists_ReturnsOkWithApplicant()
+    {
+        // Arrange
+        var applicantId = Guid.NewGuid();
+        var expectedDto = new ApplicantDto
+        {
+            Id = applicantId,
+            Husband = new HusbandInfoDto
+            {
+                FirstName = "Moshe",
+                LastName = "Cohen"
+            },
+            FamilyName = "Moshe Cohen",
+            NumberOfChildren = 0,
+            IsPendingBoardReview = true,
+            IsSelfSubmitted = false,
+            CreatedDate = DateTime.UtcNow
+        };
+
+        _mediatorMock.Setup(m => m.Send(It.Is<GetApplicantByIdQuery>(q => q.Id == applicantId), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedDto);
+
+        // Act
+        var result = await _controller.GetById(applicantId);
+
+        // Assert
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        okResult.Value.Should().Be(expectedDto);
+    }
+
+    [Fact]
+    public async Task GetById_WhenApplicantNotFound_ReturnsNotFound()
+    {
+        // Arrange
+        var applicantId = Guid.NewGuid();
+
+        _mediatorMock.Setup(m => m.Send(It.Is<GetApplicantByIdQuery>(q => q.Id == applicantId), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ApplicantDto?)null);
+
+        // Act
+        var result = await _controller.GetById(applicantId);
+
+        // Assert
+        result.Should().BeOfType<NotFoundResult>();
+    }
+
+    [Fact]
+    public async Task GetById_SendsQueryToMediator()
+    {
+        // Arrange
+        var applicantId = Guid.NewGuid();
+
+        _mediatorMock.Setup(m => m.Send(It.IsAny<GetApplicantByIdQuery>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ApplicantDto?)null);
+
+        // Act
+        await _controller.GetById(applicantId);
+
+        // Assert
+        _mediatorMock.Verify(
+            m => m.Send(It.Is<GetApplicantByIdQuery>(q => q.Id == applicantId), It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    #endregion
 
     private static CreateApplicantCommand CreateValidCommand()
     {
