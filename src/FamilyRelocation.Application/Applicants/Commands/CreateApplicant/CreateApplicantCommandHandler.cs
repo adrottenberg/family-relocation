@@ -67,8 +67,7 @@ public class CreateApplicantCommandHandler : IRequestHandler<CreateApplicantComm
 
     private static HusbandInfo MapToHusbandInfo(HusbandInfoDto dto)
     {
-        var phoneNumbers = dto.PhoneNumbers?.Select(p =>
-            new PhoneNumber(p.Number, ParsePhoneType(p.Type), p.IsPrimary)).ToList();
+        var phoneNumbers = NormalizePhoneNumbers(dto.PhoneNumbers);
 
         return new HusbandInfo(
             firstName: dto.FirstName,
@@ -82,8 +81,7 @@ public class CreateApplicantCommandHandler : IRequestHandler<CreateApplicantComm
 
     private static SpouseInfo MapToSpouseInfo(SpouseInfoDto dto)
     {
-        var phoneNumbers = dto.PhoneNumbers?.Select(p =>
-            new PhoneNumber(p.Number, ParsePhoneType(p.Type), p.IsPrimary)).ToList();
+        var phoneNumbers = NormalizePhoneNumbers(dto.PhoneNumbers);
 
         return new SpouseInfo(
             firstName: dto.FirstName,
@@ -94,6 +92,30 @@ public class CreateApplicantCommandHandler : IRequestHandler<CreateApplicantComm
             occupation: dto.Occupation,
             employerName: dto.EmployerName,
             highSchool: dto.HighSchool);
+    }
+
+    /// <summary>
+    /// Normalizes phone numbers to ensure only one is marked as primary.
+    /// If multiple are marked primary, only the first one remains primary.
+    /// </summary>
+    private static List<PhoneNumber>? NormalizePhoneNumbers(List<PhoneNumberDto>? phoneDtos)
+    {
+        if (phoneDtos == null || phoneDtos.Count == 0)
+            return null;
+
+        var hasPrimary = false;
+        var phoneNumbers = new List<PhoneNumber>();
+
+        foreach (var dto in phoneDtos)
+        {
+            var isPrimary = dto.IsPrimary && !hasPrimary;
+            if (isPrimary)
+                hasPrimary = true;
+
+            phoneNumbers.Add(new PhoneNumber(dto.Number, ParsePhoneType(dto.Type), isPrimary));
+        }
+
+        return phoneNumbers;
     }
 
     private static Address MapToAddress(AddressDto dto)

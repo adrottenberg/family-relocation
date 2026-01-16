@@ -118,6 +118,31 @@ public class CreateApplicantCommandValidatorTests
         result.ShouldNotHaveValidationErrorFor(x => x.Husband.Email);
     }
 
+    [Fact]
+    public void Validate_WithMultiplePrimaryHusbandPhones_ShouldNotHaveError()
+    {
+        // Multiple primary phones are allowed - handler auto-demotes to single primary
+        // Arrange
+        var command = CreateValidCommand();
+        command = command with
+        {
+            Husband = command.Husband with
+            {
+                PhoneNumbers = new List<PhoneNumberDto>
+                {
+                    new() { Number = "2015551234", IsPrimary = true },
+                    new() { Number = "2015555678", IsPrimary = true }
+                }
+            }
+        };
+
+        // Act
+        var result = _validator.TestValidate(command);
+
+        // Assert
+        result.ShouldNotHaveAnyValidationErrors();
+    }
+
     #endregion
 
     #region Wife Validation
@@ -168,6 +193,32 @@ public class CreateApplicantCommandValidatorTests
 
         // Assert
         result.ShouldHaveValidationErrorFor(x => x.Wife!.Email);
+    }
+
+    [Fact]
+    public void Validate_WithMultiplePrimaryWifePhones_ShouldNotHaveError()
+    {
+        // Multiple primary phones are allowed - handler auto-demotes to single primary
+        // Arrange
+        var command = CreateValidCommand();
+        command = command with
+        {
+            Wife = new SpouseInfoDto
+            {
+                FirstName = "Sarah",
+                PhoneNumbers = new List<PhoneNumberDto>
+                {
+                    new() { Number = "2015551234", IsPrimary = true },
+                    new() { Number = "2015555678", IsPrimary = true }
+                }
+            }
+        };
+
+        // Act
+        var result = _validator.TestValidate(command);
+
+        // Assert
+        result.ShouldNotHaveAnyValidationErrors();
     }
 
     #endregion

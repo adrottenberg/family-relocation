@@ -27,6 +27,9 @@ public class CreateApplicantCommandValidator : AbstractValidator<CreateApplicant
             .EmailAddress().WithMessage("Husband's email must be a valid email address")
             .When(x => x.Husband != null && !string.IsNullOrEmpty(x.Husband.Email));
 
+        // Note: Multiple primary phone numbers are allowed in input - the handler auto-demotes
+        // to ensure only the first one marked as primary remains primary
+
         // Wife validation (optional, but if provided must have first name)
         RuleFor(x => x.Wife!.FirstName)
             .NotEmpty().WithMessage("Wife's first name is required when wife info is provided")
