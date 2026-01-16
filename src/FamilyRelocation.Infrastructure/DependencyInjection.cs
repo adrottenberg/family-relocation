@@ -15,9 +15,6 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        // MediatR handlers in Infrastructure (e.g., query handlers that need EF Core)
-        services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(DependencyInjection).Assembly));
-
         // Database
         services.AddDbContext<ApplicationDbContext>(options =>
             options.UseNpgsql(

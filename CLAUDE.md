@@ -51,25 +51,24 @@ We use query objects instead of traditional repository interfaces:
 ```
 Application Layer:
   - Query/Command records (e.g., ExistsByEmailQuery, CreateApplicantCommand)
-  - Command handlers that don't need EF Core specifics
-  - IApplicationDbContext for simple operations (Add, SaveChanges, IQueryable access)
-
-Infrastructure Layer:
-  - Query handlers that need EF Core (e.g., FromSqlRaw for JSONB queries)
-  - Located in Infrastructure/QueryHandlers/
+  - ALL handlers live here (queries and commands)
+  - IApplicationDbContext for data access
 ```
 
 **Why this pattern:**
 - No constantly evolving IRepository interfaces
 - Each query is explicit and self-documenting
-- Handlers can live where their dependencies are (EF Core in Infrastructure)
+- All handlers in one place (Application layer)
 - MediatR handles dispatch automatically
 
-**IApplicationDbContext provides (minimal interface):**
-- `void Add<TEntity>(TEntity entity)` - for adding entities
+**IApplicationDbContext provides:**
+- `IQueryable<T> Set<T>()` - generic queryable access (Open/Closed principle)
+- `void Add<T>(T entity)` - for adding entities
 - `Task<int> SaveChangesAsync()` - for persistence
 
-Infrastructure handlers that need query access inject `ApplicationDbContext` directly.
+**JSON Column Queries:**
+EF Core's `ToJson()` configuration enables LINQ queries into JSON columns (HusbandInfo, SpouseInfo).
+No raw SQL needed - queries like `a.Husband.Email.Value == email` work directly.
 
 ## Ubiquitous Language (Required Terms)
 

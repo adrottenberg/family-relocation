@@ -11,10 +11,8 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     {
     }
 
-    public DbSet<Applicant> Applicants => Set<Applicant>();
-    public DbSet<HousingSearch> HousingSearches => Set<HousingSearch>();
-
     // IApplicationDbContext implementation
+    IQueryable<TEntity> IApplicationDbContext.Set<TEntity>() => base.Set<TEntity>();
     void IApplicationDbContext.Add<TEntity>(TEntity entity) => base.Add(entity);
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
