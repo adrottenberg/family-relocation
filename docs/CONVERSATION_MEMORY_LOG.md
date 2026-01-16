@@ -1451,78 +1451,74 @@ Not chasing perfection, chasing "good enough that works."
 
 ---
 
-## SESSION: January 15, 2026 - Application → HousingSearch Refactoring
+## SESSION: January 15-16, 2026 - Domain Entity Refactoring
 
 ### Context
-Continued development on Sprint 1 (UV-11: Core Domain Entities). After implementing value objects and entities, user identified a naming issue with the "Application" entity.
+Continued development on Sprint 1 (UV-11: Core Domain Entities). Major refactoring of domain model based on user feedback.
 
-### Key Discussion: Renaming "Application" to "HousingSearch"
+### Key Refactorings Completed
 
-**Problem Identified:**
-- "Application" implied a one-time application to the community program
-- In reality, the entity tracked a house-hunting journey that could have multiple contract attempts
-- The terminology didn't match the coordinator's mental model
+**1. Application → HousingSearch Rename**
+- "Application" implied one-time application; "HousingSearch" better represents the journey
+- Single HousingSearch per applicant (1:1 relationship)
+- Failed contracts preserved in `FailedContracts` collection
 
-**User's Insight:**
-> "An applicant only applies once, however the applicant might have several iterations of starting and stopping their house hunting. I don't think users will see it as multiple housing searches, just one long search that occasionally hits dead ends and restarts."
+**2. HusbandInfo and SpouseInfo Value Objects**
+- Extracted from Applicant to properly encapsulate person info
+- Contains: FirstName, LastName/MaidenName, FatherName, Email, PhoneNumbers, Occupation, EmployerName
+- Stored as jsonb columns in PostgreSQL
+- Name formatting: `HusbandInfo.FullNameWithFather` → "Moshe Cohen (ben Yaakov)"
+- Name formatting: `SpouseInfo.FullName` → "Sarah (Goldstein)" with maiden name in parens
 
-**Solution Decided:**
-1. Rename `Application` → `HousingSearch`
-2. Rename `ApplicationStage` → `HousingSearchStage`
-3. Add `FailedContractAttempt` value object to preserve contract history
-4. Single HousingSearch record per active effort (not multiple records)
-5. When contract falls through, history is preserved and search continues
+**3. Contract and HousingPreferences Value Objects**
+- `Contract`: PropertyId, Price, ContractDate, ExpectedClosingDate, ActualClosingDate
+- `HousingPreferences`: Budget, MinBedrooms, MinBathrooms, RequiredFeatures, ShulProximity, MoveTimeline
+- `FailedContractAttempt` refactored to contain `Contract` + FailedDate + Reason
 
-**Domain Model Changes:**
-- `HousingSearch` entity tracks the entire journey
-- `FailedContractAttempt` collection preserves failed contract details (property, price, reason)
-- `ContractFellThrough()` method now adds to history before resetting
-- Domain events renamed: `HousingSearchStarted`, `HousingSearchStageChanged`
+**4. HousingSearchStage State Machine**
+- Added `Rejected` stage (Submitted → Rejected transition)
+- Renamed `Closing` → `Closed` (represents completed closing, not in-progress)
+- Full transitions: Submitted → HouseHunting/Rejected, HouseHunting → UnderContract/Paused, etc.
 
-**Files Changed:**
-- `HousingSearch.cs` (new entity replacing Application)
-- `HousingSearchStage.cs` (new enum)
-- `FailedContractAttempt.cs` (new value object)
-- `HousingSearchStarted.cs`, `HousingSearchStageChanged.cs` (new events)
-- `HousingSearchConfiguration.cs` (EF Core config with JSON for failed contracts)
-- `IApplicationDbContext.cs` (updated interface)
-- `ApplicationDbContext.cs` (updated implementation)
-- `Applicant.cs` (updated navigation property)
-- `ApplicantConfiguration.cs` (updated relationship)
-- `HousingSearchTests.cs` (new tests with history preservation)
-- `FailedContractAttemptTests.cs` (new tests)
+**5. Child Value Object Simplified**
+- Age and Gender required (from application form)
+- Name and School optional
+- Removed Grade and Notes properties
 
-**Test Results:** All 187 tests pass (150 Domain + 25 API + 12 Integration)
+**6. Cleanup**
+- Removed `ProspectId` from Applicant (future feature)
+- Removed 12 unused enums (EntityType, ListingStatus, PropertyType, etc.)
+- Removed `SearchNumber` from HousingSearch (redundant with 1:1 relationship)
 
-### Other Changes This Session
+### Current Domain Model
 
-**Value Objects Refactored to Records:**
-- All 7 value objects converted from `class : ValueObject` to `sealed record`
-- Removed `ValueObject` base class (modern C# 9+ approach)
-- Added tests for case-sensitivity (records use exact value comparison)
+**Aggregate Roots:**
+- `Applicant`: HusbandInfo, Wife (SpouseInfo), Address, Children, BoardReview, audit fields
+- `HousingSearch`: Stage, CurrentContract, FailedContracts, Preferences, MovedInStatus, audit fields
 
-**Properties Removed from Applicant (per user request):**
-- `PreferredCities` - not needed
-- `EmploymentStatus` - not needed
-- `DownPayment`, `MortgageInterestRate`, `LoanTermYears` - mortgage calculations not part of domain
+**Value Objects (13 total):**
+- HusbandInfo, SpouseInfo, BoardReview
+- Contract, HousingPreferences, FailedContractAttempt
+- Address, Email, PhoneNumber, Money, Child, Coordinates, ShulProximityPreference
 
-### Key Decisions Made
+**Enums (4 active):**
+- BoardDecision, HousingSearchStage, MovedInStatus, MoveTimeline
 
-| Decision | Rationale |
-|----------|-----------|
-| Single HousingSearch per effort | Matches coordinator mental model - one journey with setbacks |
-| Preserve failed contract history | UI can show timeline of contract attempts |
-| Records over ValueObject base | Modern C# approach, built-in equality |
-| JSON storage for failed contracts | Flexible history without separate table |
+**Domain Events (5):**
+- ApplicantCreated, ApplicantBoardDecisionMade
+- HousingSearchStarted, HousingSearchStageChanged, HousingPreferencesUpdated
 
-### Updated Domain Terminology
+### Test Results
+All 231 tests pass (194 Domain + 25 API + 12 Integration)
 
-| Old Term | New Term | Reason |
-|----------|----------|--------|
-| Application | HousingSearch | Clearer intent, avoids namespace conflict |
-| ApplicationStage | HousingSearchStage | Consistency |
-| ApplicationNumber | SearchNumber | Consistency |
-| ApplicationSubmitted | HousingSearchStarted | Better describes the action |
+### EF Core Configuration
+- HusbandInfo/SpouseInfo stored as jsonb columns
+- Contract/HousingPreferences/FailedContracts stored as jsonb columns
+- Address/BoardReview as owned entity types (flattened columns)
+- Children as jsonb array
+
+### PR Created
+UV-11: Implement core domain entities - https://github.com/adrottenberg/family-relocation/pull/4
 
 ---
 

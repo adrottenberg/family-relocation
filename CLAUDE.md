@@ -63,7 +63,7 @@ FamilyRelocation.Domain       → Entities, value objects, domain events (ZERO e
 
 3. **Value objects use C# records** - Modern approach with built-in value equality. No ValueObject base class.
 
-4. **Entities use factory methods** - e.g., `Applicant.CreateFromApplication(...)` not public constructors.
+4. **Entities use factory methods** - e.g., `Applicant.Create(...)` not public constructors.
 
 5. **Domain events for side effects** - `AddDomainEvent(new ApplicantCreated(...))`.
 
