@@ -20,54 +20,25 @@ public class ApplicantConfiguration : IEntityTypeConfiguration<Applicant>
         // Ignore the ApplicantId alias property
         builder.Ignore(a => a.ApplicantId);
 
-        // Basic Properties - Husband
-        builder.Property(a => a.FirstName)
-            .HasMaxLength(100)
+        // Husband Info (JSON column - contains nested Email and PhoneNumbers)
+        builder.Property(a => a.Husband)
+            .HasColumnType("jsonb")
+            .HasConversion(
+                v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
+                v => System.Text.Json.JsonSerializer.Deserialize<HusbandInfo>(v, (System.Text.Json.JsonSerializerOptions?)null)!)
             .IsRequired();
 
-        builder.Property(a => a.LastName)
-            .HasMaxLength(100)
-            .IsRequired();
-
-        builder.Property(a => a.FatherName)
-            .HasMaxLength(100);
+        // Wife Info (JSON column - contains nested Email and PhoneNumbers)
+        builder.Property(a => a.Wife)
+            .HasColumnType("jsonb")
+            .HasConversion(
+                v => v == null ? null : System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
+                v => string.IsNullOrEmpty(v) ? null : System.Text.Json.JsonSerializer.Deserialize<SpouseInfo>(v, (System.Text.Json.JsonSerializerOptions?)null));
 
         // Ignore computed properties
-        builder.Ignore(a => a.FullName);
+        builder.Ignore(a => a.FamilyName);
 
-        // Wife Info (owned value object)
-        builder.OwnsOne(a => a.Wife, wife =>
-        {
-            wife.Property(w => w.FirstName)
-                .HasColumnName("WifeFirstName")
-                .HasMaxLength(100);
-
-            wife.Property(w => w.MaidenName)
-                .HasColumnName("WifeMaidenName")
-                .HasMaxLength(100);
-
-            wife.Property(w => w.FatherName)
-                .HasColumnName("WifeFatherName")
-                .HasMaxLength(100);
-
-            wife.Property(w => w.HighSchool)
-                .HasColumnName("WifeHighSchool")
-                .HasMaxLength(200);
-
-            // Ignore computed property
-            wife.Ignore(w => w.FullName);
-        });
-
-        // Email Value Object (owned)
-        builder.OwnsOne(a => a.Email, email =>
-        {
-            email.Property(e => e.Value)
-                .HasColumnName("Email")
-                .HasMaxLength(255)
-                .IsRequired();
-        });
-
-        // Address Value Object (owned)
+        // Address Value Object (owned - flattened to columns)
         builder.OwnsOne(a => a.Address, address =>
         {
             address.Property(addr => addr.Street)
@@ -93,13 +64,6 @@ public class ApplicantConfiguration : IEntityTypeConfiguration<Applicant>
             // Ignore computed property
             address.Ignore(addr => addr.FullAddress);
         });
-
-        // Phone Numbers (JSON column)
-        builder.Property(a => a.PhoneNumbers)
-            .HasColumnType("jsonb")
-            .HasConversion(
-                v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
-                v => System.Text.Json.JsonSerializer.Deserialize<List<PhoneNumber>>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? new List<PhoneNumber>());
 
         // Children (JSON column)
         builder.Property(a => a.Children)
@@ -169,8 +133,5 @@ public class ApplicantConfiguration : IEntityTypeConfiguration<Applicant>
         builder.HasIndex(a => a.IsDeleted);
         builder.HasIndex(a => a.CreatedDate);
         builder.HasIndex(a => a.ProspectId);
-
-        // Note: Email uniqueness should be enforced at application layer
-        // since Email is an owned type. Alternatively, add a raw SQL index in migrations.
     }
 }

@@ -18,34 +18,30 @@ public class Applicant : Entity<Guid>
         private set => Id = value;
     }
 
+    /// <summary>
+    /// Link to prospect record (for future prospect-to-applicant conversion)
+    /// </summary>
     public Guid? ProspectId { get; private set; }
 
-    // Husband Info
-    public string FirstName { get; private set; } = null!;
-    public string LastName { get; private set; } = null!;
-    public string? FatherName { get; private set; }
-    public string FullName => $"{FirstName} {LastName}";
-
-    // Wife Info (value object)
+    // Family Members
+    public HusbandInfo Husband { get; private set; } = null!;
     public SpouseInfo? Wife { get; private set; }
 
-    // Contact
-    public Email Email { get; private set; } = null!;
-    public List<PhoneNumber> PhoneNumbers { get; private set; } = new();
+    // Family Address (shared)
     public Address? Address { get; private set; }
 
     // Children
-    public int NumberOfChildren => Children.Count;
     public List<Child> Children { get; private set; } = new();
+    public int NumberOfChildren => Children.Count;
 
     // Community
     public string? CurrentKehila { get; private set; }
     public string? ShabbosShul { get; private set; }
 
-    // Board Review (value object)
+    // Board Review (value object - set by staff after review)
     public BoardReview? BoardReview { get; private set; }
 
-    // Navigation - one housing search per applicant (failed contracts tracked within)
+    // Navigation - one housing search per applicant
     public virtual HousingSearch? HousingSearch { get; private set; }
 
     // Audit
@@ -58,38 +54,30 @@ public class Applicant : Entity<Guid>
     private Applicant() { }
 
     /// <summary>
-    /// Factory method to create a new applicant from an application submission
+    /// Factory method to create a new applicant (family) from intake
     /// </summary>
-    public static Applicant CreateFromApplication(
-        string firstName,
-        string lastName,
-        string? fatherName,
-        Email email,
+    public static Applicant Create(
+        HusbandInfo husband,
+        SpouseInfo? wife,
         Address? address,
+        List<Child>? children,
         string? currentKehila,
         string? shabbosShul,
         Guid createdBy,
         Guid? prospectId = null)
     {
-        if (string.IsNullOrWhiteSpace(firstName))
-            throw new ArgumentException("First name is required", nameof(firstName));
-
-        if (string.IsNullOrWhiteSpace(lastName))
-            throw new ArgumentException("Last name is required", nameof(lastName));
+        ArgumentNullException.ThrowIfNull(husband);
 
         var applicant = new Applicant
         {
             ApplicantId = Guid.NewGuid(),
             ProspectId = prospectId,
-            FirstName = firstName.Trim(),
-            LastName = lastName.Trim(),
-            FatherName = fatherName?.Trim(),
-            Email = email ?? throw new ArgumentNullException(nameof(email)),
+            Husband = husband,
+            Wife = wife,
             Address = address,
+            Children = children ?? new List<Child>(),
             CurrentKehila = currentKehila?.Trim(),
             ShabbosShul = shabbosShul?.Trim(),
-            PhoneNumbers = new List<PhoneNumber>(),
-            Children = new List<Child>(),
             CreatedBy = createdBy,
             CreatedDate = DateTime.UtcNow,
             ModifiedBy = createdBy,
@@ -103,32 +91,38 @@ public class Applicant : Entity<Guid>
     }
 
     /// <summary>
-    /// Update husband's basic information
+    /// Update husband information
     /// </summary>
-    public void UpdateHusbandInfo(
-        string firstName,
-        string lastName,
-        string? fatherName,
-        Guid modifiedBy)
+    public void UpdateHusband(HusbandInfo husband, Guid modifiedBy)
     {
-        if (string.IsNullOrWhiteSpace(firstName))
-            throw new ArgumentException("First name is required", nameof(firstName));
-
-        if (string.IsNullOrWhiteSpace(lastName))
-            throw new ArgumentException("Last name is required", nameof(lastName));
-
-        FirstName = firstName.Trim();
-        LastName = lastName.Trim();
-        FatherName = fatherName?.Trim();
+        Husband = husband ?? throw new ArgumentNullException(nameof(husband));
         SetModified(modifiedBy);
     }
 
     /// <summary>
     /// Update wife information
     /// </summary>
-    public void UpdateWifeInfo(SpouseInfo? wifeInfo, Guid modifiedBy)
+    public void UpdateWife(SpouseInfo? wife, Guid modifiedBy)
     {
-        Wife = wifeInfo;
+        Wife = wife;
+        SetModified(modifiedBy);
+    }
+
+    /// <summary>
+    /// Update family address
+    /// </summary>
+    public void UpdateAddress(Address? address, Guid modifiedBy)
+    {
+        Address = address;
+        SetModified(modifiedBy);
+    }
+
+    /// <summary>
+    /// Update children information
+    /// </summary>
+    public void UpdateChildren(List<Child> children, Guid modifiedBy)
+    {
+        Children = children ?? new List<Child>();
         SetModified(modifiedBy);
     }
 
@@ -142,30 +136,6 @@ public class Applicant : Entity<Guid>
     {
         CurrentKehila = currentKehila?.Trim();
         ShabbosShul = shabbosShul?.Trim();
-        SetModified(modifiedBy);
-    }
-
-    /// <summary>
-    /// Update contact information
-    /// </summary>
-    public void UpdateContact(
-        Email email,
-        Address? address,
-        List<PhoneNumber>? phoneNumbers,
-        Guid modifiedBy)
-    {
-        Email = email ?? throw new ArgumentNullException(nameof(email));
-        Address = address;
-        PhoneNumbers = phoneNumbers ?? new List<PhoneNumber>();
-        SetModified(modifiedBy);
-    }
-
-    /// <summary>
-    /// Update children information
-    /// </summary>
-    public void UpdateChildren(List<Child> children, Guid modifiedBy)
-    {
-        Children = children ?? new List<Child>();
         SetModified(modifiedBy);
     }
 
@@ -193,6 +163,11 @@ public class Applicant : Entity<Guid>
     /// Check if applicant has pending board review
     /// </summary>
     public bool IsPendingBoardReview => BoardReview == null || BoardReview.IsPending;
+
+    /// <summary>
+    /// Convenience: Get family display name (husband's full name)
+    /// </summary>
+    public string FamilyName => Husband.FullName;
 
     /// <summary>
     /// Soft delete the applicant

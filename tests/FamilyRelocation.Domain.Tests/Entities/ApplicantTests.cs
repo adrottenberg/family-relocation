@@ -8,48 +8,57 @@ namespace FamilyRelocation.Domain.Tests.Entities;
 
 public class ApplicantTests
 {
-    private readonly Email _testEmail = new("test@example.com");
     private readonly Address _testAddress = new("123 Main St", "Union", "NJ", "07083");
     private readonly Guid _userId = Guid.NewGuid();
 
+    private HusbandInfo CreateTestHusband(string firstName = "Moshe", string lastName = "Cohen") =>
+        new(firstName, lastName, "Yaakov", new Email("moshe@example.com"));
+
+    private SpouseInfo CreateTestWife() =>
+        new("Sarah", "Goldstein", "Yitzchak", new Email("sarah@example.com"),
+            highSchool: "Bais Yaakov");
+
     [Fact]
-    public void CreateFromApplication_WithValidData_ShouldCreateApplicant()
+    public void Create_WithValidData_ShouldCreateApplicant()
     {
-        // Arrange & Act
-        var applicant = Applicant.CreateFromApplication(
-            firstName: "Moshe",
-            lastName: "Cohen",
-            fatherName: "Yaakov",
-            email: _testEmail,
+        // Arrange
+        var husband = CreateTestHusband();
+        var wife = CreateTestWife();
+
+        // Act
+        var applicant = Applicant.Create(
+            husband: husband,
+            wife: wife,
             address: _testAddress,
+            children: null,
             currentKehila: "Brooklyn",
             shabbosShul: "Bobov",
             createdBy: _userId);
 
         // Assert
-        applicant.FirstName.Should().Be("Moshe");
-        applicant.LastName.Should().Be("Cohen");
-        applicant.FatherName.Should().Be("Yaakov");
-        applicant.FullName.Should().Be("Moshe Cohen");
-        applicant.Email.Should().Be(_testEmail);
+        applicant.Husband.Should().Be(husband);
+        applicant.Husband.FirstName.Should().Be("Moshe");
+        applicant.Husband.LastName.Should().Be("Cohen");
+        applicant.Husband.FullName.Should().Be("Moshe Cohen");
+        applicant.Wife.Should().Be(wife);
         applicant.Address.Should().Be(_testAddress);
         applicant.CurrentKehila.Should().Be("Brooklyn");
         applicant.ShabbosShul.Should().Be("Bobov");
         applicant.CreatedBy.Should().Be(_userId);
         applicant.IsDeleted.Should().BeFalse();
         applicant.Id.Should().NotBeEmpty();
+        applicant.FamilyName.Should().Be("Moshe Cohen");
     }
 
     [Fact]
-    public void CreateFromApplication_ShouldRaiseApplicantCreatedEvent()
+    public void Create_ShouldRaiseApplicantCreatedEvent()
     {
         // Arrange & Act
-        var applicant = Applicant.CreateFromApplication(
-            firstName: "Moshe",
-            lastName: "Cohen",
-            fatherName: null,
-            email: _testEmail,
+        var applicant = Applicant.Create(
+            husband: CreateTestHusband(),
+            wife: null,
             address: null,
+            children: null,
             currentKehila: null,
             shabbosShul: null,
             createdBy: _userId);
@@ -61,18 +70,17 @@ public class ApplicantTests
     }
 
     [Fact]
-    public void CreateFromApplication_WithProspectId_ShouldSetProspectId()
+    public void Create_WithProspectId_ShouldSetProspectId()
     {
         // Arrange
         var prospectId = Guid.NewGuid();
 
         // Act
-        var applicant = Applicant.CreateFromApplication(
-            firstName: "Moshe",
-            lastName: "Cohen",
-            fatherName: null,
-            email: _testEmail,
+        var applicant = Applicant.Create(
+            husband: CreateTestHusband(),
+            wife: null,
             address: null,
+            children: null,
             currentKehila: null,
             shabbosShul: null,
             createdBy: _userId,
@@ -84,60 +92,15 @@ public class ApplicantTests
         domainEvent.ProspectId.Should().Be(prospectId);
     }
 
-    [Theory]
-    [InlineData(null)]
-    [InlineData("")]
-    [InlineData("   ")]
-    public void CreateFromApplication_WithNullOrEmptyFirstName_ShouldThrow(string? firstName)
-    {
-        // Arrange & Act
-        var act = () => Applicant.CreateFromApplication(
-            firstName: firstName!,
-            lastName: "Cohen",
-            fatherName: null,
-            email: _testEmail,
-            address: null,
-            currentKehila: null,
-            shabbosShul: null,
-            createdBy: _userId);
-
-        // Assert
-        act.Should().Throw<ArgumentException>()
-            .WithMessage("*First name*");
-    }
-
-    [Theory]
-    [InlineData(null)]
-    [InlineData("")]
-    [InlineData("   ")]
-    public void CreateFromApplication_WithNullOrEmptyLastName_ShouldThrow(string? lastName)
-    {
-        // Arrange & Act
-        var act = () => Applicant.CreateFromApplication(
-            firstName: "Moshe",
-            lastName: lastName!,
-            fatherName: null,
-            email: _testEmail,
-            address: null,
-            currentKehila: null,
-            shabbosShul: null,
-            createdBy: _userId);
-
-        // Assert
-        act.Should().Throw<ArgumentException>()
-            .WithMessage("*Last name*");
-    }
-
     [Fact]
-    public void CreateFromApplication_WithNullEmail_ShouldThrow()
+    public void Create_WithNullHusband_ShouldThrow()
     {
         // Arrange & Act
-        var act = () => Applicant.CreateFromApplication(
-            firstName: "Moshe",
-            lastName: "Cohen",
-            fatherName: null,
-            email: null!,
+        var act = () => Applicant.Create(
+            husband: null!,
+            wife: null,
             address: null,
+            children: null,
             currentKehila: null,
             shabbosShul: null,
             createdBy: _userId);
@@ -147,44 +110,69 @@ public class ApplicantTests
     }
 
     [Fact]
-    public void UpdateHusbandInfo_ShouldUpdateFields()
+    public void Create_WithChildren_ShouldSetChildren()
+    {
+        // Arrange
+        var children = new List<Child>
+        {
+            new("Yosef", 8, Gender.Male, "Torah Academy"),
+            new("Rivka", 5, Gender.Female, "Bais Yaakov")
+        };
+
+        // Act
+        var applicant = Applicant.Create(
+            husband: CreateTestHusband(),
+            wife: CreateTestWife(),
+            address: _testAddress,
+            children: children,
+            currentKehila: "Brooklyn",
+            shabbosShul: "Bobov",
+            createdBy: _userId);
+
+        // Assert
+        applicant.Children.Should().HaveCount(2);
+        applicant.NumberOfChildren.Should().Be(2);
+        applicant.Children[0].Name.Should().Be("Yosef");
+    }
+
+    [Fact]
+    public void UpdateHusband_ShouldUpdateHusbandInfo()
     {
         // Arrange
         var applicant = CreateTestApplicant();
         var modifiedBy = Guid.NewGuid();
+        var newHusband = new HusbandInfo("David", "Levy", "Avraham", new Email("david@example.com"));
 
         // Act
-        applicant.UpdateHusbandInfo(
-            firstName: "David",
-            lastName: "Levy",
-            fatherName: "Avraham",
-            modifiedBy: modifiedBy);
+        applicant.UpdateHusband(newHusband, modifiedBy);
 
         // Assert
-        applicant.FirstName.Should().Be("David");
-        applicant.LastName.Should().Be("Levy");
-        applicant.FatherName.Should().Be("Avraham");
+        applicant.Husband.FirstName.Should().Be("David");
+        applicant.Husband.LastName.Should().Be("Levy");
+        applicant.Husband.FatherName.Should().Be("Avraham");
+        applicant.FamilyName.Should().Be("David Levy");
         applicant.ModifiedBy.Should().Be(modifiedBy);
     }
 
     [Fact]
-    public void UpdateWifeInfo_ShouldUpdateWife()
+    public void UpdateWife_ShouldUpdateWifeInfo()
     {
         // Arrange
         var applicant = CreateTestApplicant();
         var modifiedBy = Guid.NewGuid();
-        var wifeInfo = new SpouseInfo("Sarah", "Goldstein", "Yitzchak", "Bais Yaakov");
+        var newWife = new SpouseInfo("Rachel", "Schwartz", "Shlomo",
+            new Email("rachel@example.com"), highSchool: "BJJ");
 
         // Act
-        applicant.UpdateWifeInfo(wifeInfo, modifiedBy);
+        applicant.UpdateWife(newWife, modifiedBy);
 
         // Assert
         applicant.Wife.Should().NotBeNull();
-        applicant.Wife!.FirstName.Should().Be("Sarah");
-        applicant.Wife.MaidenName.Should().Be("Goldstein");
-        applicant.Wife.FatherName.Should().Be("Yitzchak");
-        applicant.Wife.HighSchool.Should().Be("Bais Yaakov");
-        applicant.Wife.FullName.Should().Be("Sarah Goldstein");
+        applicant.Wife!.FirstName.Should().Be("Rachel");
+        applicant.Wife.MaidenName.Should().Be("Schwartz");
+        applicant.Wife.FatherName.Should().Be("Shlomo");
+        applicant.Wife.HighSchool.Should().Be("BJJ");
+        applicant.Wife.FullName.Should().Be("Rachel Schwartz");
         applicant.ModifiedBy.Should().Be(modifiedBy);
     }
 
@@ -204,6 +192,22 @@ public class ApplicantTests
         // Assert
         applicant.CurrentKehila.Should().Be("Monsey");
         applicant.ShabbosShul.Should().Be("Nassad");
+        applicant.ModifiedBy.Should().Be(modifiedBy);
+    }
+
+    [Fact]
+    public void UpdateAddress_ShouldUpdateAddress()
+    {
+        // Arrange
+        var applicant = CreateTestApplicant();
+        var modifiedBy = Guid.NewGuid();
+        var newAddress = new Address("456 Oak Ave", "Roselle Park", "NJ", "07204");
+
+        // Act
+        applicant.UpdateAddress(newAddress, modifiedBy);
+
+        // Assert
+        applicant.Address.Should().Be(newAddress);
         applicant.ModifiedBy.Should().Be(modifiedBy);
     }
 
@@ -311,14 +315,33 @@ public class ApplicantTests
         applicant.DomainEvents.Should().BeEmpty();
     }
 
+    [Fact]
+    public void HusbandInfo_FullNameWithFather_ShouldFormatCorrectly()
+    {
+        // Arrange
+        var husband = new HusbandInfo("Moshe", "Cohen", "Yaakov");
+
+        // Assert
+        husband.FullNameWithFather.Should().Be("Moshe ben Yaakov Cohen");
+    }
+
+    [Fact]
+    public void SpouseInfo_FullNameWithFather_ShouldFormatCorrectly()
+    {
+        // Arrange
+        var wife = new SpouseInfo("Sarah", "Goldstein", "Yitzchak");
+
+        // Assert
+        wife.FullNameWithFather.Should().Be("Sarah bas Yitzchak");
+    }
+
     private Applicant CreateTestApplicant()
     {
-        return Applicant.CreateFromApplication(
-            firstName: "Moshe",
-            lastName: "Cohen",
-            fatherName: "Yaakov",
-            email: _testEmail,
+        return Applicant.Create(
+            husband: CreateTestHusband(),
+            wife: CreateTestWife(),
             address: _testAddress,
+            children: null,
             currentKehila: "Brooklyn",
             shabbosShul: "Bobov",
             createdBy: _userId);
