@@ -1542,6 +1542,189 @@ UV-11: Implement core domain entities - https://github.com/adrottenberg/family-r
 
 ---
 
+## SESSION: January 16, 2026 - UV-13 Create Applicant Endpoint & Infrastructure Refactoring
+
+### Context
+Implemented UV-13 (US-006: Create Applicant endpoint) and performed major infrastructure refactoring from traditional repository pattern to query object pattern.
+
+### Create Applicant Endpoint (UV-13)
+
+**Implemented:**
+- `POST /api/applicants` endpoint with `[AllowAnonymous]` for public board approval applications
+- `CreateApplicantCommand` and `CreateApplicantCommandHandler`
+- `CreateApplicantCommandValidator` with FluentValidation rules
+- Full DTO structure: ApplicantDto, HusbandInfoDto, SpouseInfoDto, AddressDto, ChildDto, PhoneNumberDto
+
+**Key Design Decisions:**
+
+1. **Anonymous Access with Audit Trail**
+   - Endpoint is publicly accessible for self-submitted board approval applications
+   - `WellKnownIds.SelfSubmittedUserId` (GUID: `AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA`) used for CreatedBy
+   - `IsSelfSubmitted` computed property on Applicant entity returns true when CreatedBy matches well-known ID
+   - Well-known GUID cannot collide with UUID v4 (version bits make it structurally impossible)
+
+2. **Duplicate Email Checking**
+   - Checks both husband AND wife emails for duplicates
+   - Uses PostgreSQL JSONB query since emails are stored in jsonb columns
+   - `ExistsByEmailQuery` handles the duplicate check
+
+3. **Auto-Demote Multiple Primary Phone Numbers**
+   - Instead of rejecting multiple primary phones, first one marked as primary wins
+   - `NormalizePhoneNumbers` helper method in handler demotes subsequent primaries
+   - More user-friendly than validation rejection
+
+### Infrastructure Refactoring: Query Object Pattern
+
+**Replaced traditional repository pattern with Mark Seemann's query object approach:**
+
+**Before:**
+```
+IApplicantRepository interface with methods like:
+- ExistsWithEmailAsync(string email)
+- AddAsync(Applicant applicant)
+- etc. (constantly growing interface)
+```
+
+**After:**
+```
+Query objects via MediatR:
+- ExistsByEmailQuery record in Application layer
+- ExistsByEmailQueryHandler in Application layer
+- IApplicationDbContext with generic Set<T>() method
+```
+
+**Why Query Object Pattern:**
+- No constantly evolving IRepository interfaces
+- Each query is explicit and self-documenting
+- All handlers in Application layer (where they belong - handlers ARE the application)
+- MediatR handles dispatch automatically
+
+### Additional Refactoring: EF Core ToJson() for LINQ on JSON Columns
+
+**Problem:** Initially handlers that needed to query JSONB columns required raw SQL, forcing them into Infrastructure layer. User didn't like split between Application and Infrastructure handlers.
+
+**Solution:** Configure HusbandInfo/SpouseInfo with EF Core's `ToJson()`:
+```csharp
+builder.OwnsOne(a => a.Husband, husband =>
+{
+    husband.ToJson();
+    husband.OwnsOne(h => h.Email);
+    husband.OwnsMany(h => h.PhoneNumbers);
+});
+```
+
+**Result:** LINQ queries work on JSON columns - no raw SQL needed:
+```csharp
+// This now works!
+await _context.Set<Applicant>().AnyAsync(a =>
+    a.Husband.Email != null && a.Husband.Email.Value.ToLower() == email);
+```
+
+### IApplicationDbContext Design (Open/Closed Principle)
+
+**Problem:** Original design had entity-specific properties (`Applicants`, `HousingSearches`). Adding new entities would require modifying the interface.
+
+**Solution:** Generic `Set<T>()` method:
+```csharp
+public interface IApplicationDbContext
+{
+    IQueryable<T> Set<T>() where T : class;
+    void Add<T>(T entity) where T : class;
+    Task<int> SaveChangesAsync(CancellationToken ct = default);
+}
+```
+
+### ICurrentUserService.UserId is Nullable
+
+**Problem:** Originally returned `WellKnownIds.SelfSubmittedUserId` for anonymous users, coupling the service to a specific use case.
+
+**Solution:** Return `Guid?` - let consumers decide the fallback:
+```csharp
+public interface ICurrentUserService
+{
+    Guid? UserId { get; }  // null if not authenticated
+    // ...
+}
+
+// Consumer decides:
+createdBy: _currentUserService.UserId ?? WellKnownIds.SelfSubmittedUserId
+```
+
+### Final Files Structure
+
+```
+Application/
+  Applicants/
+    Commands/
+      CreateApplicant/
+        CreateApplicantCommand.cs
+        CreateApplicantCommandHandler.cs
+        CreateApplicantCommandValidator.cs
+    DTOs/
+      AddressDto.cs, ApplicantDto.cs, ChildDto.cs,
+      HusbandInfoDto.cs, PhoneNumberDto.cs, SpouseInfoDto.cs
+    Queries/
+      ExistsByEmail/
+        ExistsByEmailQuery.cs
+        ExistsByEmailQueryHandler.cs  (ALL handlers in Application)
+  Common/
+    Exceptions/
+      DuplicateEmailException.cs
+    Interfaces/
+      IApplicationDbContext.cs  (generic Set<T>, Add<T>, SaveChangesAsync)
+      ICurrentUserService.cs    (nullable UserId)
+
+Domain/
+  Common/
+    WellKnownIds.cs  (SelfSubmittedUserId constant)
+
+Infrastructure/
+  Persistence/
+    Configurations/
+      ApplicantConfiguration.cs  (uses ToJson() for HusbandInfo/SpouseInfo)
+```
+
+### Test Results
+All 259 tests pass (196 Domain + 51 API + 12 Integration)
+
+### PR Created
+UV-13: Implement Create Applicant endpoint - https://github.com/adrottenberg/family-relocation/pull/5
+
+### Key Takeaways
+
+1. **Query Object Pattern** - MediatR queries instead of repository interfaces
+2. **ALL handlers in Application** - handlers ARE the application logic
+3. **EF Core ToJson()** - enables LINQ queries on JSON columns, no raw SQL
+4. **Generic IApplicationDbContext** - `Set<T>()` follows Open/Closed principle
+5. **Nullable ICurrentUserService.UserId** - consumers decide fallback for anonymous
+6. **Well-known GUIDs** - for system-level identifiers (cannot collide with UUID v4)
+
+---
+
+## FOR NEXT SESSION
+
+### To Quickly Re-Establish Context
+
+**Just say:**
+> "I'm the developer building the Family Relocation CRM for the Jewish community in Union County. We documented everything in January 2026."
+
+**I'll know:**
+- Complete domain model (Applicant, HousingSearch, etc.)
+- Tech stack (.NET 10, React, AWS)
+- Your working style (comprehensive docs, wait for complete review)
+- All 68 user stories and priorities
+- The 29 corrections we made
+- Cultural context (Orthodox community, no smartphones, desktop-first)
+- HousingSearch represents the house-hunting journey with failed contract history
+- **Query object pattern** instead of repository pattern (Mark Seemann's approach)
+- **All handlers in Application layer** - no split with Infrastructure
+- **EF Core ToJson()** for LINQ queries on JSON columns
+- **Generic IApplicationDbContext** with `Set<T>()` (Open/Closed principle)
+
+**And we can pick up exactly where we left off.**
+
+---
+
 **END OF CONVERSATION MEMORY LOG**
 
 This document captures our complete collaboration. Use it to quickly re-establish context in future sessions.

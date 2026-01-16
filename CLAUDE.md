@@ -35,14 +35,40 @@ Four-layer Clean Architecture with strict dependency rules:
 ```
 FamilyRelocation.API          → Controllers, middleware, Program.cs
     ↓
-FamilyRelocation.Application  → CQRS commands/queries, handlers, DTOs, validators (MediatR)
+FamilyRelocation.Application  → CQRS commands/queries, DTOs, validators (MediatR)
     ↓
-FamilyRelocation.Infrastructure → EF Core, repositories, AWS services (S3, SES, Cognito)
+FamilyRelocation.Infrastructure → EF Core, query handlers, AWS services (S3, SES, Cognito)
     ↓
 FamilyRelocation.Domain       → Entities, value objects, domain events (ZERO external dependencies)
 ```
 
 **Key constraint**: Domain layer has NO NuGet packages - pure C# only.
+
+## Query Object Pattern (Mark Seemann's Approach)
+
+We use query objects instead of traditional repository interfaces:
+
+```
+Application Layer:
+  - Query/Command records (e.g., ExistsByEmailQuery, CreateApplicantCommand)
+  - ALL handlers live here (queries and commands)
+  - IApplicationDbContext for data access
+```
+
+**Why this pattern:**
+- No constantly evolving IRepository interfaces
+- Each query is explicit and self-documenting
+- All handlers in one place (Application layer)
+- MediatR handles dispatch automatically
+
+**IApplicationDbContext provides:**
+- `IQueryable<T> Set<T>()` - generic queryable access (Open/Closed principle)
+- `void Add<T>(T entity)` - for adding entities
+- `Task<int> SaveChangesAsync()` - for persistence
+
+**JSON Column Queries:**
+EF Core's `ToJson()` configuration enables LINQ queries into JSON columns (HusbandInfo, SpouseInfo).
+No raw SQL needed - queries like `a.Husband.Email.Value == email` work directly.
 
 ## Ubiquitous Language (Required Terms)
 

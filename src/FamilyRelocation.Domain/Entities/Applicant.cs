@@ -163,6 +163,11 @@ public class Applicant : Entity<Guid>
     public string FamilyName => Husband.FullName;
 
     /// <summary>
+    /// True if this application was self-submitted (public application, not created by staff)
+    /// </summary>
+    public bool IsSelfSubmitted => CreatedBy == WellKnownIds.SelfSubmittedUserId;
+
+    /// <summary>
     /// Soft delete the applicant
     /// </summary>
     public void Delete(Guid deletedBy)

@@ -20,20 +20,21 @@ public class ApplicantConfiguration : IEntityTypeConfiguration<Applicant>
         // Ignore the ApplicantId alias property
         builder.Ignore(a => a.ApplicantId);
 
-        // Husband Info (JSON column - contains nested Email and PhoneNumbers)
-        builder.Property(a => a.Husband)
-            .HasColumnType("jsonb")
-            .HasConversion(
-                v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
-                v => System.Text.Json.JsonSerializer.Deserialize<HusbandInfo>(v, (System.Text.Json.JsonSerializerOptions?)null)!)
-            .IsRequired();
+        // Husband Info (JSON column with EF Core native JSON support for LINQ queries)
+        builder.OwnsOne(a => a.Husband, husband =>
+        {
+            husband.ToJson();
+            husband.OwnsOne(h => h.Email);
+            husband.OwnsMany(h => h.PhoneNumbers);
+        });
 
-        // Wife Info (JSON column - contains nested Email and PhoneNumbers)
-        builder.Property(a => a.Wife)
-            .HasColumnType("jsonb")
-            .HasConversion(
-                v => v == null ? null : System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
-                v => string.IsNullOrEmpty(v) ? null : System.Text.Json.JsonSerializer.Deserialize<SpouseInfo>(v, (System.Text.Json.JsonSerializerOptions?)null));
+        // Wife Info (JSON column with EF Core native JSON support for LINQ queries)
+        builder.OwnsOne(a => a.Wife, wife =>
+        {
+            wife.ToJson();
+            wife.OwnsOne(w => w.Email);
+            wife.OwnsMany(w => w.PhoneNumbers);
+        });
 
         // Ignore computed properties
         builder.Ignore(a => a.FamilyName);
