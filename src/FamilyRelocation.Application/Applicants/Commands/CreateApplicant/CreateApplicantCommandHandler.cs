@@ -25,13 +25,22 @@ public class CreateApplicantCommandHandler : IRequestHandler<CreateApplicantComm
 
     public async Task<ApplicantDto> Handle(CreateApplicantCommand request, CancellationToken cancellationToken)
     {
-        // Check for duplicate email if husband has email
+        // Check for duplicate emails (husband and wife)
         if (!string.IsNullOrEmpty(request.Husband.Email))
         {
             var exists = await _applicantRepository.ExistsByEmailAsync(request.Husband.Email, cancellationToken);
             if (exists)
             {
                 throw new DuplicateEmailException(request.Husband.Email);
+            }
+        }
+
+        if (!string.IsNullOrEmpty(request.Wife?.Email))
+        {
+            var exists = await _applicantRepository.ExistsByEmailAsync(request.Wife.Email, cancellationToken);
+            if (exists)
+            {
+                throw new DuplicateEmailException(request.Wife.Email);
             }
         }
 

@@ -23,10 +23,15 @@ public class ApplicantRepository : IApplicantRepository
     {
         var normalizedEmail = email.ToLowerInvariant();
 
-        // Check husband email using raw SQL query since Husband is stored as JSONB
+        // Check both husband and wife emails using raw SQL query since they are stored as JSONB
         var exists = await _context.ApplicantsDbSet
             .FromSqlRaw(
-                "SELECT * FROM \"Applicants\" WHERE \"IsDeleted\" = false AND \"Husband\"->>'Email' IS NOT NULL AND LOWER(\"Husband\"->'Email'->>'Value') = {0}",
+                @"SELECT * FROM ""Applicants""
+                  WHERE ""IsDeleted"" = false
+                  AND (
+                      (""Husband""->'Email'->>'Value' IS NOT NULL AND LOWER(""Husband""->'Email'->>'Value') = {0})
+                      OR (""Wife""->'Email'->>'Value' IS NOT NULL AND LOWER(""Wife""->'Email'->>'Value') = {0})
+                  )",
                 normalizedEmail)
             .AnyAsync(cancellationToken);
 
