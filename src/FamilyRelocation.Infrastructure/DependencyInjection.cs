@@ -3,6 +3,7 @@ using FamilyRelocation.Application.Auth;
 using FamilyRelocation.Application.Common.Interfaces;
 using FamilyRelocation.Infrastructure.AWS;
 using FamilyRelocation.Infrastructure.Persistence;
+using FamilyRelocation.Infrastructure.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -26,6 +27,9 @@ public static class DependencyInjection
         services.AddScoped<IApplicationDbContext>(provider =>
             provider.GetRequiredService<ApplicationDbContext>());
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+        // Repositories
+        services.AddScoped<IApplicantRepository, ApplicantRepository>();
 
         // AWS Services
         services.AddDefaultAWSOptions(configuration.GetAWSOptions());

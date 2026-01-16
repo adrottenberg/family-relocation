@@ -1,3 +1,6 @@
+using FamilyRelocation.API.Services;
+using FamilyRelocation.Application;
+using FamilyRelocation.Application.Common.Interfaces;
 using FamilyRelocation.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -10,8 +13,15 @@ builder.Services.AddOpenApi();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// Add Application services (MediatR, FluentValidation)
+builder.Services.AddApplication();
+
 // Add Infrastructure services (AWS Cognito, Database, etc.)
 builder.Services.AddInfrastructure(builder.Configuration);
+
+// Add HTTP context accessor for CurrentUserService
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 
 // Add health checks
 builder.Services.AddHealthChecks()
