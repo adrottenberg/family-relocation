@@ -101,3 +101,88 @@ Content-Type: application/json
     "email": "{{testEmail}}",
     "code": "{{confirmationCode}}"
 }
+
+###############################################################################
+# APPLICANTS API
+###############################################################################
+
+# Variables for Applicants
+@accessToken = paste-access-token-from-login
+@applicantId = paste-applicant-id-here
+
+### Create Applicant (Anonymous - no auth required)
+# Creates a new applicant for board approval
+POST {{baseUrl}}/api/applicants
+Content-Type: application/json
+
+{
+    "husband": {
+        "firstName": "Moshe",
+        "lastName": "Cohen",
+        "fatherName": "Yaakov",
+        "email": "moshe@example.com",
+        "phoneNumbers": [
+            {
+                "number": "2015551234",
+                "type": "Mobile",
+                "isPrimary": true
+            }
+        ],
+        "occupation": "Software Engineer",
+        "employerName": "Tech Corp"
+    },
+    "wife": {
+        "firstName": "Sarah",
+        "maidenName": "Goldstein",
+        "fatherName": "Avraham",
+        "email": "sarah@example.com",
+        "phoneNumbers": [
+            {
+                "number": "2015555678",
+                "type": "Mobile",
+                "isPrimary": true
+            }
+        ],
+        "occupation": "Teacher",
+        "employerName": "Bais Yaakov",
+        "highSchool": "Bais Yaakov of Brooklyn"
+    },
+    "address": {
+        "street": "123 Main St",
+        "street2": "Apt 4B",
+        "city": "Brooklyn",
+        "state": "NY",
+        "zipCode": "11230"
+    },
+    "children": [
+        {
+            "age": 8,
+            "gender": "Male",
+            "name": "Yosef",
+            "school": "Torah Academy"
+        },
+        {
+            "age": 5,
+            "gender": "Female",
+            "name": "Rivka",
+            "school": "Bais Yaakov"
+        }
+    ],
+    "currentKehila": "Flatbush",
+    "shabbosShul": "Young Israel"
+}
+
+### Create Applicant (Minimal - husband only)
+POST {{baseUrl}}/api/applicants
+Content-Type: application/json
+
+{
+    "husband": {
+        "firstName": "David",
+        "lastName": "Levy"
+    }
+}
+
+### Get Applicant by ID (Requires Authentication)
+GET {{baseUrl}}/api/applicants/{{applicantId}}
+Authorization: Bearer {{accessToken}}
