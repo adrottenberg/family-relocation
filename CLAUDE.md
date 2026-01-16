@@ -65,11 +65,11 @@ Infrastructure Layer:
 - Handlers can live where their dependencies are (EF Core in Infrastructure)
 - MediatR handles dispatch automatically
 
-**IApplicationDbContext provides:**
-- `IQueryable<Applicant> Applicants` - for LINQ queries
-- `IQueryable<HousingSearch> HousingSearches` - for LINQ queries
+**IApplicationDbContext provides (minimal interface):**
 - `void Add<TEntity>(TEntity entity)` - for adding entities
 - `Task<int> SaveChangesAsync()` - for persistence
+
+Infrastructure handlers that need query access inject `ApplicationDbContext` directly.
 
 ## Ubiquitous Language (Required Terms)
 
