@@ -124,6 +124,7 @@ public class CreateApplicantCommandHandler : IRequestHandler<CreateApplicantComm
             FamilyName = applicant.FamilyName,
             NumberOfChildren = applicant.NumberOfChildren,
             IsPendingBoardReview = applicant.IsPendingBoardReview,
+            IsSelfSubmitted = applicant.IsSelfSubmitted,
             CreatedDate = applicant.CreatedDate
         };
     }

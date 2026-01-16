@@ -34,6 +34,7 @@ public class ApplicantsControllerTests
             FamilyName = "Moshe Cohen",
             NumberOfChildren = 0,
             IsPendingBoardReview = true,
+            IsSelfSubmitted = true,
             CreatedDate = DateTime.UtcNow
         };
 
@@ -91,6 +92,7 @@ public class ApplicantsControllerTests
             FamilyName = "Moshe Cohen",
             NumberOfChildren = 0,
             IsPendingBoardReview = true,
+            IsSelfSubmitted = true,
             CreatedDate = DateTime.UtcNow
         };
 

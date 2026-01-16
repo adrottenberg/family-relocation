@@ -15,5 +15,6 @@ public record ApplicantDto
     public required string FamilyName { get; init; }
     public required int NumberOfChildren { get; init; }
     public required bool IsPendingBoardReview { get; init; }
+    public required bool IsSelfSubmitted { get; init; }
     public required DateTime CreatedDate { get; init; }
 }

@@ -312,6 +312,41 @@ public class ApplicantTests
         wife.FullName.Should().Be("Sarah (Goldstein)");
     }
 
+    [Fact]
+    public void IsSelfSubmitted_WhenCreatedBySelfSubmittedUserId_ShouldReturnTrue()
+    {
+        // Arrange
+        var applicant = Applicant.Create(
+            husband: CreateTestHusband(),
+            wife: null,
+            address: null,
+            children: null,
+            currentKehila: null,
+            shabbosShul: null,
+            createdBy: Domain.Common.WellKnownIds.SelfSubmittedUserId);
+
+        // Act & Assert
+        applicant.IsSelfSubmitted.Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsSelfSubmitted_WhenCreatedByStaffUser_ShouldReturnFalse()
+    {
+        // Arrange
+        var staffUserId = Guid.NewGuid();
+        var applicant = Applicant.Create(
+            husband: CreateTestHusband(),
+            wife: null,
+            address: null,
+            children: null,
+            currentKehila: null,
+            shabbosShul: null,
+            createdBy: staffUserId);
+
+        // Act & Assert
+        applicant.IsSelfSubmitted.Should().BeFalse();
+    }
+
     private Applicant CreateTestApplicant()
     {
         return Applicant.Create(
