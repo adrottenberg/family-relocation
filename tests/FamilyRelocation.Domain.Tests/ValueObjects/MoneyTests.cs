@@ -158,4 +158,123 @@ public class MoneyTests
         // Act & Assert
         money.ToFormattedString().Should().Be("500,000");
     }
+
+    [Fact]
+    public void Subtract_WithDifferentCurrency_ShouldThrow()
+    {
+        // Arrange
+        var money1 = new Money(100m, "USD");
+        var money2 = new Money(50m, "EUR");
+
+        // Act
+        var act = () => money1.Subtract(money2);
+
+        // Assert
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*different currencies*");
+    }
+
+    [Fact]
+    public void Subtract_ResultingInNegative_ShouldThrow()
+    {
+        // Arrange
+        var money1 = new Money(50m);
+        var money2 = new Money(100m);
+
+        // Act
+        var act = () => money1.Subtract(money2);
+
+        // Assert
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*negative amount*");
+    }
+
+    [Fact]
+    public void Subtract_ResultingInZero_ShouldSucceed()
+    {
+        // Arrange
+        var money1 = new Money(100m);
+        var money2 = new Money(100m);
+
+        // Act
+        var result = money1.Subtract(money2);
+
+        // Assert
+        result.Amount.Should().Be(0);
+    }
+
+    [Fact]
+    public void IsGreaterThanOrEqual_WhenGreater_ShouldReturnTrue()
+    {
+        // Arrange
+        var money1 = new Money(100m);
+        var money2 = new Money(50m);
+
+        // Act & Assert
+        money1.IsGreaterThanOrEqual(money2).Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsGreaterThanOrEqual_WhenEqual_ShouldReturnTrue()
+    {
+        // Arrange
+        var money1 = new Money(100m);
+        var money2 = new Money(100m);
+
+        // Act & Assert
+        money1.IsGreaterThanOrEqual(money2).Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsGreaterThanOrEqual_WhenLess_ShouldReturnFalse()
+    {
+        // Arrange
+        var money1 = new Money(50m);
+        var money2 = new Money(100m);
+
+        // Act & Assert
+        money1.IsGreaterThanOrEqual(money2).Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsGreaterThanOrEqual_WithDifferentCurrency_ShouldThrow()
+    {
+        // Arrange
+        var money1 = new Money(100m, "USD");
+        var money2 = new Money(50m, "EUR");
+
+        // Act
+        var act = () => money1.IsGreaterThanOrEqual(money2);
+
+        // Assert
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*different currencies*");
+    }
+
+    [Fact]
+    public void Multiply_ByNegativeFactor_ShouldThrow()
+    {
+        // Arrange
+        var money = new Money(100m);
+
+        // Act
+        var act = () => money.Multiply(-1.5m);
+
+        // Assert
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("*negative*");
+    }
+
+    [Fact]
+    public void Multiply_ByZero_ShouldReturnZero()
+    {
+        // Arrange
+        var money = new Money(100m);
+
+        // Act
+        var result = money.Multiply(0);
+
+        // Assert
+        result.Amount.Should().Be(0);
+    }
 }

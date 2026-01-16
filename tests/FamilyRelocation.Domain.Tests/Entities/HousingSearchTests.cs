@@ -76,43 +76,10 @@ public class HousingSearchTests
     }
 
     [Fact]
-    public void Approve_FromSubmitted_ShouldMoveToApproved()
+    public void StartHouseHunting_FromSubmitted_ShouldMoveToHouseHunting()
     {
         // Arrange
         var housingSearch = CreateTestHousingSearch();
-        housingSearch.ClearDomainEvents();
-
-        // Act
-        housingSearch.Approve(_userId);
-
-        // Assert
-        housingSearch.Stage.Should().Be(HousingSearchStage.Approved);
-        housingSearch.DomainEvents.Should().ContainSingle()
-            .Which.Should().BeOfType<HousingSearchStageChanged>()
-            .Which.NewStage.Should().Be(HousingSearchStage.Approved);
-    }
-
-    [Fact]
-    public void Approve_FromNonSubmittedStage_ShouldThrow()
-    {
-        // Arrange
-        var housingSearch = CreateTestHousingSearch();
-        housingSearch.Approve(_userId);
-
-        // Act
-        var act = () => housingSearch.Approve(_userId);
-
-        // Assert
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*Cannot approve*");
-    }
-
-    [Fact]
-    public void StartHouseHunting_FromApproved_ShouldMoveToHouseHunting()
-    {
-        // Arrange
-        var housingSearch = CreateTestHousingSearch();
-        housingSearch.Approve(_userId);
         housingSearch.ClearDomainEvents();
 
         // Act
@@ -120,13 +87,17 @@ public class HousingSearchTests
 
         // Assert
         housingSearch.Stage.Should().Be(HousingSearchStage.HouseHunting);
+        housingSearch.DomainEvents.Should().ContainSingle()
+            .Which.Should().BeOfType<HousingSearchStageChanged>()
+            .Which.NewStage.Should().Be(HousingSearchStage.HouseHunting);
     }
 
     [Fact]
-    public void StartHouseHunting_FromNonApproved_ShouldThrow()
+    public void StartHouseHunting_FromUnderContract_ShouldThrow()
     {
         // Arrange
-        var housingSearch = CreateTestHousingSearch();
+        var housingSearch = CreateHouseHuntingSearch();
+        housingSearch.PutUnderContract(Guid.NewGuid(), new Money(450000), null, _userId);
 
         // Act
         var act = () => housingSearch.StartHouseHunting(_userId);
@@ -140,9 +111,7 @@ public class HousingSearchTests
     public void PutUnderContract_ShouldSetContractDetails()
     {
         // Arrange
-        var housingSearch = CreateTestHousingSearch();
-        housingSearch.Approve(_userId);
-        housingSearch.StartHouseHunting(_userId);
+        var housingSearch = CreateHouseHuntingSearch();
         housingSearch.ClearDomainEvents();
 
         var propertyId = Guid.NewGuid();
@@ -183,9 +152,7 @@ public class HousingSearchTests
     public void ContractFellThrough_ShouldReturnToHouseHuntingAndPreserveHistory()
     {
         // Arrange
-        var housingSearch = CreateTestHousingSearch();
-        housingSearch.Approve(_userId);
-        housingSearch.StartHouseHunting(_userId);
+        var housingSearch = CreateHouseHuntingSearch();
         var propertyId = Guid.NewGuid();
         var contractPrice = new Money(450000);
         housingSearch.PutUnderContract(propertyId, contractPrice, null, _userId);
@@ -214,9 +181,7 @@ public class HousingSearchTests
     public void ContractFellThrough_MultipleTimes_ShouldPreserveAllHistory()
     {
         // Arrange
-        var housingSearch = CreateTestHousingSearch();
-        housingSearch.Approve(_userId);
-        housingSearch.StartHouseHunting(_userId);
+        var housingSearch = CreateHouseHuntingSearch();
 
         var propertyId1 = Guid.NewGuid();
         var propertyId2 = Guid.NewGuid();
@@ -248,16 +213,72 @@ public class HousingSearchTests
 
         // Assert
         act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*only mark contract as fallen through when UnderContract*");
+            .WithMessage("*only mark contract as fallen through when UnderContract or Closing*");
+    }
+
+    [Fact]
+    public void Pause_FromHouseHunting_ShouldMoveToPaused()
+    {
+        // Arrange
+        var housingSearch = CreateHouseHuntingSearch();
+        housingSearch.ClearDomainEvents();
+
+        // Act
+        housingSearch.Pause("Family circumstances", _userId);
+
+        // Assert
+        housingSearch.Stage.Should().Be(HousingSearchStage.Paused);
+        housingSearch.Notes.Should().Contain("Paused: Family circumstances");
+    }
+
+    [Fact]
+    public void Pause_FromNonHouseHunting_ShouldThrow()
+    {
+        // Arrange
+        var housingSearch = CreateTestHousingSearch();
+
+        // Act
+        var act = () => housingSearch.Pause("Reason", _userId);
+
+        // Assert
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*only pause when actively house hunting*");
+    }
+
+    [Fact]
+    public void Resume_FromPaused_ShouldMoveToHouseHunting()
+    {
+        // Arrange
+        var housingSearch = CreateHouseHuntingSearch();
+        housingSearch.Pause("Taking a break", _userId);
+        housingSearch.ClearDomainEvents();
+
+        // Act
+        housingSearch.Resume(_userId);
+
+        // Assert
+        housingSearch.Stage.Should().Be(HousingSearchStage.HouseHunting);
+    }
+
+    [Fact]
+    public void Resume_FromNonPaused_ShouldThrow()
+    {
+        // Arrange
+        var housingSearch = CreateHouseHuntingSearch();
+
+        // Act
+        var act = () => housingSearch.Resume(_userId);
+
+        // Assert
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*only resume from Paused*");
     }
 
     [Fact]
     public void StartClosing_ShouldMoveToClosingStage()
     {
         // Arrange
-        var housingSearch = CreateTestHousingSearch();
-        housingSearch.Approve(_userId);
-        housingSearch.StartHouseHunting(_userId);
+        var housingSearch = CreateHouseHuntingSearch();
         housingSearch.PutUnderContract(Guid.NewGuid(), new Money(450000), null, _userId);
         housingSearch.ClearDomainEvents();
 
@@ -275,9 +296,7 @@ public class HousingSearchTests
     public void CompleteClosing_ShouldMoveToMovedIn()
     {
         // Arrange
-        var housingSearch = CreateTestHousingSearch();
-        housingSearch.Approve(_userId);
-        housingSearch.StartHouseHunting(_userId);
+        var housingSearch = CreateHouseHuntingSearch();
         housingSearch.PutUnderContract(Guid.NewGuid(), new Money(450000), null, _userId);
         housingSearch.StartClosing(DateTime.UtcNow.AddDays(30), _userId);
         housingSearch.ClearDomainEvents();
@@ -297,9 +316,7 @@ public class HousingSearchTests
     public void SetMovedInStatus_ShouldUpdateStatus()
     {
         // Arrange
-        var housingSearch = CreateTestHousingSearch();
-        housingSearch.Approve(_userId);
-        housingSearch.StartHouseHunting(_userId);
+        var housingSearch = CreateHouseHuntingSearch();
         housingSearch.PutUnderContract(Guid.NewGuid(), new Money(450000), null, _userId);
         housingSearch.StartClosing(DateTime.UtcNow.AddDays(30), _userId);
         housingSearch.CompleteClosing(DateTime.UtcNow, _userId);
@@ -362,9 +379,6 @@ public class HousingSearchTests
         // Act - Progress through entire workflow
         housingSearch.Stage.Should().Be(HousingSearchStage.Submitted);
 
-        housingSearch.Approve(_userId);
-        housingSearch.Stage.Should().Be(HousingSearchStage.Approved);
-
         housingSearch.StartHouseHunting(_userId);
         housingSearch.Stage.Should().Be(HousingSearchStage.HouseHunting);
 
@@ -385,11 +399,44 @@ public class HousingSearchTests
         housingSearch.ContractPropertyId.Should().Be(propertyId);
     }
 
+    [Fact]
+    public void InvalidTransition_SubmittedToClosing_ShouldThrow()
+    {
+        // Arrange
+        var housingSearch = CreateTestHousingSearch();
+
+        // Act - try to skip stages
+        var act = () => housingSearch.StartClosing(DateTime.UtcNow.AddDays(30), _userId);
+
+        // Assert
+        act.Should().Throw<InvalidOperationException>();
+    }
+
+    [Fact]
+    public void InvalidTransition_HouseHuntingToMovedIn_ShouldThrow()
+    {
+        // Arrange
+        var housingSearch = CreateHouseHuntingSearch();
+
+        // Act - try to skip stages
+        var act = () => housingSearch.CompleteClosing(DateTime.UtcNow, _userId);
+
+        // Assert
+        act.Should().Throw<InvalidOperationException>();
+    }
+
     private HousingSearch CreateTestHousingSearch()
     {
         return HousingSearch.Create(
             applicantId: _applicantId,
             searchNumber: "HS-2026-0001",
             createdBy: _userId);
+    }
+
+    private HousingSearch CreateHouseHuntingSearch()
+    {
+        var housingSearch = CreateTestHousingSearch();
+        housingSearch.StartHouseHunting(_userId);
+        return housingSearch;
     }
 }

@@ -8,10 +8,21 @@ namespace FamilyRelocation.Domain.Entities;
 /// <summary>
 /// Housing Search aggregate root
 /// Represents a family's house-hunting journey from start to completion
-/// An applicant typically has one active housing search, but may restart if they pause
+/// An applicant has one housing search that tracks their entire journey
 /// </summary>
 public class HousingSearch : Entity<Guid>
 {
+    // Valid stage transitions (state machine)
+    private static readonly Dictionary<HousingSearchStage, HousingSearchStage[]> ValidTransitions = new()
+    {
+        [HousingSearchStage.Submitted] = [HousingSearchStage.HouseHunting],
+        [HousingSearchStage.HouseHunting] = [HousingSearchStage.UnderContract, HousingSearchStage.Paused],
+        [HousingSearchStage.UnderContract] = [HousingSearchStage.Closing, HousingSearchStage.HouseHunting],
+        [HousingSearchStage.Closing] = [HousingSearchStage.MovedIn, HousingSearchStage.HouseHunting],
+        [HousingSearchStage.Paused] = [HousingSearchStage.HouseHunting],
+        [HousingSearchStage.MovedIn] = [],
+    };
+
     public Guid HousingSearchId
     {
         get => Id;
@@ -92,12 +103,17 @@ public class HousingSearch : Entity<Guid>
     }
 
     /// <summary>
-    /// Advance to the next stage
+    /// Transition to a new stage (validates against state machine)
     /// </summary>
-    public void AdvanceStage(HousingSearchStage newStage, Guid modifiedBy)
+    private void TransitionTo(HousingSearchStage newStage, Guid modifiedBy)
     {
-        if (newStage <= Stage && newStage != HousingSearchStage.HouseHunting)
-            throw new InvalidOperationException($"Cannot move from {Stage} to {newStage}. Stage must advance forward.");
+        if (!ValidTransitions.TryGetValue(Stage, out var allowedTransitions) ||
+            !allowedTransitions.Contains(newStage))
+        {
+            throw new InvalidOperationException(
+                $"Cannot transition from {Stage} to {newStage}. " +
+                $"Valid transitions: {(allowedTransitions?.Length > 0 ? string.Join(", ", allowedTransitions) : "none")}");
+        }
 
         var oldStage = Stage;
         Stage = newStage;
@@ -109,25 +125,43 @@ public class HousingSearch : Entity<Guid>
     }
 
     /// <summary>
-    /// Set to Approved stage (after board approval)
-    /// </summary>
-    public void Approve(Guid modifiedBy)
-    {
-        if (Stage != HousingSearchStage.Submitted)
-            throw new InvalidOperationException($"Cannot approve housing search in {Stage} stage. Must be in Submitted stage.");
-
-        AdvanceStage(HousingSearchStage.Approved, modifiedBy);
-    }
-
-    /// <summary>
-    /// Begin house hunting
+    /// Begin house hunting (called after board approves the Applicant)
     /// </summary>
     public void StartHouseHunting(Guid modifiedBy)
     {
-        if (Stage != HousingSearchStage.Approved)
-            throw new InvalidOperationException($"Cannot start house hunting from {Stage} stage. Must be Approved first.");
+        if (Stage != HousingSearchStage.Submitted && Stage != HousingSearchStage.Paused)
+            throw new InvalidOperationException($"Cannot start house hunting from {Stage} stage.");
 
-        AdvanceStage(HousingSearchStage.HouseHunting, modifiedBy);
+        TransitionTo(HousingSearchStage.HouseHunting, modifiedBy);
+    }
+
+    /// <summary>
+    /// Pause the housing search (family taking a break)
+    /// </summary>
+    public void Pause(string? reason, Guid modifiedBy)
+    {
+        if (Stage != HousingSearchStage.HouseHunting)
+            throw new InvalidOperationException("Can only pause when actively house hunting.");
+
+        if (!string.IsNullOrWhiteSpace(reason))
+        {
+            Notes = string.IsNullOrEmpty(Notes)
+                ? $"Paused: {reason}"
+                : $"{Notes}\n\nPaused: {reason}";
+        }
+
+        TransitionTo(HousingSearchStage.Paused, modifiedBy);
+    }
+
+    /// <summary>
+    /// Resume house hunting after a pause
+    /// </summary>
+    public void Resume(Guid modifiedBy)
+    {
+        if (Stage != HousingSearchStage.Paused)
+            throw new InvalidOperationException("Can only resume from Paused stage.");
+
+        TransitionTo(HousingSearchStage.HouseHunting, modifiedBy);
     }
 
     /// <summary>
@@ -147,7 +181,7 @@ public class HousingSearch : Entity<Guid>
         ContractDate = DateTime.UtcNow;
         ClosingDate = expectedClosingDate;
 
-        AdvanceStage(HousingSearchStage.UnderContract, modifiedBy);
+        TransitionTo(HousingSearchStage.UnderContract, modifiedBy);
     }
 
     /// <summary>
@@ -155,8 +189,8 @@ public class HousingSearch : Entity<Guid>
     /// </summary>
     public void ContractFellThrough(string? reason, Guid modifiedBy)
     {
-        if (Stage != HousingSearchStage.UnderContract)
-            throw new InvalidOperationException("Can only mark contract as fallen through when UnderContract.");
+        if (Stage != HousingSearchStage.UnderContract && Stage != HousingSearchStage.Closing)
+            throw new InvalidOperationException("Can only mark contract as fallen through when UnderContract or Closing.");
 
         // Preserve the failed contract in history
         if (ContractPropertyId.HasValue && ContractPrice != null && ContractDate.HasValue)
@@ -177,14 +211,7 @@ public class HousingSearch : Entity<Guid>
         ContractDate = null;
         ClosingDate = null;
 
-        // Go back to house hunting
-        var oldStage = Stage;
-        Stage = HousingSearchStage.HouseHunting;
-        StageChangedDate = DateTime.UtcNow;
-        ModifiedBy = modifiedBy;
-        ModifiedDate = DateTime.UtcNow;
-
-        AddDomainEvent(new HousingSearchStageChanged(HousingSearchId, oldStage, HousingSearchStage.HouseHunting));
+        TransitionTo(HousingSearchStage.HouseHunting, modifiedBy);
     }
 
     /// <summary>
@@ -196,7 +223,7 @@ public class HousingSearch : Entity<Guid>
             throw new InvalidOperationException("Can only start closing when UnderContract.");
 
         ClosingDate = expectedClosingDate;
-        AdvanceStage(HousingSearchStage.Closing, modifiedBy);
+        TransitionTo(HousingSearchStage.Closing, modifiedBy);
     }
 
     /// <summary>
@@ -208,7 +235,7 @@ public class HousingSearch : Entity<Guid>
             throw new InvalidOperationException("Can only complete closing when in Closing stage.");
 
         ActualClosingDate = actualClosingDate;
-        AdvanceStage(HousingSearchStage.MovedIn, modifiedBy);
+        TransitionTo(HousingSearchStage.MovedIn, modifiedBy);
     }
 
     /// <summary>

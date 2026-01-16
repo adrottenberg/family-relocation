@@ -32,8 +32,9 @@ public class ApplicantConfiguration : IEntityTypeConfiguration<Applicant>
         builder.Property(a => a.FatherName)
             .HasMaxLength(100);
 
-        // Ignore computed property
+        // Ignore computed properties
         builder.Ignore(a => a.FullName);
+        builder.Ignore(a => a.WifeFullName);
 
         // Wife Info
         builder.Property(a => a.WifeFirstName)
@@ -176,5 +177,9 @@ public class ApplicantConfiguration : IEntityTypeConfiguration<Applicant>
         builder.HasIndex(a => a.IsDeleted);
         builder.HasIndex(a => a.CreatedDate);
         builder.HasIndex(a => a.BoardDecision);
+        builder.HasIndex(a => a.ProspectId);
+
+        // Note: Email uniqueness should be enforced at application layer
+        // since Email is an owned type. Alternatively, add a raw SQL index in migrations.
     }
 }

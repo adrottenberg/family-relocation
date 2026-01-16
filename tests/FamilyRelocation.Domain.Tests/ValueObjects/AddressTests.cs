@@ -133,4 +133,61 @@ public class AddressTests
         // Act & Assert
         address.ToString().Should().Be("123 Main St, Union, NJ 07083");
     }
+
+    [Theory]
+    [InlineData("XX")]
+    [InlineData("ZZ")]
+    [InlineData("ABC")]
+    [InlineData("N")]
+    public void Constructor_WithInvalidState_ShouldThrow(string invalidState)
+    {
+        // Arrange & Act
+        var act = () => new Address("123 Main St", "Union", invalidState, "07083");
+
+        // Assert
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("*valid 2-letter US state code*");
+    }
+
+    [Theory]
+    [InlineData("1234")]
+    [InlineData("123456")]
+    [InlineData("1234-5678")]
+    [InlineData("12345-")]
+    [InlineData("abcde")]
+    public void Constructor_WithInvalidZipCode_ShouldThrow(string invalidZip)
+    {
+        // Arrange & Act
+        var act = () => new Address("123 Main St", "Union", "NJ", invalidZip);
+
+        // Assert
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("*format 12345 or 12345-6789*");
+    }
+
+    [Theory]
+    [InlineData("12345")]
+    [InlineData("12345-6789")]
+    public void Constructor_WithValidZipCode_ShouldSucceed(string validZip)
+    {
+        // Arrange & Act
+        var address = new Address("123 Main St", "Union", "NJ", validZip);
+
+        // Assert
+        address.ZipCode.Should().Be(validZip);
+    }
+
+    [Theory]
+    [InlineData("NJ")]
+    [InlineData("ny")]
+    [InlineData("CA")]
+    [InlineData("dc")]
+    public void Constructor_WithValidState_ShouldSucceed(string state)
+    {
+        // Arrange & Act
+        var address = new Address("123 Main St", "Union", state, "07083");
+
+        // Assert
+        address.State.Should().Be(state.ToUpperInvariant());
+    }
 }

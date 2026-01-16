@@ -41,7 +41,22 @@ public sealed record Money
         if (other.Currency != Currency)
             throw new InvalidOperationException("Cannot subtract money with different currencies");
 
-        return new Money(Amount - other.Amount, Currency);
+        var result = Amount - other.Amount;
+        if (result < 0)
+            throw new InvalidOperationException($"Cannot subtract {other.Amount:C} from {Amount:C} - would result in negative amount");
+
+        return new Money(result, Currency);
+    }
+
+    /// <summary>
+    /// Check if this amount is greater than or equal to another
+    /// </summary>
+    public bool IsGreaterThanOrEqual(Money other)
+    {
+        if (other.Currency != Currency)
+            throw new InvalidOperationException("Cannot compare money with different currencies");
+
+        return Amount >= other.Amount;
     }
 
     public Money Multiply(decimal factor) => new(Amount * factor, Currency);

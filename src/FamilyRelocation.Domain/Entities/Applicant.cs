@@ -31,6 +31,9 @@ public class Applicant : Entity<Guid>
     public string? WifeMaidenName { get; private set; }
     public string? WifeFatherName { get; private set; }
     public string? WifeHighSchool { get; private set; }
+    public string? WifeFullName => WifeFirstName != null
+        ? (WifeMaidenName != null ? $"{WifeFirstName} {WifeMaidenName}" : WifeFirstName)
+        : null;
 
     // Contact
     public Email Email { get; private set; } = null!;
@@ -221,7 +224,7 @@ public class Applicant : Entity<Guid>
         ModifiedBy = reviewedByUserId;
         ModifiedDate = DateTime.UtcNow;
 
-        AddDomainEvent(new ApplicantApprovedByBoard(ApplicantId, decision, reviewedByUserId));
+        AddDomainEvent(new ApplicantBoardDecisionMade(ApplicantId, decision, reviewedByUserId));
     }
 
     /// <summary>

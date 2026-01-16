@@ -226,7 +226,7 @@ public class ApplicantTests
         applicant.IsPendingBoardReview.Should().BeFalse();
 
         var approvedEvent = applicant.DomainEvents
-            .OfType<ApplicantApprovedByBoard>()
+            .OfType<ApplicantBoardDecisionMade>()
             .SingleOrDefault();
         approvedEvent.Should().NotBeNull();
         approvedEvent!.Decision.Should().Be(BoardDecision.Approved);
