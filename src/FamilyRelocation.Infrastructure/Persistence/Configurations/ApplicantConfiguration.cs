@@ -20,7 +20,7 @@ public class ApplicantConfiguration : IEntityTypeConfiguration<Applicant>
         // Ignore the ApplicantId alias property
         builder.Ignore(a => a.ApplicantId);
 
-        // Basic Properties
+        // Basic Properties - Husband
         builder.Property(a => a.FirstName)
             .HasMaxLength(100)
             .IsRequired();
@@ -34,20 +34,29 @@ public class ApplicantConfiguration : IEntityTypeConfiguration<Applicant>
 
         // Ignore computed properties
         builder.Ignore(a => a.FullName);
-        builder.Ignore(a => a.WifeFullName);
 
-        // Wife Info
-        builder.Property(a => a.WifeFirstName)
-            .HasMaxLength(100);
+        // Wife Info (owned value object)
+        builder.OwnsOne(a => a.Wife, wife =>
+        {
+            wife.Property(w => w.FirstName)
+                .HasColumnName("WifeFirstName")
+                .HasMaxLength(100);
 
-        builder.Property(a => a.WifeMaidenName)
-            .HasMaxLength(100);
+            wife.Property(w => w.MaidenName)
+                .HasColumnName("WifeMaidenName")
+                .HasMaxLength(100);
 
-        builder.Property(a => a.WifeFatherName)
-            .HasMaxLength(100);
+            wife.Property(w => w.FatherName)
+                .HasColumnName("WifeFatherName")
+                .HasMaxLength(100);
 
-        builder.Property(a => a.WifeHighSchool)
-            .HasMaxLength(200);
+            wife.Property(w => w.HighSchool)
+                .HasColumnName("WifeHighSchool")
+                .HasMaxLength(200);
+
+            // Ignore computed property
+            wife.Ignore(w => w.FullName);
+        });
 
         // Email Value Object (owned)
         builder.OwnsOne(a => a.Email, email =>
@@ -80,6 +89,9 @@ public class ApplicantConfiguration : IEntityTypeConfiguration<Applicant>
             address.Property(addr => addr.ZipCode)
                 .HasColumnName("Address_ZipCode")
                 .HasMaxLength(10);
+
+            // Ignore computed property
+            address.Ignore(addr => addr.FullAddress);
         });
 
         // Phone Numbers (JSON column)
@@ -106,48 +118,28 @@ public class ApplicantConfiguration : IEntityTypeConfiguration<Applicant>
         builder.Property(a => a.ShabbosShul)
             .HasMaxLength(200);
 
-        // Housing Preferences
-        builder.OwnsOne(a => a.Budget, money =>
+        // Board Review (owned value object)
+        builder.OwnsOne(a => a.BoardReview, review =>
         {
-            money.Property(m => m.Amount)
-                .HasColumnName("Budget")
-                .HasColumnType("decimal(18,2)");
+            review.Property(r => r.Decision)
+                .HasColumnName("BoardDecision");
 
-            money.Property(m => m.Currency)
-                .HasColumnName("Budget_Currency")
-                .HasMaxLength(3)
-                .HasDefaultValue("USD");
+            review.Property(r => r.Notes)
+                .HasColumnName("BoardDecisionNotes")
+                .HasMaxLength(2000);
+
+            review.Property(r => r.ReviewDate)
+                .HasColumnName("BoardReviewDate");
+
+            review.Property(r => r.ReviewedByUserId)
+                .HasColumnName("BoardReviewedByUserId");
+
+            // Ignore computed properties
+            review.Ignore(r => r.IsApproved);
+            review.Ignore(r => r.IsRejected);
+            review.Ignore(r => r.IsPending);
+            review.Ignore(r => r.IsDeferred);
         });
-
-        builder.Property(a => a.MinBedrooms);
-        builder.Property(a => a.MinBathrooms)
-            .HasColumnType("decimal(3,1)");
-
-        // Required Features (JSON column)
-        builder.Property(a => a.RequiredFeatures)
-            .HasColumnType("jsonb")
-            .HasConversion(
-                v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
-                v => System.Text.Json.JsonSerializer.Deserialize<List<string>>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? new List<string>());
-
-        // Shul Proximity Preference (JSON column)
-        builder.Property(a => a.ShulProximity)
-            .HasColumnType("jsonb")
-            .HasConversion(
-                v => v == null ? null : System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
-                v => string.IsNullOrEmpty(v) ? null : System.Text.Json.JsonSerializer.Deserialize<ShulProximityPreference>(v, (System.Text.Json.JsonSerializerOptions?)null));
-
-        builder.Property(a => a.MoveTimeline);
-
-        builder.Property(a => a.HousingNotes)
-            .HasMaxLength(4000);
-
-        // Board Review
-        builder.Property(a => a.BoardReviewDate);
-        builder.Property(a => a.BoardDecision);
-        builder.Property(a => a.BoardDecisionNotes)
-            .HasMaxLength(2000);
-        builder.Property(a => a.BoardReviewedByUserId);
 
         // Ignore computed properties
         builder.Ignore(a => a.IsApproved);
@@ -176,7 +168,6 @@ public class ApplicantConfiguration : IEntityTypeConfiguration<Applicant>
         // Indexes
         builder.HasIndex(a => a.IsDeleted);
         builder.HasIndex(a => a.CreatedDate);
-        builder.HasIndex(a => a.BoardDecision);
         builder.HasIndex(a => a.ProspectId);
 
         // Note: Email uniqueness should be enforced at application layer

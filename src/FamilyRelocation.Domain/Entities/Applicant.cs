@@ -6,9 +6,9 @@ using FamilyRelocation.Domain.ValueObjects;
 namespace FamilyRelocation.Domain.Entities;
 
 /// <summary>
-/// Applicant aggregate root
+/// Applicant aggregate root - represents a family applying for relocation assistance
 /// Board review is at APPLICANT level (not HousingSearch level)
-/// An applicant typically has one active housing search, but may restart if they pause
+/// Housing preferences are on HousingSearch (they may change between search attempts)
 /// </summary>
 public class Applicant : Entity<Guid>
 {
@@ -26,14 +26,8 @@ public class Applicant : Entity<Guid>
     public string? FatherName { get; private set; }
     public string FullName => $"{FirstName} {LastName}";
 
-    // Wife Info
-    public string? WifeFirstName { get; private set; }
-    public string? WifeMaidenName { get; private set; }
-    public string? WifeFatherName { get; private set; }
-    public string? WifeHighSchool { get; private set; }
-    public string? WifeFullName => WifeFirstName != null
-        ? (WifeMaidenName != null ? $"{WifeFirstName} {WifeMaidenName}" : WifeFirstName)
-        : null;
+    // Wife Info (value object)
+    public SpouseInfo? Wife { get; private set; }
 
     // Contact
     public Email Email { get; private set; } = null!;
@@ -48,20 +42,8 @@ public class Applicant : Entity<Guid>
     public string? CurrentKehila { get; private set; }
     public string? ShabbosShul { get; private set; }
 
-    // Housing Preferences
-    public Money? Budget { get; private set; }
-    public int? MinBedrooms { get; private set; }
-    public decimal? MinBathrooms { get; private set; }
-    public List<string> RequiredFeatures { get; private set; } = new();
-    public ShulProximityPreference? ShulProximity { get; private set; }
-    public MoveTimeline? MoveTimeline { get; private set; }
-    public string? HousingNotes { get; private set; }
-
-    // Board Review (AT APPLICANT LEVEL - not Application level)
-    public DateTime? BoardReviewDate { get; private set; }
-    public BoardDecision? BoardDecision { get; private set; }
-    public string? BoardDecisionNotes { get; private set; }
-    public Guid? BoardReviewedByUserId { get; private set; }
+    // Board Review (value object)
+    public BoardReview? BoardReview { get; private set; }
 
     // Navigation - one housing search per applicant (failed contracts tracked within)
     public virtual HousingSearch? HousingSearch { get; private set; }
@@ -108,8 +90,6 @@ public class Applicant : Entity<Guid>
             ShabbosShul = shabbosShul?.Trim(),
             PhoneNumbers = new List<PhoneNumber>(),
             Children = new List<Child>(),
-            RequiredFeatures = new List<string>(),
-            ShulProximity = ShulProximityPreference.NoPreference(),
             CreatedBy = createdBy,
             CreatedDate = DateTime.UtcNow,
             ModifiedBy = createdBy,
@@ -123,18 +103,12 @@ public class Applicant : Entity<Guid>
     }
 
     /// <summary>
-    /// Update basic applicant information
+    /// Update husband's basic information
     /// </summary>
-    public void UpdateBasicInfo(
+    public void UpdateHusbandInfo(
         string firstName,
         string lastName,
         string? fatherName,
-        string? wifeFirstName,
-        string? wifeMaidenName,
-        string? wifeFatherName,
-        string? wifeHighSchool,
-        string? currentKehila,
-        string? shabbosShul,
         Guid modifiedBy)
     {
         if (string.IsNullOrWhiteSpace(firstName))
@@ -146,14 +120,29 @@ public class Applicant : Entity<Guid>
         FirstName = firstName.Trim();
         LastName = lastName.Trim();
         FatherName = fatherName?.Trim();
-        WifeFirstName = wifeFirstName?.Trim();
-        WifeMaidenName = wifeMaidenName?.Trim();
-        WifeFatherName = wifeFatherName?.Trim();
-        WifeHighSchool = wifeHighSchool?.Trim();
+        SetModified(modifiedBy);
+    }
+
+    /// <summary>
+    /// Update wife information
+    /// </summary>
+    public void UpdateWifeInfo(SpouseInfo? wifeInfo, Guid modifiedBy)
+    {
+        Wife = wifeInfo;
+        SetModified(modifiedBy);
+    }
+
+    /// <summary>
+    /// Update community information
+    /// </summary>
+    public void UpdateCommunityInfo(
+        string? currentKehila,
+        string? shabbosShul,
+        Guid modifiedBy)
+    {
         CurrentKehila = currentKehila?.Trim();
         ShabbosShul = shabbosShul?.Trim();
-        ModifiedBy = modifiedBy;
-        ModifiedDate = DateTime.UtcNow;
+        SetModified(modifiedBy);
     }
 
     /// <summary>
@@ -168,8 +157,7 @@ public class Applicant : Entity<Guid>
         Email = email ?? throw new ArgumentNullException(nameof(email));
         Address = address;
         PhoneNumbers = phoneNumbers ?? new List<PhoneNumber>();
-        ModifiedBy = modifiedBy;
-        ModifiedDate = DateTime.UtcNow;
+        SetModified(modifiedBy);
     }
 
     /// <summary>
@@ -178,51 +166,20 @@ public class Applicant : Entity<Guid>
     public void UpdateChildren(List<Child> children, Guid modifiedBy)
     {
         Children = children ?? new List<Child>();
-        ModifiedBy = modifiedBy;
-        ModifiedDate = DateTime.UtcNow;
-    }
-
-    /// <summary>
-    /// Update housing preferences
-    /// </summary>
-    public void UpdateHousingPreferences(
-        Money? budget,
-        int? minBedrooms,
-        decimal? minBathrooms,
-        List<string>? features,
-        ShulProximityPreference? shulProximity,
-        MoveTimeline? moveTimeline,
-        string? notes,
-        Guid modifiedBy)
-    {
-        Budget = budget;
-        MinBedrooms = minBedrooms;
-        MinBathrooms = minBathrooms;
-        RequiredFeatures = features ?? new List<string>();
-        ShulProximity = shulProximity ?? ShulProximityPreference.NoPreference();
-        MoveTimeline = moveTimeline;
-        HousingNotes = notes;
-        ModifiedBy = modifiedBy;
-        ModifiedDate = DateTime.UtcNow;
-
-        AddDomainEvent(new HousingPreferencesUpdated(ApplicantId));
+        SetModified(modifiedBy);
     }
 
     /// <summary>
     /// Set board decision for this applicant
-    /// Board review is at APPLICANT level, not Application level
+    /// Board review is at APPLICANT level, not HousingSearch level
     /// </summary>
     public void SetBoardDecision(
         BoardDecision decision,
         string? notes,
         Guid reviewedByUserId)
     {
-        BoardDecision = decision;
-        BoardDecisionNotes = notes;
-        BoardReviewDate = DateTime.UtcNow;
-        BoardReviewedByUserId = reviewedByUserId;
-        ModifiedBy = reviewedByUserId;
-        ModifiedDate = DateTime.UtcNow;
+        BoardReview = new BoardReview(decision, reviewedByUserId, notes);
+        SetModified(reviewedByUserId);
 
         AddDomainEvent(new ApplicantBoardDecisionMade(ApplicantId, decision, reviewedByUserId));
     }
@@ -230,12 +187,12 @@ public class Applicant : Entity<Guid>
     /// <summary>
     /// Check if applicant is approved by board
     /// </summary>
-    public bool IsApproved => BoardDecision == Enums.BoardDecision.Approved;
+    public bool IsApproved => BoardReview?.IsApproved ?? false;
 
     /// <summary>
     /// Check if applicant has pending board review
     /// </summary>
-    public bool IsPendingBoardReview => BoardDecision == null || BoardDecision == Enums.BoardDecision.Pending;
+    public bool IsPendingBoardReview => BoardReview == null || BoardReview.IsPending;
 
     /// <summary>
     /// Soft delete the applicant
@@ -243,8 +200,7 @@ public class Applicant : Entity<Guid>
     public void Delete(Guid deletedBy)
     {
         IsDeleted = true;
-        ModifiedBy = deletedBy;
-        ModifiedDate = DateTime.UtcNow;
+        SetModified(deletedBy);
     }
 
     /// <summary>
@@ -253,7 +209,12 @@ public class Applicant : Entity<Guid>
     public void Restore(Guid restoredBy)
     {
         IsDeleted = false;
-        ModifiedBy = restoredBy;
+        SetModified(restoredBy);
+    }
+
+    private void SetModified(Guid modifiedBy)
+    {
+        ModifiedBy = modifiedBy;
         ModifiedDate = DateTime.UtcNow;
     }
 }

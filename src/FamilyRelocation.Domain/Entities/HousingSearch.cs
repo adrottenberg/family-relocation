@@ -57,6 +57,14 @@ public class HousingSearch : Entity<Guid>
     public MovedInStatus? MovedInStatus { get; private set; }
     public DateTime? MovedInDate { get; private set; }
 
+    // Housing Preferences (what they're looking for in this search)
+    public Money? Budget { get; private set; }
+    public int? MinBedrooms { get; private set; }
+    public decimal? MinBathrooms { get; private set; }
+    public List<string> RequiredFeatures { get; private set; } = new();
+    public ShulProximityPreference? ShulProximity { get; private set; }
+    public MoveTimeline? MoveTimeline { get; private set; }
+
     // Notes
     public string? Notes { get; private set; }
 
@@ -90,6 +98,8 @@ public class HousingSearch : Entity<Guid>
             SearchNumber = searchNumber,
             Stage = HousingSearchStage.Submitted,
             StageChangedDate = DateTime.UtcNow,
+            RequiredFeatures = new List<string>(),
+            ShulProximity = ShulProximityPreference.NoPreference(),
             IsActive = true,
             CreatedBy = createdBy,
             CreatedDate = DateTime.UtcNow,
@@ -257,6 +267,30 @@ public class HousingSearch : Entity<Guid>
         Notes = notes;
         ModifiedBy = modifiedBy;
         ModifiedDate = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Update housing preferences for this search
+    /// </summary>
+    public void UpdateHousingPreferences(
+        Money? budget,
+        int? minBedrooms,
+        decimal? minBathrooms,
+        List<string>? features,
+        ShulProximityPreference? shulProximity,
+        MoveTimeline? moveTimeline,
+        Guid modifiedBy)
+    {
+        Budget = budget;
+        MinBedrooms = minBedrooms;
+        MinBathrooms = minBathrooms;
+        RequiredFeatures = features ?? new List<string>();
+        ShulProximity = shulProximity ?? ShulProximityPreference.NoPreference();
+        MoveTimeline = moveTimeline;
+        ModifiedBy = modifiedBy;
+        ModifiedDate = DateTime.UtcNow;
+
+        AddDomainEvent(new HousingPreferencesUpdated(ApplicantId));
     }
 
     /// <summary>

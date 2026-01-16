@@ -81,6 +81,39 @@ public class HousingSearchConfiguration : IEntityTypeConfiguration<HousingSearch
         builder.Property(h => h.MovedInStatus);
         builder.Property(h => h.MovedInDate);
 
+        // Housing Preferences
+        builder.OwnsOne(h => h.Budget, money =>
+        {
+            money.Property(m => m.Amount)
+                .HasColumnName("Budget")
+                .HasColumnType("decimal(18,2)");
+
+            money.Property(m => m.Currency)
+                .HasColumnName("Budget_Currency")
+                .HasMaxLength(3)
+                .HasDefaultValue("USD");
+        });
+
+        builder.Property(h => h.MinBedrooms);
+        builder.Property(h => h.MinBathrooms)
+            .HasColumnType("decimal(3,1)");
+
+        // Required Features (JSON column)
+        builder.Property(h => h.RequiredFeatures)
+            .HasColumnType("jsonb")
+            .HasConversion(
+                v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
+                v => System.Text.Json.JsonSerializer.Deserialize<List<string>>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? new List<string>());
+
+        // Shul Proximity Preference (JSON column)
+        builder.Property(h => h.ShulProximity)
+            .HasColumnType("jsonb")
+            .HasConversion(
+                v => v == null ? null : System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
+                v => string.IsNullOrEmpty(v) ? null : System.Text.Json.JsonSerializer.Deserialize<ShulProximityPreference>(v, (System.Text.Json.JsonSerializerOptions?)null));
+
+        builder.Property(h => h.MoveTimeline);
+
         // Notes
         builder.Property(h => h.Notes)
             .HasMaxLength(4000);

@@ -147,61 +147,64 @@ public class ApplicantTests
     }
 
     [Fact]
-    public void UpdateBasicInfo_ShouldUpdateFields()
+    public void UpdateHusbandInfo_ShouldUpdateFields()
     {
         // Arrange
         var applicant = CreateTestApplicant();
         var modifiedBy = Guid.NewGuid();
 
         // Act
-        applicant.UpdateBasicInfo(
+        applicant.UpdateHusbandInfo(
             firstName: "David",
             lastName: "Levy",
             fatherName: "Avraham",
-            wifeFirstName: "Sarah",
-            wifeMaidenName: "Goldstein",
-            wifeFatherName: "Yitzchak",
-            wifeHighSchool: "Bais Yaakov",
-            currentKehila: "Monsey",
-            shabbosShul: "Nassad",
             modifiedBy: modifiedBy);
 
         // Assert
         applicant.FirstName.Should().Be("David");
         applicant.LastName.Should().Be("Levy");
-        applicant.WifeFirstName.Should().Be("Sarah");
-        applicant.WifeMaidenName.Should().Be("Goldstein");
-        applicant.ShabbosShul.Should().Be("Nassad");
+        applicant.FatherName.Should().Be("Avraham");
         applicant.ModifiedBy.Should().Be(modifiedBy);
     }
 
     [Fact]
-    public void UpdateHousingPreferences_ShouldUpdatePreferencesAndRaiseEvent()
+    public void UpdateWifeInfo_ShouldUpdateWife()
     {
         // Arrange
         var applicant = CreateTestApplicant();
         var modifiedBy = Guid.NewGuid();
-        var budget = new Money(500000);
+        var wifeInfo = new SpouseInfo("Sarah", "Goldstein", "Yitzchak", "Bais Yaakov");
 
         // Act
-        applicant.UpdateHousingPreferences(
-            budget: budget,
-            minBedrooms: 4,
-            minBathrooms: 2.5m,
-            features: new List<string> { "Basement", "Garage" },
-            shulProximity: ShulProximityPreference.WithMaxDistance(0.5),
-            moveTimeline: MoveTimeline.ShortTerm,
-            notes: "Looking for quiet neighborhood",
+        applicant.UpdateWifeInfo(wifeInfo, modifiedBy);
+
+        // Assert
+        applicant.Wife.Should().NotBeNull();
+        applicant.Wife!.FirstName.Should().Be("Sarah");
+        applicant.Wife.MaidenName.Should().Be("Goldstein");
+        applicant.Wife.FatherName.Should().Be("Yitzchak");
+        applicant.Wife.HighSchool.Should().Be("Bais Yaakov");
+        applicant.Wife.FullName.Should().Be("Sarah Goldstein");
+        applicant.ModifiedBy.Should().Be(modifiedBy);
+    }
+
+    [Fact]
+    public void UpdateCommunityInfo_ShouldUpdateFields()
+    {
+        // Arrange
+        var applicant = CreateTestApplicant();
+        var modifiedBy = Guid.NewGuid();
+
+        // Act
+        applicant.UpdateCommunityInfo(
+            currentKehila: "Monsey",
+            shabbosShul: "Nassad",
             modifiedBy: modifiedBy);
 
         // Assert
-        applicant.Budget.Should().Be(budget);
-        applicant.MinBedrooms.Should().Be(4);
-        applicant.MinBathrooms.Should().Be(2.5m);
-        applicant.RequiredFeatures.Should().Contain("Basement");
-        applicant.MoveTimeline.Should().Be(MoveTimeline.ShortTerm);
-
-        applicant.DomainEvents.Should().Contain(e => e is HousingPreferencesUpdated);
+        applicant.CurrentKehila.Should().Be("Monsey");
+        applicant.ShabbosShul.Should().Be("Nassad");
+        applicant.ModifiedBy.Should().Be(modifiedBy);
     }
 
     [Fact]
@@ -218,10 +221,11 @@ public class ApplicantTests
             reviewedByUserId: reviewerId);
 
         // Assert
-        applicant.BoardDecision.Should().Be(BoardDecision.Approved);
-        applicant.BoardDecisionNotes.Should().Be("Good candidate");
-        applicant.BoardReviewedByUserId.Should().Be(reviewerId);
-        applicant.BoardReviewDate.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(5));
+        applicant.BoardReview.Should().NotBeNull();
+        applicant.BoardReview!.Decision.Should().Be(BoardDecision.Approved);
+        applicant.BoardReview.Notes.Should().Be("Good candidate");
+        applicant.BoardReview.ReviewedByUserId.Should().Be(reviewerId);
+        applicant.BoardReview.ReviewDate.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(5));
         applicant.IsApproved.Should().BeTrue();
         applicant.IsPendingBoardReview.Should().BeFalse();
 
@@ -246,7 +250,8 @@ public class ApplicantTests
             reviewedByUserId: reviewerId);
 
         // Assert
-        applicant.BoardDecision.Should().Be(BoardDecision.Rejected);
+        applicant.BoardReview.Should().NotBeNull();
+        applicant.BoardReview!.Decision.Should().Be(BoardDecision.Rejected);
         applicant.IsApproved.Should().BeFalse();
         applicant.IsPendingBoardReview.Should().BeFalse();
     }
@@ -259,7 +264,7 @@ public class ApplicantTests
 
         // Act & Assert
         applicant.IsPendingBoardReview.Should().BeTrue();
-        applicant.BoardDecision.Should().BeNull();
+        applicant.BoardReview.Should().BeNull();
     }
 
     [Fact]

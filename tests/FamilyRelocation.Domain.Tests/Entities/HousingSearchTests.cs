@@ -425,6 +425,52 @@ public class HousingSearchTests
         act.Should().Throw<InvalidOperationException>();
     }
 
+    [Fact]
+    public void UpdateHousingPreferences_ShouldUpdatePreferencesAndRaiseEvent()
+    {
+        // Arrange
+        var housingSearch = CreateTestHousingSearch();
+        housingSearch.ClearDomainEvents();
+        var budget = new Money(500000);
+
+        // Act
+        housingSearch.UpdateHousingPreferences(
+            budget: budget,
+            minBedrooms: 4,
+            minBathrooms: 2.5m,
+            features: new List<string> { "Basement", "Garage" },
+            shulProximity: ShulProximityPreference.WithMaxDistance(0.5),
+            moveTimeline: MoveTimeline.ShortTerm,
+            modifiedBy: _userId);
+
+        // Assert
+        housingSearch.Budget.Should().Be(budget);
+        housingSearch.MinBedrooms.Should().Be(4);
+        housingSearch.MinBathrooms.Should().Be(2.5m);
+        housingSearch.RequiredFeatures.Should().Contain("Basement");
+        housingSearch.RequiredFeatures.Should().Contain("Garage");
+        housingSearch.MoveTimeline.Should().Be(MoveTimeline.ShortTerm);
+        housingSearch.ShulProximity!.MaxWalkingDistanceMiles.Should().Be(0.5);
+
+        housingSearch.DomainEvents.Should().Contain(e => e is HousingPreferencesUpdated);
+    }
+
+    [Fact]
+    public void Create_ShouldInitializeWithDefaultPreferences()
+    {
+        // Arrange & Act
+        var housingSearch = CreateTestHousingSearch();
+
+        // Assert
+        housingSearch.Budget.Should().BeNull();
+        housingSearch.MinBedrooms.Should().BeNull();
+        housingSearch.MinBathrooms.Should().BeNull();
+        housingSearch.RequiredFeatures.Should().BeEmpty();
+        housingSearch.ShulProximity.Should().NotBeNull();
+        housingSearch.ShulProximity!.AnyShulAcceptable.Should().BeTrue();
+        housingSearch.MoveTimeline.Should().BeNull();
+    }
+
     private HousingSearch CreateTestHousingSearch()
     {
         return HousingSearch.Create(
