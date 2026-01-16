@@ -1451,6 +1451,77 @@ Not chasing perfection, chasing "good enough that works."
 
 ---
 
+## SESSION: January 15-16, 2026 - Domain Entity Refactoring
+
+### Context
+Continued development on Sprint 1 (UV-11: Core Domain Entities). Major refactoring of domain model based on user feedback.
+
+### Key Refactorings Completed
+
+**1. Application → HousingSearch Rename**
+- "Application" implied one-time application; "HousingSearch" better represents the journey
+- Single HousingSearch per applicant (1:1 relationship)
+- Failed contracts preserved in `FailedContracts` collection
+
+**2. HusbandInfo and SpouseInfo Value Objects**
+- Extracted from Applicant to properly encapsulate person info
+- Contains: FirstName, LastName/MaidenName, FatherName, Email, PhoneNumbers, Occupation, EmployerName
+- Stored as jsonb columns in PostgreSQL
+- Name formatting: `HusbandInfo.FullNameWithFather` → "Moshe Cohen (ben Yaakov)"
+- Name formatting: `SpouseInfo.FullName` → "Sarah (Goldstein)" with maiden name in parens
+
+**3. Contract and HousingPreferences Value Objects**
+- `Contract`: PropertyId, Price, ContractDate, ExpectedClosingDate, ActualClosingDate
+- `HousingPreferences`: Budget, MinBedrooms, MinBathrooms, RequiredFeatures, ShulProximity, MoveTimeline
+- `FailedContractAttempt` refactored to contain `Contract` + FailedDate + Reason
+
+**4. HousingSearchStage State Machine**
+- Added `Rejected` stage (Submitted → Rejected transition)
+- Renamed `Closing` → `Closed` (represents completed closing, not in-progress)
+- Full transitions: Submitted → HouseHunting/Rejected, HouseHunting → UnderContract/Paused, etc.
+
+**5. Child Value Object Simplified**
+- Age and Gender required (from application form)
+- Name and School optional
+- Removed Grade and Notes properties
+
+**6. Cleanup**
+- Removed `ProspectId` from Applicant (future feature)
+- Removed 12 unused enums (EntityType, ListingStatus, PropertyType, etc.)
+- Removed `SearchNumber` from HousingSearch (redundant with 1:1 relationship)
+
+### Current Domain Model
+
+**Aggregate Roots:**
+- `Applicant`: HusbandInfo, Wife (SpouseInfo), Address, Children, BoardReview, audit fields
+- `HousingSearch`: Stage, CurrentContract, FailedContracts, Preferences, MovedInStatus, audit fields
+
+**Value Objects (13 total):**
+- HusbandInfo, SpouseInfo, BoardReview
+- Contract, HousingPreferences, FailedContractAttempt
+- Address, Email, PhoneNumber, Money, Child, Coordinates, ShulProximityPreference
+
+**Enums (4 active):**
+- BoardDecision, HousingSearchStage, MovedInStatus, MoveTimeline
+
+**Domain Events (5):**
+- ApplicantCreated, ApplicantBoardDecisionMade
+- HousingSearchStarted, HousingSearchStageChanged, HousingPreferencesUpdated
+
+### Test Results
+All 231 tests pass (194 Domain + 25 API + 12 Integration)
+
+### EF Core Configuration
+- HusbandInfo/SpouseInfo stored as jsonb columns
+- Contract/HousingPreferences/FailedContracts stored as jsonb columns
+- Address/BoardReview as owned entity types (flattened columns)
+- Children as jsonb array
+
+### PR Created
+UV-11: Implement core domain entities - https://github.com/adrottenberg/family-relocation/pull/4
+
+---
+
 ## FOR NEXT SESSION
 
 ### To Quickly Re-Establish Context
@@ -1459,12 +1530,13 @@ Not chasing perfection, chasing "good enough that works."
 > "I'm the developer building the Family Relocation CRM for the Jewish community in Union County. We documented everything in January 2026."
 
 **I'll know:**
-- Complete domain model (Applicant, Application, etc.)
+- Complete domain model (Applicant, HousingSearch, etc.)
 - Tech stack (.NET 10, React, AWS)
 - Your working style (comprehensive docs, wait for complete review)
 - All 68 user stories and priorities
 - The 29 corrections we made
 - Cultural context (Orthodox community, no smartphones, desktop-first)
+- HousingSearch represents the house-hunting journey with failed contract history
 
 **And we can pick up exactly where we left off.**
 
