@@ -10,8 +10,15 @@ builder.Services.AddOpenApi();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Add Infrastructure services (AWS Cognito, etc.)
+// Add Infrastructure services (AWS Cognito, Database, etc.)
 builder.Services.AddInfrastructure(builder.Configuration);
+
+// Add health checks
+builder.Services.AddHealthChecks()
+    .AddNpgSql(
+        builder.Configuration.GetConnectionString("DefaultConnection")!,
+        name: "postgresql",
+        tags: ["db", "sql", "postgresql"]);
 
 // Add JWT authentication
 var cognitoAuthority = builder.Configuration["AWS:Cognito:Authority"]
@@ -50,5 +57,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHealthChecks("/health");
 
 app.Run();
