@@ -1589,31 +1589,68 @@ IApplicantRepository interface with methods like:
 ```
 Query objects via MediatR:
 - ExistsByEmailQuery record in Application layer
-- ExistsByEmailQueryHandler in Infrastructure layer (needs EF Core)
-- IApplicationDbContext.Add<T>() for simple entity addition
+- ExistsByEmailQueryHandler in Application layer
+- IApplicationDbContext with generic Set<T>() method
 ```
-
-**Files Changed:**
-- Deleted: `IApplicantRepository.cs`, `ApplicantRepository.cs`
-- Created: `Application/Applicants/Queries/ExistsByEmail/ExistsByEmailQuery.cs`
-- Created: `Infrastructure/QueryHandlers/ExistsByEmailQueryHandler.cs`
-- Modified: `IApplicationDbContext.cs` - added `void Add<TEntity>(TEntity entity)`
-- Modified: `ApplicationDbContext.cs` - explicit interface implementation for Add<T>
-- Modified: `Infrastructure/DependencyInjection.cs` - registers MediatR handlers from Infrastructure assembly
 
 **Why Query Object Pattern:**
 - No constantly evolving IRepository interfaces
 - Each query is explicit and self-documenting
-- Handlers can live where their dependencies are (EF Core specifics in Infrastructure)
+- All handlers in Application layer (where they belong - handlers ARE the application)
 - MediatR handles dispatch automatically
-- Discussed with user: trade-off of indirection vs. cleaner interfaces - user preferred cleaner interfaces
 
-**Handler Location Rules:**
-- Query/Command records always in Application layer
-- Handlers that only need `IApplicationDbContext` can be in Application layer
-- Handlers that need EF Core specifics (FromSqlRaw, DbSet, etc.) go in Infrastructure layer
+### Additional Refactoring: EF Core ToJson() for LINQ on JSON Columns
 
-### New Files Structure
+**Problem:** Initially handlers that needed to query JSONB columns required raw SQL, forcing them into Infrastructure layer. User didn't like split between Application and Infrastructure handlers.
+
+**Solution:** Configure HusbandInfo/SpouseInfo with EF Core's `ToJson()`:
+```csharp
+builder.OwnsOne(a => a.Husband, husband =>
+{
+    husband.ToJson();
+    husband.OwnsOne(h => h.Email);
+    husband.OwnsMany(h => h.PhoneNumbers);
+});
+```
+
+**Result:** LINQ queries work on JSON columns - no raw SQL needed:
+```csharp
+// This now works!
+await _context.Set<Applicant>().AnyAsync(a =>
+    a.Husband.Email != null && a.Husband.Email.Value.ToLower() == email);
+```
+
+### IApplicationDbContext Design (Open/Closed Principle)
+
+**Problem:** Original design had entity-specific properties (`Applicants`, `HousingSearches`). Adding new entities would require modifying the interface.
+
+**Solution:** Generic `Set<T>()` method:
+```csharp
+public interface IApplicationDbContext
+{
+    IQueryable<T> Set<T>() where T : class;
+    void Add<T>(T entity) where T : class;
+    Task<int> SaveChangesAsync(CancellationToken ct = default);
+}
+```
+
+### ICurrentUserService.UserId is Nullable
+
+**Problem:** Originally returned `WellKnownIds.SelfSubmittedUserId` for anonymous users, coupling the service to a specific use case.
+
+**Solution:** Return `Guid?` - let consumers decide the fallback:
+```csharp
+public interface ICurrentUserService
+{
+    Guid? UserId { get; }  // null if not authenticated
+    // ...
+}
+
+// Consumer decides:
+createdBy: _currentUserService.UserId ?? WellKnownIds.SelfSubmittedUserId
+```
+
+### Final Files Structure
 
 ```
 Application/
@@ -1628,21 +1665,23 @@ Application/
       HusbandInfoDto.cs, PhoneNumberDto.cs, SpouseInfoDto.cs
     Queries/
       ExistsByEmail/
-        ExistsByEmailQuery.cs  (just the record)
+        ExistsByEmailQuery.cs
+        ExistsByEmailQueryHandler.cs  (ALL handlers in Application)
   Common/
     Exceptions/
       DuplicateEmailException.cs
     Interfaces/
-      IApplicationDbContext.cs  (added Add<T> method)
-      ICurrentUserService.cs
-
-Infrastructure/
-  QueryHandlers/
-    ExistsByEmailQueryHandler.cs  (EF Core implementation)
+      IApplicationDbContext.cs  (generic Set<T>, Add<T>, SaveChangesAsync)
+      ICurrentUserService.cs    (nullable UserId)
 
 Domain/
   Common/
     WellKnownIds.cs  (SelfSubmittedUserId constant)
+
+Infrastructure/
+  Persistence/
+    Configurations/
+      ApplicantConfiguration.cs  (uses ToJson() for HusbandInfo/SpouseInfo)
 ```
 
 ### Test Results
@@ -1653,11 +1692,12 @@ UV-13: Implement Create Applicant endpoint - https://github.com/adrottenberg/fam
 
 ### Key Takeaways
 
-1. **Query Object Pattern** is now the standard for data access in this project
-2. **No IRepository interfaces** - use MediatR queries instead
-3. **Handler location** depends on dependencies needed (EF Core → Infrastructure)
-4. **IApplicationDbContext** is the thin abstraction over DbContext for simple operations
-5. **Well-known GUIDs** for system-level identifiers (cannot collide with UUID v4)
+1. **Query Object Pattern** - MediatR queries instead of repository interfaces
+2. **ALL handlers in Application** - handlers ARE the application logic
+3. **EF Core ToJson()** - enables LINQ queries on JSON columns, no raw SQL
+4. **Generic IApplicationDbContext** - `Set<T>()` follows Open/Closed principle
+5. **Nullable ICurrentUserService.UserId** - consumers decide fallback for anonymous
+6. **Well-known GUIDs** - for system-level identifiers (cannot collide with UUID v4)
 
 ---
 
@@ -1677,7 +1717,9 @@ UV-13: Implement Create Applicant endpoint - https://github.com/adrottenberg/fam
 - Cultural context (Orthodox community, no smartphones, desktop-first)
 - HousingSearch represents the house-hunting journey with failed contract history
 - **Query object pattern** instead of repository pattern (Mark Seemann's approach)
-- **IApplicationDbContext** for simple operations, query handlers in Infrastructure for EF Core specifics
+- **All handlers in Application layer** - no split with Infrastructure
+- **EF Core ToJson()** for LINQ queries on JSON columns
+- **Generic IApplicationDbContext** with `Set<T>()` (Open/Closed principle)
 
 **And we can pick up exactly where we left off.**
 
