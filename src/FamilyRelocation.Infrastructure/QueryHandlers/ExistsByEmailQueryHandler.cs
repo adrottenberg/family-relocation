@@ -19,7 +19,7 @@ public class ExistsByEmailQueryHandler : IRequestHandler<ExistsByEmailQuery, boo
         var normalizedEmail = request.Email.ToLowerInvariant();
 
         // Check both husband and wife emails using raw SQL query since they are stored as JSONB
-        var exists = await _context.ApplicantsDbSet
+        var exists = await _context.Applicants
             .FromSqlRaw(
                 @"SELECT * FROM ""Applicants""
                   WHERE ""IsDeleted"" = false

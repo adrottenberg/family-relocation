@@ -11,13 +11,10 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     {
     }
 
-    public DbSet<Applicant> ApplicantsDbSet => Set<Applicant>();
-    public DbSet<HousingSearch> HousingSearchesDbSet => Set<HousingSearch>();
+    public DbSet<Applicant> Applicants => Set<Applicant>();
+    public DbSet<HousingSearch> HousingSearches => Set<HousingSearch>();
 
     // IApplicationDbContext implementation
-    IQueryable<Applicant> IApplicationDbContext.Applicants => ApplicantsDbSet;
-    IQueryable<HousingSearch> IApplicationDbContext.HousingSearches => HousingSearchesDbSet;
-
     void IApplicationDbContext.Add<TEntity>(TEntity entity) => base.Add(entity);
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
