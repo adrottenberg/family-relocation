@@ -1,4 +1,5 @@
 using FamilyRelocation.Application.Common.Interfaces;
+using FamilyRelocation.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace FamilyRelocation.Infrastructure.Persistence;
@@ -10,9 +11,12 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     {
     }
 
-    // DbSets will be added when domain entities are created (US-004)
-    // Example:
-    // public DbSet<Applicant> Applicants => Set<Applicant>();
+    public DbSet<Applicant> ApplicantsDbSet => Set<Applicant>();
+    public DbSet<HousingSearch> HousingSearchesDbSet => Set<HousingSearch>();
+
+    // IApplicationDbContext implementation
+    IQueryable<Applicant> IApplicationDbContext.Applicants => ApplicantsDbSet;
+    IQueryable<HousingSearch> IApplicationDbContext.HousingSearches => HousingSearchesDbSet;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

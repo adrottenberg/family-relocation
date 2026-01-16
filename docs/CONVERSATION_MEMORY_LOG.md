@@ -1451,6 +1451,81 @@ Not chasing perfection, chasing "good enough that works."
 
 ---
 
+## SESSION: January 15, 2026 - Application → HousingSearch Refactoring
+
+### Context
+Continued development on Sprint 1 (UV-11: Core Domain Entities). After implementing value objects and entities, user identified a naming issue with the "Application" entity.
+
+### Key Discussion: Renaming "Application" to "HousingSearch"
+
+**Problem Identified:**
+- "Application" implied a one-time application to the community program
+- In reality, the entity tracked a house-hunting journey that could have multiple contract attempts
+- The terminology didn't match the coordinator's mental model
+
+**User's Insight:**
+> "An applicant only applies once, however the applicant might have several iterations of starting and stopping their house hunting. I don't think users will see it as multiple housing searches, just one long search that occasionally hits dead ends and restarts."
+
+**Solution Decided:**
+1. Rename `Application` → `HousingSearch`
+2. Rename `ApplicationStage` → `HousingSearchStage`
+3. Add `FailedContractAttempt` value object to preserve contract history
+4. Single HousingSearch record per active effort (not multiple records)
+5. When contract falls through, history is preserved and search continues
+
+**Domain Model Changes:**
+- `HousingSearch` entity tracks the entire journey
+- `FailedContractAttempt` collection preserves failed contract details (property, price, reason)
+- `ContractFellThrough()` method now adds to history before resetting
+- Domain events renamed: `HousingSearchStarted`, `HousingSearchStageChanged`
+
+**Files Changed:**
+- `HousingSearch.cs` (new entity replacing Application)
+- `HousingSearchStage.cs` (new enum)
+- `FailedContractAttempt.cs` (new value object)
+- `HousingSearchStarted.cs`, `HousingSearchStageChanged.cs` (new events)
+- `HousingSearchConfiguration.cs` (EF Core config with JSON for failed contracts)
+- `IApplicationDbContext.cs` (updated interface)
+- `ApplicationDbContext.cs` (updated implementation)
+- `Applicant.cs` (updated navigation property)
+- `ApplicantConfiguration.cs` (updated relationship)
+- `HousingSearchTests.cs` (new tests with history preservation)
+- `FailedContractAttemptTests.cs` (new tests)
+
+**Test Results:** All 187 tests pass (150 Domain + 25 API + 12 Integration)
+
+### Other Changes This Session
+
+**Value Objects Refactored to Records:**
+- All 7 value objects converted from `class : ValueObject` to `sealed record`
+- Removed `ValueObject` base class (modern C# 9+ approach)
+- Added tests for case-sensitivity (records use exact value comparison)
+
+**Properties Removed from Applicant (per user request):**
+- `PreferredCities` - not needed
+- `EmploymentStatus` - not needed
+- `DownPayment`, `MortgageInterestRate`, `LoanTermYears` - mortgage calculations not part of domain
+
+### Key Decisions Made
+
+| Decision | Rationale |
+|----------|-----------|
+| Single HousingSearch per effort | Matches coordinator mental model - one journey with setbacks |
+| Preserve failed contract history | UI can show timeline of contract attempts |
+| Records over ValueObject base | Modern C# approach, built-in equality |
+| JSON storage for failed contracts | Flexible history without separate table |
+
+### Updated Domain Terminology
+
+| Old Term | New Term | Reason |
+|----------|----------|--------|
+| Application | HousingSearch | Clearer intent, avoids namespace conflict |
+| ApplicationStage | HousingSearchStage | Consistency |
+| ApplicationNumber | SearchNumber | Consistency |
+| ApplicationSubmitted | HousingSearchStarted | Better describes the action |
+
+---
+
 ## FOR NEXT SESSION
 
 ### To Quickly Re-Establish Context
@@ -1459,12 +1534,13 @@ Not chasing perfection, chasing "good enough that works."
 > "I'm the developer building the Family Relocation CRM for the Jewish community in Union County. We documented everything in January 2026."
 
 **I'll know:**
-- Complete domain model (Applicant, Application, etc.)
+- Complete domain model (Applicant, HousingSearch, etc.)
 - Tech stack (.NET 10, React, AWS)
 - Your working style (comprehensive docs, wait for complete review)
 - All 68 user stories and priorities
 - The 29 corrections we made
 - Cultural context (Orthodox community, no smartphones, desktop-first)
+- HousingSearch represents the house-hunting journey with failed contract history
 
 **And we can pick up exactly where we left off.**
 

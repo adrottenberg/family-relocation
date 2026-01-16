@@ -1,10 +1,11 @@
+using FamilyRelocation.Domain.Entities;
+
 namespace FamilyRelocation.Application.Common.Interfaces;
 
 public interface IApplicationDbContext
 {
-    // DbSets will be added when domain entities are created (US-004)
-    // Example:
-    // DbSet<Applicant> Applicants { get; }
+    IQueryable<Applicant> Applicants { get; }
+    IQueryable<HousingSearch> HousingSearches { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

@@ -49,7 +49,7 @@ FamilyRelocation.Domain       → Entities, value objects, domain events (ZERO e
 | Correct | Incorrect |
 |---------|-----------|
 | Applicant | Contact |
-| Application | Deal |
+| HousingSearch | Application, Deal |
 | Wife | Spouse |
 | ShabbosShul | ShabbosLocation |
 | City (Union/Roselle Park) | Neighborhood |
@@ -57,15 +57,17 @@ FamilyRelocation.Domain       → Entities, value objects, domain events (ZERO e
 
 ## Critical Design Decisions
 
-1. **Board review at APPLICANT level** - Not Application level. One applicant can have multiple applications if first contract fails.
+1. **Board review at APPLICANT level** - Not HousingSearch level. Board approves the family once.
 
-2. **Value objects are immutable** - All properties use `private set`, validation in constructor.
+2. **HousingSearch represents the journey** - Single record per active effort. Failed contracts are preserved in `FailedContracts` collection, then search continues from HouseHunting stage.
 
-3. **Entities use factory methods** - e.g., `Applicant.CreateFromApplication(...)` not public constructors.
+3. **Value objects use C# records** - Modern approach with built-in value equality. No ValueObject base class.
 
-4. **Domain events for side effects** - `AddDomainEvent(new ApplicantCreated(...))`.
+4. **Entities use factory methods** - e.g., `Applicant.CreateFromApplication(...)` not public constructors.
 
-5. **Desktop-first** - No mobile optimization required.
+5. **Domain events for side effects** - `AddDomainEvent(new ApplicantCreated(...))`.
+
+6. **Desktop-first** - No mobile optimization required.
 
 ## Tech Stack
 
