@@ -163,10 +163,10 @@ public class ApplicantConfiguration : IEntityTypeConfiguration<Applicant>
         // Ignore domain events (not persisted)
         builder.Ignore(a => a.DomainEvents);
 
-        // Relationships
-        builder.HasMany(a => a.HousingSearches)
+        // Relationship - one housing search per applicant
+        builder.HasOne(a => a.HousingSearch)
             .WithOne(hs => hs.Applicant)
-            .HasForeignKey(hs => hs.ApplicantId)
+            .HasForeignKey<HousingSearch>(hs => hs.ApplicantId)
             .OnDelete(DeleteBehavior.Restrict);
 
         // Query filter for soft delete

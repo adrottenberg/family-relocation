@@ -60,8 +60,8 @@ public class Applicant : Entity<Guid>
     public string? BoardDecisionNotes { get; private set; }
     public Guid? BoardReviewedByUserId { get; private set; }
 
-    // Navigation
-    public virtual ICollection<HousingSearch> HousingSearches { get; private set; } = new List<HousingSearch>();
+    // Navigation - one housing search per applicant (failed contracts tracked within)
+    public virtual HousingSearch? HousingSearch { get; private set; }
 
     // Audit
     public Guid CreatedBy { get; private set; }
