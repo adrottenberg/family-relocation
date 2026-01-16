@@ -6,9 +6,10 @@ namespace FamilyRelocation.Domain.Enums;
 public enum HousingSearchStage
 {
     Submitted,
+    Rejected,
     HouseHunting,
     UnderContract,
-    Closing,
+    Closed,
     MovedIn,
     Paused
 }

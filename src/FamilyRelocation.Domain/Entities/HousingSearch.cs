@@ -15,10 +15,11 @@ public class HousingSearch : Entity<Guid>
     // Valid stage transitions (state machine)
     private static readonly Dictionary<HousingSearchStage, HousingSearchStage[]> ValidTransitions = new()
     {
-        [HousingSearchStage.Submitted] = [HousingSearchStage.HouseHunting],
+        [HousingSearchStage.Submitted] = [HousingSearchStage.HouseHunting, HousingSearchStage.Rejected],
+        [HousingSearchStage.Rejected] = [],
         [HousingSearchStage.HouseHunting] = [HousingSearchStage.UnderContract, HousingSearchStage.Paused],
-        [HousingSearchStage.UnderContract] = [HousingSearchStage.Closing, HousingSearchStage.HouseHunting],
-        [HousingSearchStage.Closing] = [HousingSearchStage.MovedIn, HousingSearchStage.HouseHunting],
+        [HousingSearchStage.UnderContract] = [HousingSearchStage.Closed, HousingSearchStage.HouseHunting],
+        [HousingSearchStage.Closed] = [HousingSearchStage.MovedIn, HousingSearchStage.HouseHunting],
         [HousingSearchStage.Paused] = [HousingSearchStage.HouseHunting],
         [HousingSearchStage.MovedIn] = [],
     };
@@ -146,6 +147,24 @@ public class HousingSearch : Entity<Guid>
     }
 
     /// <summary>
+    /// Reject the housing search (board rejection or other disqualification)
+    /// </summary>
+    public void Reject(string? reason, Guid modifiedBy)
+    {
+        if (Stage != HousingSearchStage.Submitted)
+            throw new InvalidOperationException("Can only reject from Submitted stage.");
+
+        if (!string.IsNullOrWhiteSpace(reason))
+        {
+            Notes = string.IsNullOrEmpty(Notes)
+                ? $"Rejected: {reason}"
+                : $"{Notes}\n\nRejected: {reason}";
+        }
+
+        TransitionTo(HousingSearchStage.Rejected, modifiedBy);
+    }
+
+    /// <summary>
     /// Pause the housing search (family taking a break)
     /// </summary>
     public void Pause(string? reason, Guid modifiedBy)
@@ -199,8 +218,8 @@ public class HousingSearch : Entity<Guid>
     /// </summary>
     public void ContractFellThrough(string? reason, Guid modifiedBy)
     {
-        if (Stage != HousingSearchStage.UnderContract && Stage != HousingSearchStage.Closing)
-            throw new InvalidOperationException("Can only mark contract as fallen through when UnderContract or Closing.");
+        if (Stage != HousingSearchStage.UnderContract && Stage != HousingSearchStage.Closed)
+            throw new InvalidOperationException("Can only mark contract as fallen through when UnderContract or Closed.");
 
         // Preserve the failed contract in history
         if (ContractPropertyId.HasValue && ContractPrice != null && ContractDate.HasValue)
@@ -225,26 +244,26 @@ public class HousingSearch : Entity<Guid>
     }
 
     /// <summary>
-    /// Move to closing stage
+    /// Record the closing (after closing has completed)
     /// </summary>
-    public void StartClosing(DateTime expectedClosingDate, Guid modifiedBy)
+    public void RecordClosing(DateTime closingDate, Guid modifiedBy)
     {
         if (Stage != HousingSearchStage.UnderContract)
-            throw new InvalidOperationException("Can only start closing when UnderContract.");
+            throw new InvalidOperationException("Can only record closing when UnderContract.");
 
-        ClosingDate = expectedClosingDate;
-        TransitionTo(HousingSearchStage.Closing, modifiedBy);
+        ActualClosingDate = closingDate;
+        TransitionTo(HousingSearchStage.Closed, modifiedBy);
     }
 
     /// <summary>
-    /// Complete the closing
+    /// Record that family has moved in
     /// </summary>
-    public void CompleteClosing(DateTime actualClosingDate, Guid modifiedBy)
+    public void RecordMovedIn(DateTime movedInDate, Guid modifiedBy)
     {
-        if (Stage != HousingSearchStage.Closing)
-            throw new InvalidOperationException("Can only complete closing when in Closing stage.");
+        if (Stage != HousingSearchStage.Closed)
+            throw new InvalidOperationException("Can only record move-in when in Closed stage.");
 
-        ActualClosingDate = actualClosingDate;
+        MovedInDate = movedInDate;
         TransitionTo(HousingSearchStage.MovedIn, modifiedBy);
     }
 
@@ -322,6 +341,11 @@ public class HousingSearch : Entity<Guid>
     /// Check if housing search is complete (moved in)
     /// </summary>
     public bool IsComplete => Stage == HousingSearchStage.MovedIn;
+
+    /// <summary>
+    /// Check if housing search was rejected
+    /// </summary>
+    public bool IsRejected => Stage == HousingSearchStage.Rejected;
 
     /// <summary>
     /// Number of failed contract attempts
