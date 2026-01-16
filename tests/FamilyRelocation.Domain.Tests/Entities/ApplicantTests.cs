@@ -70,29 +70,6 @@ public class ApplicantTests
     }
 
     [Fact]
-    public void Create_WithProspectId_ShouldSetProspectId()
-    {
-        // Arrange
-        var prospectId = Guid.NewGuid();
-
-        // Act
-        var applicant = Applicant.Create(
-            husband: CreateTestHusband(),
-            wife: null,
-            address: null,
-            children: null,
-            currentKehila: null,
-            shabbosShul: null,
-            createdBy: _userId,
-            prospectId: prospectId);
-
-        // Assert
-        applicant.ProspectId.Should().Be(prospectId);
-        var domainEvent = applicant.DomainEvents.OfType<ApplicantCreated>().Single();
-        domainEvent.ProspectId.Should().Be(prospectId);
-    }
-
-    [Fact]
     public void Create_WithNullHusband_ShouldThrow()
     {
         // Arrange & Act
@@ -115,8 +92,8 @@ public class ApplicantTests
         // Arrange
         var children = new List<Child>
         {
-            new("Yosef", 8, Gender.Male, "Torah Academy"),
-            new("Rivka", 5, Gender.Female, "Bais Yaakov")
+            new(8, Gender.Male, "Yosef", "Torah Academy"),
+            new(5, Gender.Female, "Rivka", "Bais Yaakov")
         };
 
         // Act
@@ -172,7 +149,7 @@ public class ApplicantTests
         applicant.Wife.MaidenName.Should().Be("Schwartz");
         applicant.Wife.FatherName.Should().Be("Shlomo");
         applicant.Wife.HighSchool.Should().Be("BJJ");
-        applicant.Wife.FullName.Should().Be("Rachel Schwartz");
+        applicant.Wife.FullName.Should().Be("Rachel (Schwartz)");
         applicant.ModifiedBy.Should().Be(modifiedBy);
     }
 
@@ -322,17 +299,17 @@ public class ApplicantTests
         var husband = new HusbandInfo("Moshe", "Cohen", "Yaakov");
 
         // Assert
-        husband.FullNameWithFather.Should().Be("Moshe ben Yaakov Cohen");
+        husband.FullNameWithFather.Should().Be("Moshe Cohen (ben Yaakov)");
     }
 
     [Fact]
-    public void SpouseInfo_FullNameWithFather_ShouldFormatCorrectly()
+    public void SpouseInfo_FullName_ShouldFormatCorrectly()
     {
         // Arrange
         var wife = new SpouseInfo("Sarah", "Goldstein", "Yitzchak");
 
         // Assert
-        wife.FullNameWithFather.Should().Be("Sarah bas Yitzchak");
+        wife.FullName.Should().Be("Sarah (Goldstein)");
     }
 
     private Applicant CreateTestApplicant()

@@ -18,11 +18,6 @@ public class Applicant : Entity<Guid>
         private set => Id = value;
     }
 
-    /// <summary>
-    /// Link to prospect record (for future prospect-to-applicant conversion)
-    /// </summary>
-    public Guid? ProspectId { get; private set; }
-
     // Family Members
     public HusbandInfo Husband { get; private set; } = null!;
     public SpouseInfo? Wife { get; private set; }
@@ -63,15 +58,13 @@ public class Applicant : Entity<Guid>
         List<Child>? children,
         string? currentKehila,
         string? shabbosShul,
-        Guid createdBy,
-        Guid? prospectId = null)
+        Guid createdBy)
     {
         ArgumentNullException.ThrowIfNull(husband);
 
         var applicant = new Applicant
         {
             ApplicantId = Guid.NewGuid(),
-            ProspectId = prospectId,
             Husband = husband,
             Wife = wife,
             Address = address,
@@ -85,7 +78,7 @@ public class Applicant : Entity<Guid>
             IsDeleted = false
         };
 
-        applicant.AddDomainEvent(new ApplicantCreated(applicant.ApplicantId, prospectId));
+        applicant.AddDomainEvent(new ApplicantCreated(applicant.ApplicantId));
 
         return applicant;
     }

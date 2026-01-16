@@ -80,8 +80,8 @@ public class JsonSerializationTests
     [Fact]
     public void Child_ShouldSerializeAndDeserialize()
     {
-        // Arrange - Child(name, age, gender, school, grade, notes)
-        var child = new Child("Yosef", 8, Gender.Male, "Torah Academy");
+        // Arrange - Child(age, gender, name?, school?)
+        var child = new Child(8, Gender.Male, "Yosef", "Torah Academy");
 
         // Act
         var json = JsonSerializer.Serialize(child, _options);
@@ -89,17 +89,17 @@ public class JsonSerializationTests
 
         // Assert
         deserialized.Should().NotBeNull();
-        deserialized!.Name.Should().Be("Yosef");
+        deserialized!.Age.Should().Be(8);
         deserialized.Gender.Should().Be(Gender.Male);
-        deserialized.Age.Should().Be(8);
+        deserialized.Name.Should().Be("Yosef");
         deserialized.School.Should().Be("Torah Academy");
     }
 
     [Fact]
-    public void Child_WithoutSchool_ShouldSerializeAndDeserialize()
+    public void Child_WithoutOptionalFields_ShouldSerializeAndDeserialize()
     {
         // Arrange
-        var child = new Child("Sarah", 2, Gender.Female, null);
+        var child = new Child(2, Gender.Female);
 
         // Act
         var json = JsonSerializer.Serialize(child, _options);
@@ -107,19 +107,21 @@ public class JsonSerializationTests
 
         // Assert
         deserialized.Should().NotBeNull();
-        deserialized!.Name.Should().Be("Sarah");
+        deserialized!.Age.Should().Be(2);
+        deserialized.Gender.Should().Be(Gender.Female);
+        deserialized.Name.Should().BeNull();
         deserialized.School.Should().BeNull();
     }
 
     [Fact]
     public void ChildList_ShouldSerializeAndDeserialize()
     {
-        // Arrange - Child(name, age, gender, school)
+        // Arrange - Child(age, gender, name?, school?)
         var children = new List<Child>
         {
-            new("Moshe", 10, Gender.Male, "Yeshiva Ketana"),
-            new("Rivka", 8, Gender.Female, "Bais Yaakov"),
-            new("Dovid", 3, Gender.Male, null)
+            new(10, Gender.Male, "Moshe", "Yeshiva Ketana"),
+            new(8, Gender.Female, "Rivka", "Bais Yaakov"),
+            new(3, Gender.Male)
         };
 
         // Act

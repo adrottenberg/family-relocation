@@ -132,6 +132,5 @@ public class ApplicantConfiguration : IEntityTypeConfiguration<Applicant>
         // Indexes
         builder.HasIndex(a => a.IsDeleted);
         builder.HasIndex(a => a.CreatedDate);
-        builder.HasIndex(a => a.ProspectId);
     }
 }

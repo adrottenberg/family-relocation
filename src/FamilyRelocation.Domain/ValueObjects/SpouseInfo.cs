@@ -45,15 +45,8 @@ public sealed record SpouseInfo
     }
 
     public string FullName => MaidenName != null
-        ? $"{FirstName} {MaidenName}"
-        : FirstName;
-
-    /// <summary>
-    /// Full name with father's name (e.g., "Sarah bas Yitzchak")
-    /// </summary>
-    public string FullNameWithFather => FatherName != null
-        ? $"{FirstName} bas {FatherName}"
-        : FirstName;
+        ? $"{FirstName} ({MaidenName})"
+        : FirstName; 
 
     public override string ToString() => FullName;
 }

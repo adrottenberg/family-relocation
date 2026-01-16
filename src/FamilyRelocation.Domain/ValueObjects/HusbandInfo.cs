@@ -51,7 +51,7 @@ public sealed record HusbandInfo
     /// Full name with father's name (e.g., "Moshe ben Yaakov Cohen")
     /// </summary>
     public string FullNameWithFather => FatherName != null
-        ? $"{FirstName} ben {FatherName} {LastName}"
+        ? $"{FirstName} {LastName} (ben {FatherName})"
         : FullName;
 
     public override string ToString() => FullName;

@@ -7,42 +7,38 @@ public enum Gender
 }
 
 /// <summary>
-/// Child value object representing family member information
+/// Child value object representing a child in the family
+/// Only Age and Gender are required (from the application form)
 /// </summary>
 public sealed record Child
 {
-    public string Name { get; }
     public int Age { get; }
     public Gender Gender { get; }
+    public string? Name { get; }
     public string? School { get; }
-    public string? Grade { get; }
-    public string? Notes { get; }
 
-    // Private parameterless constructor for EF Core
+    // Private parameterless constructor for EF Core/JSON deserialization
     private Child()
     {
-        Name = string.Empty;
         Age = 0;
         Gender = Gender.Male;
     }
 
-    public Child(string name, int age, Gender gender, string? school = null, string? grade = null, string? notes = null)
+    public Child(int age, Gender gender, string? name = null, string? school = null)
     {
-        if (string.IsNullOrWhiteSpace(name))
-            throw new ArgumentException("Child name is required", nameof(name));
-
         if (age < 0 || age > 50)
             throw new ArgumentException("Age must be between 0 and 50", nameof(age));
 
-        Name = name.Trim();
         Age = age;
         Gender = gender;
+        Name = name?.Trim();
         School = school?.Trim();
-        Grade = grade?.Trim();
-        Notes = notes?.Trim();
     }
 
     public bool IsSchoolAge => Age >= 5 && Age <= 18;
 
-    public override string ToString() => $"{Name} ({Age}, {Gender})";
+    public override string ToString() =>
+        string.IsNullOrEmpty(Name)
+            ? $"{Gender}, Age {Age}"
+            : $"{Name} ({Age}, {Gender})";
 }
