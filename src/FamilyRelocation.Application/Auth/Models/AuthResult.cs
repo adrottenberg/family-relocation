@@ -38,5 +38,6 @@ public enum AuthErrorType
     InvalidCode,
     ExpiredCode,
     InvalidPassword,
+    UserAlreadyExists,
     Unknown
 }

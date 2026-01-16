@@ -50,7 +50,7 @@ public class GetApplicantByIdQueryHandler : IRequestHandler<GetApplicantByIdQuer
             FirstName = husband.FirstName,
             LastName = husband.LastName,
             FatherName = husband.FatherName,
-            Email = husband.Email?.Value,
+            Email = husband.Email,
             PhoneNumbers = husband.PhoneNumbers.Select(MapToPhoneDto).ToList(),
             Occupation = husband.Occupation,
             EmployerName = husband.EmployerName
@@ -64,7 +64,7 @@ public class GetApplicantByIdQueryHandler : IRequestHandler<GetApplicantByIdQuer
             FirstName = wife.FirstName,
             MaidenName = wife.MaidenName,
             FatherName = wife.FatherName,
-            Email = wife.Email?.Value,
+            Email = wife.Email,
             PhoneNumbers = wife.PhoneNumbers.Select(MapToPhoneDto).ToList(),
             Occupation = wife.Occupation,
             EmployerName = wife.EmployerName,

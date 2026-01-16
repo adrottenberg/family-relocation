@@ -21,18 +21,18 @@ public class ApplicantConfiguration : IEntityTypeConfiguration<Applicant>
         builder.Ignore(a => a.ApplicantId);
 
         // Husband Info (JSON column with EF Core native JSON support for LINQ queries)
+        // Email is stored as a plain string for simpler deserialization
         builder.OwnsOne(a => a.Husband, husband =>
         {
             husband.ToJson();
-            husband.OwnsOne(h => h.Email);
             husband.OwnsMany(h => h.PhoneNumbers);
         });
 
         // Wife Info (JSON column with EF Core native JSON support for LINQ queries)
+        // Email is stored as a plain string for simpler deserialization
         builder.OwnsOne(a => a.Wife, wife =>
         {
             wife.ToJson();
-            wife.OwnsOne(w => w.Email);
             wife.OwnsMany(w => w.PhoneNumbers);
         });
 

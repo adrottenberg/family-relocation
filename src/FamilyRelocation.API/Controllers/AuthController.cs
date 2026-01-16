@@ -1,5 +1,6 @@
 using FamilyRelocation.Application.Auth;
 using FamilyRelocation.Application.Auth.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using AuthModels = FamilyRelocation.API.Models.Auth;
 
@@ -214,5 +215,36 @@ public class AuthController : ControllerBase
         }
 
         return Ok(new { message = result.Message });
+    }
+
+    /// <summary>
+    /// Admin-only: Register a new user with a temporary password.
+    /// The user will be required to change their password on first login.
+    /// </summary>
+    [HttpPost("register")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> RegisterUser([FromBody] AuthModels.RegisterUserRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Email))
+            return BadRequest(new { message = "Email is required" });
+
+        var result = await _authService.RegisterUserAsync(request.Email, request.TemporaryPassword);
+
+        if (!result.Success)
+        {
+            return result.ErrorType switch
+            {
+                AuthErrorType.UserAlreadyExists => Conflict(new { message = result.ErrorMessage }),
+                AuthErrorType.InvalidPassword => BadRequest(new { message = result.ErrorMessage }),
+                _ => BadRequest(new { message = result.ErrorMessage })
+            };
+        }
+
+        return Ok(new AuthModels.RegisterUserResponse
+        {
+            UserId = result.UserId!,
+            TemporaryPassword = result.TemporaryPassword!,
+            Message = result.Message!
+        });
     }
 }

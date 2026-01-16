@@ -1,5 +1,4 @@
 using FamilyRelocation.Application.Common.Interfaces;
-using FamilyRelocation.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace FamilyRelocation.Infrastructure.Persistence;

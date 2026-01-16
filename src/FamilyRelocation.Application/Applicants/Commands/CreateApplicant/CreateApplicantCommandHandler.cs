@@ -71,11 +71,12 @@ public class CreateApplicantCommandHandler : IRequestHandler<CreateApplicantComm
     {
         var phoneNumbers = NormalizePhoneNumbers(dto.PhoneNumbers);
 
+        // Email validation and normalization is handled by the HusbandInfo constructor
         return new HusbandInfo(
             firstName: dto.FirstName,
             lastName: dto.LastName,
             fatherName: dto.FatherName,
-            email: Email.FromString(dto.Email),
+            email: dto.Email,
             phoneNumbers: phoneNumbers,
             occupation: dto.Occupation,
             employerName: dto.EmployerName);
@@ -85,11 +86,12 @@ public class CreateApplicantCommandHandler : IRequestHandler<CreateApplicantComm
     {
         var phoneNumbers = NormalizePhoneNumbers(dto.PhoneNumbers);
 
+        // Email validation and normalization is handled by the SpouseInfo constructor
         return new SpouseInfo(
             firstName: dto.FirstName,
             maidenName: dto.MaidenName,
             fatherName: dto.FatherName,
-            email: Email.FromString(dto.Email),
+            email: dto.Email,
             phoneNumbers: phoneNumbers,
             occupation: dto.Occupation,
             employerName: dto.EmployerName,
@@ -169,7 +171,7 @@ public class CreateApplicantCommandHandler : IRequestHandler<CreateApplicantComm
             FirstName = husband.FirstName,
             LastName = husband.LastName,
             FatherName = husband.FatherName,
-            Email = husband.Email?.Value,
+            Email = husband.Email,
             PhoneNumbers = husband.PhoneNumbers.Select(MapToPhoneDto).ToList(),
             Occupation = husband.Occupation,
             EmployerName = husband.EmployerName
@@ -183,7 +185,7 @@ public class CreateApplicantCommandHandler : IRequestHandler<CreateApplicantComm
             FirstName = wife.FirstName,
             MaidenName = wife.MaidenName,
             FatherName = wife.FatherName,
-            Email = wife.Email?.Value,
+            Email = wife.Email,
             PhoneNumbers = wife.PhoneNumbers.Select(MapToPhoneDto).ToList(),
             Occupation = wife.Occupation,
             EmployerName = wife.EmployerName,
