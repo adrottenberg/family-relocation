@@ -2,6 +2,7 @@ using FamilyRelocation.Application.Applicants.DTOs;
 using FamilyRelocation.Application.Applicants.Queries.ExistsByEmail;
 using FamilyRelocation.Application.Common.Exceptions;
 using FamilyRelocation.Application.Common.Interfaces;
+using FamilyRelocation.Domain.Common;
 using FamilyRelocation.Domain.Entities;
 using FamilyRelocation.Domain.ValueObjects;
 using MediatR;
@@ -58,7 +59,7 @@ public class CreateApplicantCommandHandler : IRequestHandler<CreateApplicantComm
             children: children,
             currentKehila: request.CurrentKehila,
             shabbosShul: request.ShabbosShul,
-            createdBy: _currentUserService.UserId);
+            createdBy: _currentUserService.UserId ?? WellKnownIds.SelfSubmittedUserId);
 
         _context.Add(applicant);
         await _context.SaveChangesAsync(cancellationToken);

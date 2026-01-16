@@ -1,6 +1,5 @@
 using System.Security.Claims;
 using FamilyRelocation.Application.Common.Interfaces;
-using FamilyRelocation.Domain.Common;
 
 namespace FamilyRelocation.API.Services;
 
@@ -13,14 +12,14 @@ public class CurrentUserService : ICurrentUserService
         _httpContextAccessor = httpContextAccessor;
     }
 
-    public Guid UserId
+    public Guid? UserId
     {
         get
         {
             var sub = _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier)
                    ?? _httpContextAccessor.HttpContext?.User?.FindFirstValue("sub");
 
-            return Guid.TryParse(sub, out var userId) ? userId : WellKnownIds.SelfSubmittedUserId;
+            return Guid.TryParse(sub, out var userId) ? userId : null;
         }
     }
 
