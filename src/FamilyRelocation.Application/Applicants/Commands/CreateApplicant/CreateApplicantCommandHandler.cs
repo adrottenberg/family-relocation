@@ -1,4 +1,5 @@
 using FamilyRelocation.Application.Applicants.DTOs;
+using FamilyRelocation.Application.Applicants.Queries.ExistsByEmail;
 using FamilyRelocation.Application.Common.Exceptions;
 using FamilyRelocation.Application.Common.Interfaces;
 using FamilyRelocation.Domain.Entities;
@@ -9,17 +10,17 @@ namespace FamilyRelocation.Application.Applicants.Commands.CreateApplicant;
 
 public class CreateApplicantCommandHandler : IRequestHandler<CreateApplicantCommand, ApplicantDto>
 {
-    private readonly IApplicantRepository _applicantRepository;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly IMediator _mediator;
+    private readonly IApplicationDbContext _context;
     private readonly ICurrentUserService _currentUserService;
 
     public CreateApplicantCommandHandler(
-        IApplicantRepository applicantRepository,
-        IUnitOfWork unitOfWork,
+        IMediator mediator,
+        IApplicationDbContext context,
         ICurrentUserService currentUserService)
     {
-        _applicantRepository = applicantRepository;
-        _unitOfWork = unitOfWork;
+        _mediator = mediator;
+        _context = context;
         _currentUserService = currentUserService;
     }
 
@@ -28,7 +29,7 @@ public class CreateApplicantCommandHandler : IRequestHandler<CreateApplicantComm
         // Check for duplicate emails (husband and wife)
         if (!string.IsNullOrEmpty(request.Husband.Email))
         {
-            var exists = await _applicantRepository.ExistsByEmailAsync(request.Husband.Email, cancellationToken);
+            var exists = await _mediator.Send(new ExistsByEmailQuery(request.Husband.Email), cancellationToken);
             if (exists)
             {
                 throw new DuplicateEmailException(request.Husband.Email);
@@ -37,7 +38,7 @@ public class CreateApplicantCommandHandler : IRequestHandler<CreateApplicantComm
 
         if (!string.IsNullOrEmpty(request.Wife?.Email))
         {
-            var exists = await _applicantRepository.ExistsByEmailAsync(request.Wife.Email, cancellationToken);
+            var exists = await _mediator.Send(new ExistsByEmailQuery(request.Wife.Email), cancellationToken);
             if (exists)
             {
                 throw new DuplicateEmailException(request.Wife.Email);
@@ -59,8 +60,8 @@ public class CreateApplicantCommandHandler : IRequestHandler<CreateApplicantComm
             shabbosShul: request.ShabbosShul,
             createdBy: _currentUserService.UserId);
 
-        await _applicantRepository.AddAsync(applicant, cancellationToken);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        _context.Add(applicant);
+        await _context.SaveChangesAsync(cancellationToken);
 
         return MapToDto(applicant);
     }

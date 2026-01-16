@@ -18,6 +18,8 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     IQueryable<Applicant> IApplicationDbContext.Applicants => ApplicantsDbSet;
     IQueryable<HousingSearch> IApplicationDbContext.HousingSearches => HousingSearchesDbSet;
 
+    void IApplicationDbContext.Add<TEntity>(TEntity entity) => base.Add(entity);
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
