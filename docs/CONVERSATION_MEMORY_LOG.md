@@ -1725,6 +1725,137 @@ UV-13: Implement Create Applicant endpoint - https://github.com/adrottenberg/fam
 
 ---
 
+---
+
+## SESSION: January 17, 2026 - UV-14 & UV-15 Implementation + Authentication Refactoring
+
+### Context
+Continued Sprint 1 development. Implemented UV-14 (View Applicant Details) and UV-15 (Update Applicant Basic Info), plus AWS Cognito authentication refactoring plan.
+
+### UV-14: View Applicant Details (US-007)
+
+**Implemented:**
+- `GET /api/applicants/{id}` endpoint
+- `GetApplicantByIdQuery` and `GetApplicantByIdQueryHandler`
+- Added `BoardReviewDto` for complete response
+- Added `FullAddress` computed property to `AddressDto`
+
+**Key Design Decisions:**
+
+1. **FullAddress as Computed Property**
+   - User feedback: "The full address should be a calculated property, no point in having it as a separate data field"
+   - Changed from stored field to: `public string FullAddress => $"{Street}, {City}, {State} {ZipCode}";`
+
+2. **MemberNotNullWhen Attribute for Nullable Contracts**
+   - User questioned null-forgiving operators (`!`) in AuthController
+   - Added `[MemberNotNullWhen(true, nameof(Property))]` to result types
+   - Applied to: `AuthResult`, `TokenRefreshResult`, `RegisterUserResult`
+   - Compiler now knows properties are non-null when `Success == true`
+
+### UV-15: Update Applicant Basic Info (US-008)
+
+**Implemented:**
+- `PUT /api/applicants/{id}` endpoint with `[Authorize]` (admin/coordinator only)
+- `UpdateApplicantCommand` and `UpdateApplicantCommandHandler`
+- `UpdateApplicantCommandValidator` with FluentValidation (20 tests)
+- `NotFoundException` for 404 responses
+- Email uniqueness validation (excluding current applicant)
+- 5 controller integration tests
+
+**Key Implementation Details:**
+- Handler validates email uniqueness against all other applicants
+- Uses `ICurrentUserService.UserId` for audit trail
+- Full CRUD cycle now complete for Applicants
+
+### Mapper Consolidation Refactoring
+
+**Problem:** Duplicate mapping code across handlers (600+ lines total):
+- CreateApplicantCommandHandler: 228 lines
+- UpdateApplicantCommandHandler: 262 lines
+- GetApplicantByIdQueryHandler: 118 lines
+
+**Solution:** Centralized `ApplicantMapper` with extension methods:
+```csharp
+// Before (static method)
+ApplicantMapper.ToDto(applicant)
+ApplicantMapper.ToDomain(request.Husband)
+
+// After (extension method)
+applicant.ToDto()
+request.Husband.ToDomain()
+```
+
+**Results:**
+- CreateApplicantCommandHandler: 228 → 68 lines
+- UpdateApplicantCommandHandler: 262 → 97 lines
+- GetApplicantByIdQueryHandler: 118 → 25 lines
+- Single source of truth for all mappings
+- Auto-demote multiple primary phone numbers in one place
+
+### Authentication Architecture Plan (UV-9)
+
+**Created detailed refactoring plan:**
+1. Extract `ComputeSecretHash` to Infrastructure as `HmacHelper`
+2. Create `IAuthenticationService` interface in Application layer
+3. Implement `CognitoAuthenticationService` in Infrastructure layer
+4. Support multiple challenge types with user-friendly field names:
+   - `newPassword` → `NEW_PASSWORD` (for NEW_PASSWORD_REQUIRED)
+   - `mfaCode` → `SMS_MFA_CODE` (for SMS_MFA)
+   - `totpCode` → `SOFTWARE_TOKEN_MFA_CODE` (for SOFTWARE_TOKEN_MFA)
+5. Create `ChallengeMetadata` for mapping user-friendly names to Cognito keys
+
+**Plan file:** `C:\Users\adrot\.claude\plans\typed-herding-lighthouse.md`
+
+### API Testing Discovery
+
+**JWT Authentication Requires HTTPS:**
+- HTTP calls to `http://localhost:5267` returned 401 even with valid JWT
+- HTTPS calls to `https://localhost:7267` worked correctly
+- Cognito tokens validated properly only over HTTPS
+- Used `curl -k` to bypass SSL certificate validation for local testing
+
+### Test Results
+All 287 tests pass (196 Domain + 79 API + 12 Integration)
+
+### PR Created
+UV-15: Update applicant basic info - https://github.com/adrottenberg/family-relocation/pull/new/feature/UV-15_update_applicant_basic_info
+
+### Key Takeaways
+
+1. **Extension Methods for Mappers** - Cleaner syntax: `applicant.ToDto()` vs `ApplicantMapper.ToDto(applicant)`
+2. **MemberNotNullWhen** - Compiler-enforced nullable contracts eliminate null-forgiving operators
+3. **Computed Properties** - Use for derived values, not stored fields
+4. **HTTPS Required for JWT** - Cognito token validation requires secure transport
+5. **Centralized Mapping** - Single source of truth prevents drift and reduces maintenance
+
+---
+
+## FOR NEXT SESSION
+
+### To Quickly Re-Establish Context
+
+**Just say:**
+> "I'm the developer building the Family Relocation CRM for the Jewish community in Union County. We documented everything in January 2026."
+
+**I'll know:**
+- Complete domain model (Applicant, HousingSearch, etc.)
+- Tech stack (.NET 10, React, AWS)
+- Your working style (comprehensive docs, wait for complete review)
+- All 68 user stories and priorities
+- The 29 corrections we made
+- Cultural context (Orthodox community, no smartphones, desktop-first)
+- HousingSearch represents the house-hunting journey with failed contract history
+- **Query object pattern** instead of repository pattern (Mark Seemann's approach)
+- **All handlers in Application layer** - no split with Infrastructure
+- **EF Core ToJson()** for LINQ queries on JSON columns
+- **Generic IApplicationDbContext** with `Set<T>()` (Open/Closed principle)
+- **ApplicantMapper extension methods** for DTO conversions
+- **MemberNotNullWhen** for nullable result types
+
+**And we can pick up exactly where we left off.**
+
+---
+
 **END OF CONVERSATION MEMORY LOG**
 
 This document captures our complete collaboration. Use it to quickly re-establish context in future sessions.

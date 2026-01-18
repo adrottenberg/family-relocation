@@ -186,3 +186,76 @@ Content-Type: application/json
 ### Get Applicant by ID (Requires Authentication)
 GET {{baseUrl}}/api/applicants/{{applicantId}}
 Authorization: Bearer {{accessToken}}
+
+### Update Applicant (Requires Authentication)
+PUT {{baseUrl}}/api/applicants/{{applicantId}}
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "husband": {
+        "firstName": "Moshe",
+        "lastName": "Cohen",
+        "fatherName": "Yaakov",
+        "email": "moshe.updated@example.com",
+        "phoneNumbers": [
+            {
+                "number": "2015551234",
+                "type": "Mobile",
+                "isPrimary": true
+            },
+            {
+                "number": "2015559999",
+                "type": "Home",
+                "isPrimary": false
+            }
+        ],
+        "occupation": "Senior Software Engineer",
+        "employerName": "Tech Corp Inc"
+    },
+    "wife": {
+        "firstName": "Sarah",
+        "maidenName": "Goldstein",
+        "fatherName": "Avraham",
+        "email": "sarah.updated@example.com",
+        "phoneNumbers": [
+            {
+                "number": "2015555678",
+                "type": "Mobile",
+                "isPrimary": true
+            }
+        ],
+        "occupation": "Principal",
+        "employerName": "Bais Yaakov",
+        "highSchool": "Bais Yaakov of Brooklyn"
+    },
+    "address": {
+        "street": "456 Oak Ave",
+        "street2": null,
+        "city": "Union",
+        "state": "NJ",
+        "zipCode": "07083"
+    },
+    "children": [
+        {
+            "age": 9,
+            "gender": "Male",
+            "name": "Yosef",
+            "school": "Torah Academy"
+        },
+        {
+            "age": 6,
+            "gender": "Female",
+            "name": "Rivka",
+            "school": "Bais Yaakov"
+        },
+        {
+            "age": 2,
+            "gender": "Male",
+            "name": "Dovid",
+            "school": null
+        }
+    ],
+    "currentKehila": "Union",
+    "shabbosShul": "Congregation Israel"
+}
