@@ -1,4 +1,5 @@
 using FamilyRelocation.Application.Applicants.Commands.CreateApplicant;
+using FamilyRelocation.Application.Applicants.Queries.GetApplicantById;
 using FamilyRelocation.Application.Common.Exceptions;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -40,14 +41,14 @@ public class ApplicantsController : ControllerBase
     }
 
     /// <summary>
-    /// Gets an applicant by ID (placeholder for future implementation)
+    /// Gets an applicant by ID
     /// </summary>
     [HttpGet("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public Task<IActionResult> GetById(Guid id)
+    public async Task<IActionResult> GetById(Guid id)
     {
-        // TODO: Implement GetApplicantByIdQuery
-        return Task.FromResult<IActionResult>(NotFound());
+        var result = await _mediator.Send(new GetApplicantByIdQuery(id));
+        return result != null ? Ok(result) : NotFound();
     }
 }

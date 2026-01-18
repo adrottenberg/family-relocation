@@ -12,6 +12,7 @@ public class CognitoAuthenticationService : IAuthenticationService
     private readonly IAmazonCognitoIdentityProvider _cognitoClient;
     private readonly string _clientId;
     private readonly string? _clientSecret;
+    private readonly string _userPoolId;
 
     public CognitoAuthenticationService(
         IAmazonCognitoIdentityProvider cognitoClient,
@@ -21,6 +22,8 @@ public class CognitoAuthenticationService : IAuthenticationService
         _clientId = configuration["AWS:Cognito:ClientId"]
             ?? throw new InvalidOperationException("AWS:Cognito:ClientId configuration is required");
         _clientSecret = configuration["AWS:Cognito:ClientSecret"];
+        _userPoolId = configuration["AWS:Cognito:UserPoolId"]
+            ?? throw new InvalidOperationException("AWS:Cognito:UserPoolId configuration is required");
     }
 
     public async Task<AuthResult> LoginAsync(string email, string password)
@@ -339,6 +342,76 @@ public class CognitoAuthenticationService : IAuthenticationService
         {
             request.SecretHash = HmacHelper.ComputeSecretHash(username, _clientId, _clientSecret);
         }
+    }
+
+    public async Task<RegisterUserResult> RegisterUserAsync(string email, string? temporaryPassword = null)
+    {
+        try
+        {
+            // Generate a temporary password if not provided
+            var tempPassword = temporaryPassword ?? GenerateTemporaryPassword();
+
+            var request = new AdminCreateUserRequest
+            {
+                UserPoolId = _userPoolId,
+                Username = email,
+                TemporaryPassword = tempPassword,
+                UserAttributes = new List<AttributeType>
+                {
+                    new AttributeType { Name = "email", Value = email },
+                    new AttributeType { Name = "email_verified", Value = "true" }
+                },
+                // Suppress the welcome email since we'll handle communication ourselves
+                MessageAction = MessageActionType.SUPPRESS
+            };
+
+            var response = await _cognitoClient.AdminCreateUserAsync(request);
+
+            return RegisterUserResult.SuccessResult(
+                response.User.Username,
+                tempPassword,
+                "User created successfully. They will need to change their password on first login.");
+        }
+        catch (UsernameExistsException)
+        {
+            return RegisterUserResult.ErrorResult("A user with this email already exists.", AuthErrorType.UserAlreadyExists);
+        }
+        catch (InvalidPasswordException ex)
+        {
+            return RegisterUserResult.ErrorResult(ex.Message, AuthErrorType.InvalidPassword);
+        }
+        catch (InvalidParameterException ex)
+        {
+            return RegisterUserResult.ErrorResult(ex.Message, AuthErrorType.Unknown);
+        }
+    }
+
+    private static string GenerateTemporaryPassword()
+    {
+        // Generate a random password that meets Cognito requirements
+        const string upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        const string lower = "abcdefghijklmnopqrstuvwxyz";
+        const string digits = "0123456789";
+        const string special = "!@#$%^&*";
+
+        var random = new Random();
+        var password = new char[12];
+
+        // Ensure at least one of each required character type
+        password[0] = upper[random.Next(upper.Length)];
+        password[1] = lower[random.Next(lower.Length)];
+        password[2] = digits[random.Next(digits.Length)];
+        password[3] = special[random.Next(special.Length)];
+
+        // Fill the rest randomly
+        var allChars = upper + lower + digits + special;
+        for (int i = 4; i < password.Length; i++)
+        {
+            password[i] = allChars[random.Next(allChars.Length)];
+        }
+
+        // Shuffle the password
+        return new string(password.OrderBy(_ => random.Next()).ToArray());
     }
 
     private static AuthTokens MapToAuthTokens(AuthenticationResultType result) => new()

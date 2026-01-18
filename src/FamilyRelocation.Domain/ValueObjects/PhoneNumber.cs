@@ -15,9 +15,10 @@ public enum PhoneType
 /// </summary>
 public sealed record PhoneNumber
 {
-    public string Number { get; }
-    public PhoneType Type { get; }
-    public bool IsPrimary { get; }
+    // Properties use 'private set' for EF Core ToJson() serialization compatibility
+    public string Number { get; private set; }
+    public PhoneType Type { get; private set; }
+    public bool IsPrimary { get; private set; }
 
     // Private parameterless constructor for EF Core
     private PhoneNumber()

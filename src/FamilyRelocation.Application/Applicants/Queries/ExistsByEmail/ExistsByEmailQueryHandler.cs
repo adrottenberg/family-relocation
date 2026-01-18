@@ -18,13 +18,10 @@ public class ExistsByEmailQueryHandler : IRequestHandler<ExistsByEmailQuery, boo
     {
         var normalizedEmail = request.Email.ToLowerInvariant();
 
-        // EF Core's ToJson() configuration enables LINQ queries into JSON columns
-        var exists = await _context.Set<Applicant>()
+        return await _context.Set<Applicant>()
             .AnyAsync(a =>
-                (a.Husband.Email != null && a.Husband.Email.Value.ToLower() == normalizedEmail) ||
-                (a.Wife != null && a.Wife.Email != null && a.Wife.Email.Value.ToLower() == normalizedEmail),
+                a.Husband.Email == normalizedEmail ||
+                (a.Wife != null && a.Wife.Email == normalizedEmail),
                 cancellationToken);
-
-        return exists;
     }
 }

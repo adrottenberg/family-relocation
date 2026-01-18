@@ -80,3 +80,20 @@ public class ChallengeRequest
     /// </summary>
     public Dictionary<string, string> Responses { get; set; } = new();
 }
+
+// Admin User Registration
+public class RegisterUserRequest
+{
+    public required string Email { get; set; }
+    /// <summary>
+    /// Optional temporary password. If not provided, a random one will be generated.
+    /// </summary>
+    public string? TemporaryPassword { get; set; }
+}
+
+public class RegisterUserResponse
+{
+    public required string UserId { get; set; }
+    public required string TemporaryPassword { get; set; }
+    public required string Message { get; set; }
+}

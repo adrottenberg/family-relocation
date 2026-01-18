@@ -1,6 +1,13 @@
-# FamilyRelocation Auth API - Postman Collection
+# FamilyRelocation API - Postman Collections
 
-This folder contains a Postman collection for testing the AWS Cognito authentication endpoints.
+This folder contains Postman collections for testing the FamilyRelocation API.
+
+## Collections
+
+| Collection | Description |
+|------------|-------------|
+| `FamilyRelocation-Auth.postman_collection.json` | AWS Cognito authentication endpoints |
+| `FamilyRelocation-Applicants.postman_collection.json` | Applicants CRUD operations |
 
 ## Running the API
 
@@ -202,12 +209,121 @@ The collection includes test scripts that automatically:
 
 ## API Endpoints Summary
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/auth/login` | Authenticate with email/password |
-| POST | `/api/auth/respond-to-challenge` | Complete auth challenge (e.g., set new password) |
-| POST | `/api/auth/refresh` | Refresh access tokens |
-| POST | `/api/auth/forgot-password` | Request password reset code |
-| POST | `/api/auth/confirm-forgot-password` | Complete password reset |
-| POST | `/api/auth/resend-confirmation` | Resend email verification code |
-| POST | `/api/auth/confirm-email` | Verify email address |
+### Auth Endpoints
+
+| Method | Endpoint | Auth Required | Description |
+|--------|----------|---------------|-------------|
+| POST | `/api/auth/login` | No | Authenticate with email/password |
+| POST | `/api/auth/respond-to-challenge` | No | Complete auth challenge (e.g., set new password) |
+| POST | `/api/auth/refresh` | No | Refresh access tokens |
+| POST | `/api/auth/forgot-password` | No | Request password reset code |
+| POST | `/api/auth/confirm-forgot-password` | No | Complete password reset |
+| POST | `/api/auth/resend-confirmation` | No | Resend email verification code |
+| POST | `/api/auth/confirm-email` | No | Verify email address |
+
+### Applicants Endpoints
+
+| Method | Endpoint | Auth Required | Description |
+|--------|----------|---------------|-------------|
+| POST | `/api/applicants` | No | Create a new applicant (family submission) |
+| GET | `/api/applicants/{id}` | Yes | Get applicant details by ID |
+
+---
+
+## Applicants Collection
+
+The Applicants collection (`FamilyRelocation-Applicants.postman_collection.json`) provides endpoints for managing applicant families.
+
+### Setup
+
+1. Import the Auth collection first and login to get an access token
+2. The `accessToken` variable needs to be set (either manually or by copying from Auth collection)
+
+### Creating an Applicant
+
+The Create Applicant endpoint is **public** (no authentication required). This allows families to submit their applications directly.
+
+**Minimal Request:**
+```json
+{
+    "husband": {
+        "firstName": "David",
+        "lastName": "Levy"
+    }
+}
+```
+
+**Full Request:**
+```json
+{
+    "husband": {
+        "firstName": "Moshe",
+        "lastName": "Cohen",
+        "fatherName": "Yaakov",
+        "email": "moshe@example.com",
+        "phoneNumbers": [
+            {
+                "number": "2015551234",
+                "type": "Mobile",
+                "isPrimary": true
+            }
+        ],
+        "occupation": "Software Engineer",
+        "employerName": "Tech Corp"
+    },
+    "wife": {
+        "firstName": "Sarah",
+        "maidenName": "Goldstein",
+        "fatherName": "Avraham",
+        "email": "sarah@example.com",
+        "phoneNumbers": [
+            {
+                "number": "2015555678",
+                "type": "Mobile",
+                "isPrimary": true
+            }
+        ],
+        "occupation": "Teacher",
+        "employerName": "Bais Yaakov",
+        "highSchool": "Bais Yaakov of Brooklyn"
+    },
+    "address": {
+        "street": "123 Main St",
+        "street2": "Apt 4B",
+        "city": "Brooklyn",
+        "state": "NY",
+        "zipCode": "11230"
+    },
+    "children": [
+        {
+            "age": 8,
+            "gender": "Male",
+            "name": "Yosef",
+            "school": "Torah Academy"
+        },
+        {
+            "age": 5,
+            "gender": "Female",
+            "name": "Rivka",
+            "school": "Bais Yaakov"
+        }
+    ],
+    "currentKehila": "Flatbush",
+    "shabbosShul": "Young Israel"
+}
+```
+
+### Viewing an Applicant
+
+The Get Applicant endpoint **requires authentication**. After creating an applicant:
+
+1. Copy the returned `id` from the create response
+2. Set the `applicantId` variable
+3. Ensure you have a valid `accessToken` (login via Auth collection)
+4. Run the Get Applicant request
+
+### Test Flow
+
+1. **Login** via Auth collection to get tokens
+2. **Create an applicant** (no auth needed) - ID is automatically saved
+3. **Get applicant details** using the saved ID and token

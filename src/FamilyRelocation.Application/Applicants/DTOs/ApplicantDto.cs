@@ -17,4 +17,9 @@ public record ApplicantDto
     public required bool IsPendingBoardReview { get; init; }
     public required bool IsSelfSubmitted { get; init; }
     public required DateTime CreatedDate { get; init; }
+
+    /// <summary>
+    /// Board review decision (null if not yet reviewed)
+    /// </summary>
+    public BoardReviewDto? BoardReview { get; init; }
 }

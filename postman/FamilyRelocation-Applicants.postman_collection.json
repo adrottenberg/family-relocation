@@ -1,0 +1,187 @@
+{
+	"info": {
+		"_postman_id": "family-relocation-applicants-collection",
+		"name": "FamilyRelocation Applicants API",
+		"description": "Collection for testing Applicants CRUD endpoints in the FamilyRelocation API.\n\n## Setup\n1. Import the Auth collection first and login to get an access token\n2. Set the `baseUrl` variable to your API URL (default: https://localhost:7267)\n\n## Endpoints\n- **Create Applicant**: Public endpoint (no auth required) for submitting new applicant families\n- **Get Applicant by ID**: Protected endpoint (requires authentication)\n\n## Test Flow\n1. Login via Auth collection to get tokens\n2. Create an applicant (no auth needed)\n3. Copy the returned ID to `applicantId` variable\n4. Get applicant details using the ID",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Create Applicant (Full)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"if (pm.response.code === 201) {",
+							"    var jsonData = pm.response.json();",
+							"    pm.collectionVariables.set('applicantId', jsonData.id);",
+							"    pm.test('Applicant created - ID saved', function() {",
+							"        pm.expect(jsonData.id).to.be.a('string');",
+							"        pm.expect(jsonData.familyName).to.be.a('string');",
+							"        pm.expect(jsonData.isPendingBoardReview).to.be.true;",
+							"        pm.expect(jsonData.isSelfSubmitted).to.be.true;",
+							"    });",
+							"    console.log('Created applicant: ' + jsonData.familyName);",
+							"    console.log('Applicant ID saved to variable: ' + jsonData.id);",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"husband\": {\n        \"firstName\": \"Moshe\",\n        \"lastName\": \"Cohen\",\n        \"fatherName\": \"Yaakov\",\n        \"email\": \"moshe@example.com\",\n        \"phoneNumbers\": [\n            {\n                \"number\": \"2015551234\",\n                \"type\": \"Mobile\",\n                \"isPrimary\": true\n            }\n        ],\n        \"occupation\": \"Software Engineer\",\n        \"employerName\": \"Tech Corp\"\n    },\n    \"wife\": {\n        \"firstName\": \"Sarah\",\n        \"maidenName\": \"Goldstein\",\n        \"fatherName\": \"Avraham\",\n        \"email\": \"sarah@example.com\",\n        \"phoneNumbers\": [\n            {\n                \"number\": \"2015555678\",\n                \"type\": \"Mobile\",\n                \"isPrimary\": true\n            }\n        ],\n        \"occupation\": \"Teacher\",\n        \"employerName\": \"Bais Yaakov\",\n        \"highSchool\": \"Bais Yaakov of Brooklyn\"\n    },\n    \"address\": {\n        \"street\": \"123 Main St\",\n        \"street2\": \"Apt 4B\",\n        \"city\": \"Brooklyn\",\n        \"state\": \"NY\",\n        \"zipCode\": \"11230\"\n    },\n    \"children\": [\n        {\n            \"age\": 8,\n            \"gender\": \"Male\",\n            \"name\": \"Yosef\",\n            \"school\": \"Torah Academy\"\n        },\n        {\n            \"age\": 5,\n            \"gender\": \"Female\",\n            \"name\": \"Rivka\",\n            \"school\": \"Bais Yaakov\"\n        }\n    ],\n    \"currentKehila\": \"Flatbush\",\n    \"shabbosShul\": \"Young Israel\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/applicants",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"applicants"
+					]
+				},
+				"description": "Create a new applicant (family) for board approval.\n\n**No authentication required** - This is a public endpoint for families to submit their applications.\n\n**Request Body:**\nFull applicant details including husband, wife, address, and children.\n\n**Success Response (201 Created):**\n- Returns the created applicant with generated ID\n- `isPendingBoardReview`: Always `true` for new submissions\n- `isSelfSubmitted`: Always `true` for public submissions\n\n**Error Responses:**\n- 400: Validation errors\n- 409: Duplicate email (husband or wife email already exists)"
+			}
+		},
+		{
+			"name": "Create Applicant (Minimal)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"if (pm.response.code === 201) {",
+							"    var jsonData = pm.response.json();",
+							"    pm.collectionVariables.set('applicantId', jsonData.id);",
+							"    pm.test('Minimal applicant created', function() {",
+							"        pm.expect(jsonData.id).to.be.a('string');",
+							"        pm.expect(jsonData.husband.firstName).to.equal('David');",
+							"        pm.expect(jsonData.husband.lastName).to.equal('Levy');",
+							"    });",
+							"    console.log('Created minimal applicant: ' + jsonData.familyName);",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"husband\": {\n        \"firstName\": \"David\",\n        \"lastName\": \"Levy\"\n    }\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/applicants",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"applicants"
+					]
+				},
+				"description": "Create a minimal applicant with only required fields.\n\n**Required fields:**\n- `husband.firstName`\n- `husband.lastName`\n\nAll other fields are optional and can be added later."
+			}
+		},
+		{
+			"name": "Get Applicant by ID",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"if (pm.response.code === 200) {",
+							"    var jsonData = pm.response.json();",
+							"    pm.test('Applicant retrieved successfully', function() {",
+							"        pm.expect(jsonData.id).to.be.a('string');",
+							"        pm.expect(jsonData.familyName).to.be.a('string');",
+							"        pm.expect(jsonData.husband).to.be.an('object');",
+							"    });",
+							"    console.log('Retrieved applicant: ' + jsonData.familyName);",
+							"} else if (pm.response.code === 404) {",
+							"    pm.test('Applicant not found', function() {",
+							"        pm.response.to.have.status(404);",
+							"    });",
+							"    console.log('Applicant not found - check the applicantId variable');",
+							"} else if (pm.response.code === 401) {",
+							"    pm.test('Authentication required', function() {",
+							"        pm.response.to.have.status(401);",
+							"    });",
+							"    console.log('Not authenticated - login first using Auth collection');",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{accessToken}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/applicants/{{applicantId}}",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"applicants",
+						"{{applicantId}}"
+					]
+				},
+				"description": "Get an applicant by their ID.\n\n**Authentication required** - Include Bearer token in Authorization header.\n\n**Path Parameters:**\n- `applicantId`: GUID of the applicant\n\n**Success Response (200 OK):**\nReturns full applicant details including:\n- `id`: Applicant GUID\n- `husband`: Husband information\n- `wife`: Wife information (if provided)\n- `address`: Current address (if provided)\n- `children`: List of children (if any)\n- `familyName`: Computed family name (\"FirstName LastName\")\n- `numberOfChildren`: Count of children\n- `currentKehila`: Current community\n- `shabbosShul`: Shabbos shul\n- `isPendingBoardReview`: Board review status\n- `isSelfSubmitted`: Whether submitted by the family\n- `createdDate`: Creation timestamp\n\n**Error Responses:**\n- 401: Not authenticated\n- 404: Applicant not found"
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "https://localhost:7267",
+			"type": "string"
+		},
+		{
+			"key": "accessToken",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "applicantId",
+			"value": "",
+			"type": "string"
+		}
+	]
+}

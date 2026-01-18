@@ -5,13 +5,18 @@ namespace FamilyRelocation.Domain.ValueObjects;
 /// </summary>
 public sealed record HusbandInfo
 {
-    public string FirstName { get; }
-    public string LastName { get; }
-    public string? FatherName { get; }
-    public Email? Email { get; }
-    public List<PhoneNumber> PhoneNumbers { get; }
-    public string? Occupation { get; }
-    public string? EmployerName { get; }
+    // Properties use 'private set' for EF Core ToJson() serialization compatibility
+    // while maintaining immutability from external code
+    public string FirstName { get; private set; }
+    public string LastName { get; private set; }
+    public string? FatherName { get; private set; }
+    /// <summary>
+    /// Email address stored as normalized lowercase string for simpler JSON serialization
+    /// </summary>
+    public string? Email { get; private set; }
+    public List<PhoneNumber> PhoneNumbers { get; private set; }
+    public string? Occupation { get; private set; }
+    public string? EmployerName { get; private set; }
 
     // Private parameterless constructor for EF Core
     private HusbandInfo()
@@ -25,7 +30,7 @@ public sealed record HusbandInfo
         string firstName,
         string lastName,
         string? fatherName = null,
-        Email? email = null,
+        string? email = null,
         List<PhoneNumber>? phoneNumbers = null,
         string? occupation = null,
         string? employerName = null)
@@ -39,7 +44,8 @@ public sealed record HusbandInfo
         FirstName = firstName.Trim();
         LastName = lastName.Trim();
         FatherName = fatherName?.Trim();
-        Email = email;
+        // Validate and normalize email using the Email value object
+        Email = ValueObjects.Email.FromString(email)?.Value;
         PhoneNumbers = phoneNumbers ?? new List<PhoneNumber>();
         Occupation = occupation?.Trim();
         EmployerName = employerName?.Trim();

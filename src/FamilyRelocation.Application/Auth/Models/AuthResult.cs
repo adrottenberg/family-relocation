@@ -1,8 +1,12 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace FamilyRelocation.Application.Auth.Models;
 
 public class AuthResult
 {
+    [MemberNotNullWhen(true, nameof(Tokens))]
     public bool Success { get; init; }
+
     public AuthTokens? Tokens { get; init; }
     public ChallengeInfo? Challenge { get; init; }
     public string? ErrorMessage { get; init; }
@@ -38,5 +42,6 @@ public enum AuthErrorType
     InvalidCode,
     ExpiredCode,
     InvalidPassword,
+    UserAlreadyExists,
     Unknown
 }

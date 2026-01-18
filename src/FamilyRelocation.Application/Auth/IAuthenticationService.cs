@@ -11,4 +11,10 @@ public interface IAuthenticationService
     Task<OperationResult> ConfirmPasswordResetAsync(string email, string code, string newPassword);
     Task<OperationResult> ResendConfirmationCodeAsync(string email);
     Task<OperationResult> ConfirmEmailAsync(string email, string code);
+
+    /// <summary>
+    /// Admin-only: Creates a new user in Cognito with a temporary password.
+    /// The user will be required to change their password on first login.
+    /// </summary>
+    Task<RegisterUserResult> RegisterUserAsync(string email, string? temporaryPassword = null);
 }
