@@ -1,6 +1,7 @@
 using FamilyRelocation.Application.Applicants.Commands.CreateApplicant;
 using FamilyRelocation.Application.Applicants.Commands.UpdateApplicant;
 using FamilyRelocation.Application.Applicants.Queries.GetApplicantById;
+using FamilyRelocation.Application.Applicants.Queries.GetApplicants;
 using FamilyRelocation.Application.Common.Exceptions;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -18,6 +19,17 @@ public class ApplicantsController : ControllerBase
     public ApplicantsController(IMediator mediator)
     {
         _mediator = mediator;
+    }
+
+    /// <summary>
+    /// Gets a paginated list of applicants with search, filter, and sort options.
+    /// </summary>
+    [HttpGet]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAll([FromQuery] GetApplicantsQuery query)
+    {
+        var result = await _mediator.Send(query);
+        return Ok(result);
     }
 
     /// <summary>

@@ -102,6 +102,24 @@ public static class ApplicantMapper
         };
     }
 
+    /// <summary>
+    /// Map to lightweight list DTO for list views.
+    /// </summary>
+    public static ApplicantListDto ToListDto(this Applicant applicant)
+    {
+        return new ApplicantListDto
+        {
+            Id = applicant.Id,
+            HusbandFullName = applicant.Husband.FullName,
+            WifeMaidenName = applicant.Wife?.MaidenName,
+            HusbandEmail = applicant.Husband.Email,
+            HusbandPhone = applicant.Husband.PhoneNumbers.FirstOrDefault(p => p.IsPrimary)?.Formatted
+                           ?? applicant.Husband.PhoneNumbers.FirstOrDefault()?.Formatted,
+            BoardDecision = applicant.BoardReview?.Decision.ToString(),
+            CreatedDate = applicant.CreatedDate
+        };
+    }
+
     #endregion
 
     #region DTO to Domain (for create/update)

@@ -3,7 +3,9 @@ using FamilyRelocation.Application.Applicants.Commands.CreateApplicant;
 using FamilyRelocation.Application.Applicants.Commands.UpdateApplicant;
 using FamilyRelocation.Application.Applicants.DTOs;
 using FamilyRelocation.Application.Applicants.Queries.GetApplicantById;
+using FamilyRelocation.Application.Applicants.Queries.GetApplicants;
 using FamilyRelocation.Application.Common.Exceptions;
+using FamilyRelocation.Application.Common.Models;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -178,6 +180,123 @@ public class ApplicantsControllerTests
         _mediatorMock.Verify(
             m => m.Send(It.Is<GetApplicantByIdQuery>(q => q.Id == applicantId), It.IsAny<CancellationToken>()),
             Times.Once);
+    }
+
+    #endregion
+
+    #region GetAll Tests
+
+    [Fact]
+    public async Task GetAll_ReturnsPaginatedList()
+    {
+        // Arrange
+        var query = new GetApplicantsQuery { Page = 1, PageSize = 20 };
+        var expectedItems = new List<ApplicantListDto>
+        {
+            new()
+            {
+                Id = Guid.NewGuid(),
+                HusbandFullName = "Moshe Cohen",
+                WifeMaidenName = "Goldstein",
+                HusbandEmail = "moshe@example.com",
+                CreatedDate = DateTime.UtcNow
+            }
+        };
+        var expectedResult = new PaginatedList<ApplicantListDto>(expectedItems, 1, 1, 20);
+
+        _mediatorMock.Setup(m => m.Send(It.IsAny<GetApplicantsQuery>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedResult);
+
+        // Act
+        var result = await _controller.GetAll(query);
+
+        // Assert
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        var paginatedList = okResult.Value.Should().BeOfType<PaginatedList<ApplicantListDto>>().Subject;
+        paginatedList.Items.Should().HaveCount(1);
+        paginatedList.TotalCount.Should().Be(1);
+        paginatedList.Page.Should().Be(1);
+        paginatedList.PageSize.Should().Be(20);
+    }
+
+    [Fact]
+    public async Task GetAll_WithNoResults_ReturnsEmptyList()
+    {
+        // Arrange
+        var query = new GetApplicantsQuery { Search = "NonExistent" };
+        var expectedResult = new PaginatedList<ApplicantListDto>(new List<ApplicantListDto>(), 0, 1, 20);
+
+        _mediatorMock.Setup(m => m.Send(It.IsAny<GetApplicantsQuery>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedResult);
+
+        // Act
+        var result = await _controller.GetAll(query);
+
+        // Assert
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        var paginatedList = okResult.Value.Should().BeOfType<PaginatedList<ApplicantListDto>>().Subject;
+        paginatedList.Items.Should().BeEmpty();
+        paginatedList.TotalCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task GetAll_SendsQueryToMediator()
+    {
+        // Arrange
+        var query = new GetApplicantsQuery
+        {
+            Page = 2,
+            PageSize = 10,
+            Search = "Cohen",
+            BoardDecision = "Approved",
+            City = "Union"
+        };
+        var expectedResult = PaginatedList<ApplicantListDto>.Empty(2, 10);
+
+        _mediatorMock.Setup(m => m.Send(It.IsAny<GetApplicantsQuery>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedResult);
+
+        // Act
+        await _controller.GetAll(query);
+
+        // Assert
+        _mediatorMock.Verify(
+            m => m.Send(It.Is<GetApplicantsQuery>(q =>
+                q.Page == 2 &&
+                q.PageSize == 10 &&
+                q.Search == "Cohen" &&
+                q.BoardDecision == "Approved" &&
+                q.City == "Union"),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task GetAll_WithPagination_ReturnsCorrectMetadata()
+    {
+        // Arrange
+        var query = new GetApplicantsQuery { Page = 2, PageSize = 10 };
+        var items = Enumerable.Range(1, 10).Select(i => new ApplicantListDto
+        {
+            Id = Guid.NewGuid(),
+            HusbandFullName = $"Husband {i}",
+            CreatedDate = DateTime.UtcNow
+        }).ToList();
+        var expectedResult = new PaginatedList<ApplicantListDto>(items, 50, 2, 10);
+
+        _mediatorMock.Setup(m => m.Send(It.IsAny<GetApplicantsQuery>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedResult);
+
+        // Act
+        var result = await _controller.GetAll(query);
+
+        // Assert
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        var paginatedList = okResult.Value.Should().BeOfType<PaginatedList<ApplicantListDto>>().Subject;
+        paginatedList.TotalCount.Should().Be(50);
+        paginatedList.TotalPages.Should().Be(5);
+        paginatedList.HasPreviousPage.Should().BeTrue();
+        paginatedList.HasNextPage.Should().BeTrue();
     }
 
     #endregion

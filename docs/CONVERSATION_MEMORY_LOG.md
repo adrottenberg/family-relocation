@@ -1856,6 +1856,111 @@ UV-15: Update applicant basic info - https://github.com/adrottenberg/family-relo
 
 ---
 
+## SESSION: January 18, 2026 - UV-15 Completion & UV-16 Implementation
+
+### Context
+Completed Sprint 1 with UV-15 (Update Applicant) and UV-16 (List Applicants with Search/Filter).
+
+### UV-15: Update Applicant - Final Changes
+
+**Mapper Refactoring:**
+- Converted `ApplicantMapper` static methods to extension methods
+- Cleaner syntax: `applicant.ToDto()` instead of `ApplicantMapper.ToDto(applicant)`
+- Updated all handlers to use extension method syntax
+
+**PR Merged:** https://github.com/adrottenberg/family-relocation/pull/7
+
+### UV-16: List Applicants with Search/Filter (US-009)
+
+**Implemented:**
+- `GET /api/applicants` endpoint with pagination
+- `GetApplicantsQuery` with search, filter, and sort options
+- `GetApplicantsQueryHandler` with full query logic
+- `PaginatedList<T>` helper class for paginated responses
+- `ApplicantListDto` lightweight DTO for list views
+
+**Query Parameters:**
+| Parameter | Description |
+|-----------|-------------|
+| `page` | Page number (default: 1) |
+| `pageSize` | Items per page (default: 20, max: 100) |
+| `search` | Search by husband/wife name, email |
+| `boardDecision` | Filter: Pending, Approved, Rejected, Deferred |
+| `city` | Filter by city |
+| `createdAfter` | Filter by date range |
+| `createdBefore` | Filter by date range |
+| `sortBy` | familyName, createdDate, boardReviewDate |
+| `sortOrder` | asc, desc (default: desc) |
+
+**ApplicantListDto Fields (after user review):**
+```csharp
+public class ApplicantListDto
+{
+    public required Guid Id { get; init; }
+    public required string HusbandFullName { get; init; }
+    public string? WifeMaidenName { get; init; }
+    public string? HusbandEmail { get; init; }
+    public string? HusbandPhone { get; init; }
+    public string? BoardDecision { get; init; }
+    public DateTime CreatedDate { get; init; }
+}
+```
+
+**User Feedback on DTO:**
+- Removed: City, NumberOfChildren, IsSelfSubmitted, IsPendingBoardReview
+- Added: HusbandFullName, WifeMaidenName
+- Kept lightweight for list views
+
+### Sprint 1 Complete
+
+All 9 user stories implemented:
+
+| Story | Description | Status |
+|-------|-------------|--------|
+| US-001 | Set up VS solution structure | ✅ |
+| US-002 | Configure AWS Cognito auth | ✅ |
+| US-003 | Set up PostgreSQL + EF Core | ✅ |
+| US-004 | Implement core domain entities | ✅ |
+| US-005 | Implement value objects | ✅ |
+| US-006 | Create applicant | ✅ |
+| US-007 | View applicant details | ✅ |
+| US-008 | Update applicant basic info | ✅ |
+| US-009 | List applicants with search/filter | ✅ |
+
+### Test Results
+All 291 tests pass (196 Domain + 83 API + 12 Integration)
+
+### Key Files Created (UV-16)
+- `PaginatedList.cs` - Pagination helper with metadata
+- `ApplicantListDto.cs` - Lightweight list DTO
+- `GetApplicantsQuery.cs` - Query with filters
+- `GetApplicantsQueryHandler.cs` - Handler with search/filter/sort logic
+
+---
+
+## FOR NEXT SESSION
+
+### To Quickly Re-Establish Context
+
+**Just say:**
+> "I'm the developer building the Family Relocation CRM for the Jewish community in Union County. We documented everything in January 2026."
+
+**I'll know:**
+- Complete domain model (Applicant, HousingSearch, etc.)
+- Tech stack (.NET 10, React, AWS)
+- Your working style (comprehensive docs, wait for complete review)
+- All 68 user stories and priorities
+- Cultural context (Orthodox community, no smartphones, desktop-first)
+- **Sprint 1 is complete** - all 9 stories implemented
+- **Query object pattern** instead of repository pattern
+- **All handlers in Application layer**
+- **ApplicantMapper extension methods** for DTO conversions
+- **PaginatedList<T>** for paginated API responses
+
+**And we can pick up exactly where we left off.**
+
+---
+
 **END OF CONVERSATION MEMORY LOG**
 
 This document captures our complete collaboration. Use it to quickly re-establish context in future sessions.
