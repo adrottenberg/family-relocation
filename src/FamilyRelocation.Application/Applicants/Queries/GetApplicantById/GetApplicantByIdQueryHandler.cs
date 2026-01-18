@@ -39,7 +39,8 @@ public class GetApplicantByIdQueryHandler : IRequestHandler<GetApplicantByIdQuer
             NumberOfChildren = applicant.NumberOfChildren,
             IsPendingBoardReview = applicant.IsPendingBoardReview,
             IsSelfSubmitted = applicant.IsSelfSubmitted,
-            CreatedDate = applicant.CreatedDate
+            CreatedDate = applicant.CreatedDate,
+            BoardReview = applicant.BoardReview != null ? MapToBoardReviewDto(applicant.BoardReview) : null
         };
     }
 
@@ -81,6 +82,16 @@ public class GetApplicantByIdQueryHandler : IRequestHandler<GetApplicantByIdQuer
             City = address.City,
             State = address.State,
             ZipCode = address.ZipCode
+        };
+    }
+
+    private static BoardReviewDto MapToBoardReviewDto(BoardReview boardReview)
+    {
+        return new BoardReviewDto
+        {
+            Decision = boardReview.Decision.ToString(),
+            ReviewDate = boardReview.ReviewDate,
+            Notes = boardReview.Notes
         };
     }
 

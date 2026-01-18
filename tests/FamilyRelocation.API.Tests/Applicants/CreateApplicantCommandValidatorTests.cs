@@ -321,7 +321,7 @@ public class CreateApplicantCommandValidatorTests
                 Street = "123 Main St",
                 City = "Union",
                 State = "NJ",
-                ZipCode = "07083"
+                ZipCode = "07083",
             }
         };
 
@@ -471,7 +471,7 @@ public class CreateApplicantCommandValidatorTests
                 Street = "123 Main St",
                 City = "Union",
                 State = "NJ",
-                ZipCode = "07083"
+                ZipCode = "07083",
             },
             Children = new List<ChildDto>
             {

@@ -52,7 +52,7 @@ public class AuthController : ControllerBase
 
         return Ok(new AuthModels.LoginResponse
         {
-            AccessToken = result.Tokens!.AccessToken,
+            AccessToken = result.Tokens.AccessToken,
             IdToken = result.Tokens.IdToken,
             RefreshToken = result.Tokens.RefreshToken,
             ExpiresIn = result.Tokens.ExpiresIn
@@ -105,7 +105,7 @@ public class AuthController : ControllerBase
 
         return Ok(new AuthModels.LoginResponse
         {
-            AccessToken = result.Tokens!.AccessToken,
+            AccessToken = result.Tokens.AccessToken,
             IdToken = result.Tokens.IdToken,
             RefreshToken = result.Tokens.RefreshToken,
             ExpiresIn = result.Tokens.ExpiresIn
@@ -130,7 +130,7 @@ public class AuthController : ControllerBase
 
         return Ok(new AuthModels.RefreshTokenResponse
         {
-            AccessToken = result.Tokens!.AccessToken,
+            AccessToken = result.Tokens.AccessToken,
             IdToken = result.Tokens.IdToken,
             ExpiresIn = result.Tokens.ExpiresIn
         });
@@ -242,9 +242,9 @@ public class AuthController : ControllerBase
 
         return Ok(new AuthModels.RegisterUserResponse
         {
-            UserId = result.UserId!,
-            TemporaryPassword = result.TemporaryPassword!,
-            Message = result.Message!
+            UserId = result.UserId,
+            TemporaryPassword = result.TemporaryPassword,
+            Message = result.Message
         });
     }
 }
