@@ -183,6 +183,22 @@ Content-Type: application/json
     }
 }
 
+### List Applicants (Requires Authentication)
+# Returns paginated list with search, filter, and sort options
+GET {{baseUrl}}/api/applicants?page=1&pageSize=20
+Authorization: Bearer {{accessToken}}
+
+### List Applicants with Search
+GET {{baseUrl}}/api/applicants?search=Cohen
+Authorization: Bearer {{accessToken}}
+
+### List Applicants with Filters
+# Filter by board decision: Pending, Approved, Rejected, Deferred
+# Filter by city
+# Filter by date range
+GET {{baseUrl}}/api/applicants?boardDecision=Pending&city=Brooklyn&sortBy=familyName&sortOrder=asc
+Authorization: Bearer {{accessToken}}
+
 ### Get Applicant by ID (Requires Authentication)
 GET {{baseUrl}}/api/applicants/{{applicantId}}
 Authorization: Bearer {{accessToken}}
