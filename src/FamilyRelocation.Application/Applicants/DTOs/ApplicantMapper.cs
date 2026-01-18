@@ -110,15 +110,12 @@ public static class ApplicantMapper
         return new ApplicantListDto
         {
             Id = applicant.Id,
-            FamilyName = applicant.FamilyName,
+            HusbandFullName = applicant.Husband.FullName,
+            WifeMaidenName = applicant.Wife?.MaidenName,
             HusbandEmail = applicant.Husband.Email,
             HusbandPhone = applicant.Husband.PhoneNumbers.FirstOrDefault(p => p.IsPrimary)?.Formatted
                            ?? applicant.Husband.PhoneNumbers.FirstOrDefault()?.Formatted,
-            City = applicant.Address?.City,
-            NumberOfChildren = applicant.NumberOfChildren,
             BoardDecision = applicant.BoardReview?.Decision.ToString(),
-            IsPendingBoardReview = applicant.IsPendingBoardReview,
-            IsSelfSubmitted = applicant.IsSelfSubmitted,
             CreatedDate = applicant.CreatedDate
         };
     }

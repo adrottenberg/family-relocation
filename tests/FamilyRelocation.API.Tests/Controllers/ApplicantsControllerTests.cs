@@ -196,11 +196,9 @@ public class ApplicantsControllerTests
             new()
             {
                 Id = Guid.NewGuid(),
-                FamilyName = "Moshe Cohen",
+                HusbandFullName = "Moshe Cohen",
+                WifeMaidenName = "Goldstein",
                 HusbandEmail = "moshe@example.com",
-                NumberOfChildren = 2,
-                IsPendingBoardReview = true,
-                IsSelfSubmitted = true,
                 CreatedDate = DateTime.UtcNow
             }
         };
@@ -281,10 +279,7 @@ public class ApplicantsControllerTests
         var items = Enumerable.Range(1, 10).Select(i => new ApplicantListDto
         {
             Id = Guid.NewGuid(),
-            FamilyName = $"Family {i}",
-            NumberOfChildren = 0,
-            IsPendingBoardReview = true,
-            IsSelfSubmitted = true,
+            HusbandFullName = $"Husband {i}",
             CreatedDate = DateTime.UtcNow
         }).ToList();
         var expectedResult = new PaginatedList<ApplicantListDto>(items, 50, 2, 10);
