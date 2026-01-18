@@ -33,12 +33,21 @@ public class GetApplicantsQueryHandler : IRequestHandler<GetApplicantsQuery, Pag
         if (!string.IsNullOrWhiteSpace(request.Search))
         {
             var search = request.Search.Trim().ToLower();
+            // Strip non-digits for phone matching
+            var phoneSearch = new string(request.Search.Where(char.IsDigit).ToArray());
+
             query = query.Where(a =>
+                // Name search
                 a.Husband.FirstName.ToLower().Contains(search) ||
                 a.Husband.LastName.ToLower().Contains(search) ||
-                (a.Husband.Email != null && a.Husband.Email.ToLower().Contains(search)) ||
                 (a.Wife != null && a.Wife.FirstName.ToLower().Contains(search)) ||
-                (a.Wife != null && a.Wife.MaidenName != null && a.Wife.MaidenName.ToLower().Contains(search)));
+                (a.Wife != null && a.Wife.MaidenName != null && a.Wife.MaidenName.ToLower().Contains(search)) ||
+                // Email search
+                (a.Husband.Email != null && a.Husband.Email.ToLower().Contains(search)) ||
+                (a.Wife != null && a.Wife.Email != null && a.Wife.Email.ToLower().Contains(search)) ||
+                // Phone search (if search contains at least 3 digits)
+                (phoneSearch.Length >= 3 && a.Husband.PhoneNumbers.Any(p => p.Number.Contains(phoneSearch))) ||
+                (phoneSearch.Length >= 3 && a.Wife != null && a.Wife.PhoneNumbers.Any(p => p.Number.Contains(phoneSearch))));
         }
 
         // Apply board decision filter
