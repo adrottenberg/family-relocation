@@ -293,8 +293,9 @@ Authorization: Bearer {{accessToken}}
 # HOUSING SEARCH STAGE CHANGES
 ###############################################################################
 
-### Change Stage - Start House Hunting (requires board approval)
-# Transitions: Submitted → HouseHunting (after board approval)
+### Change Stage - Start House Hunting
+# Transitions: Submitted → HouseHunting
+# Requirements: Board approval AND both agreements signed (broker + takanos)
 PUT {{baseUrl}}/api/applicants/{{applicantId}}/stage
 Content-Type: application/json
 Authorization: Bearer {{accessToken}}
@@ -383,4 +384,30 @@ Authorization: Bearer {{accessToken}}
 {
     "newStage": "Rejected",
     "reason": "Did not meet community requirements"
+}
+
+###############################################################################
+# REQUIRED AGREEMENTS
+# Both agreements must be signed before transitioning to HouseHunting
+###############################################################################
+
+### Record Broker Agreement Signed
+# Upload the signed document first, then call this with the document URL
+POST {{baseUrl}}/api/applicants/{{applicantId}}/agreements
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "agreementType": "BrokerAgreement",
+    "documentUrl": "https://s3.amazonaws.com/family-relocation/agreements/broker-agreement-12345.pdf"
+}
+
+### Record Community Takanos Signed
+POST {{baseUrl}}/api/applicants/{{applicantId}}/agreements
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "agreementType": "CommunityTakanos",
+    "documentUrl": "https://s3.amazonaws.com/family-relocation/agreements/takanos-12345.pdf"
 }

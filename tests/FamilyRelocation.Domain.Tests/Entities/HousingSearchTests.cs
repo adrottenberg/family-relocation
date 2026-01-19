@@ -56,10 +56,12 @@ public class HousingSearchTests
     }
 
     [Fact]
-    public void StartHouseHunting_FromSubmitted_ShouldMoveToHouseHunting()
+    public void StartHouseHunting_FromSubmitted_WithSignedAgreements_ShouldMoveToHouseHunting()
     {
         // Arrange
         var housingSearch = CreateTestHousingSearch();
+        housingSearch.RecordBrokerAgreementSigned("https://s3.example.com/broker.pdf", _userId);
+        housingSearch.RecordCommunityTakanosSigned("https://s3.example.com/takanos.pdf", _userId);
         housingSearch.ClearDomainEvents();
 
         // Act
@@ -70,6 +72,34 @@ public class HousingSearchTests
         housingSearch.DomainEvents.Should().ContainSingle()
             .Which.Should().BeOfType<HousingSearchStageChanged>()
             .Which.NewStage.Should().Be(HousingSearchStage.HouseHunting);
+    }
+
+    [Fact]
+    public void StartHouseHunting_FromSubmitted_WithoutAgreements_ShouldThrow()
+    {
+        // Arrange
+        var housingSearch = CreateTestHousingSearch();
+
+        // Act
+        var act = () => housingSearch.StartHouseHunting(_userId);
+
+        // Assert
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*broker agreement*community takanos*");
+    }
+
+    [Fact]
+    public void StartHouseHunting_FromSubmitted_WithOnlyBrokerAgreement_ShouldThrow()
+    {
+        // Arrange
+        var housingSearch = CreateTestHousingSearch();
+        housingSearch.RecordBrokerAgreementSigned("https://s3.example.com/broker.pdf", _userId);
+
+        // Act
+        var act = () => housingSearch.StartHouseHunting(_userId);
+
+        // Assert
+        act.Should().Throw<InvalidOperationException>();
     }
 
     [Fact]
@@ -416,6 +446,10 @@ public class HousingSearchTests
         // Act - Progress through entire workflow
         housingSearch.Stage.Should().Be(HousingSearchStage.Submitted);
 
+        // Sign required agreements
+        housingSearch.RecordBrokerAgreementSigned("https://s3.example.com/broker.pdf", _userId);
+        housingSearch.RecordCommunityTakanosSigned("https://s3.example.com/takanos.pdf", _userId);
+
         housingSearch.StartHouseHunting(_userId);
         housingSearch.Stage.Should().Be(HousingSearchStage.HouseHunting);
 
@@ -538,6 +572,9 @@ public class HousingSearchTests
     private HousingSearch CreateHouseHuntingSearch()
     {
         var housingSearch = CreateTestHousingSearch();
+        // Sign required agreements before starting house hunting
+        housingSearch.RecordBrokerAgreementSigned("https://s3.example.com/broker-agreement.pdf", _userId);
+        housingSearch.RecordCommunityTakanosSigned("https://s3.example.com/takanos.pdf", _userId);
         housingSearch.StartHouseHunting(_userId);
         return housingSearch;
     }

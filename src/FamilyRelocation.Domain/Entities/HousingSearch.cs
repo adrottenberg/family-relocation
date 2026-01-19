@@ -55,6 +55,15 @@ public class HousingSearch : Entity<Guid>
     // Notes
     public string? Notes { get; private set; }
 
+    // Required Agreements (must be signed before starting house hunting)
+    public bool BrokerAgreementSigned { get; private set; }
+    public string? BrokerAgreementDocumentUrl { get; private set; }
+    public DateTime? BrokerAgreementSignedDate { get; private set; }
+
+    public bool CommunityTakanosSigned { get; private set; }
+    public string? CommunityTakanosDocumentUrl { get; private set; }
+    public DateTime? CommunityTakanosSignedDate { get; private set; }
+
     // Audit
     public Guid CreatedBy { get; private set; }
     public DateTime CreatedDate { get; private set; }
@@ -127,8 +136,50 @@ public class HousingSearch : Entity<Guid>
                 $"StartHouseHunting can only be called from Submitted or Paused stage. " +
                 $"Use ContractFellThrough to return to house hunting from {Stage}.");
 
+        // Business rule: Agreements must be signed before starting (only from Submitted)
+        if (Stage == HousingSearchStage.Submitted && !AreAgreementsSigned)
+            throw new InvalidOperationException(
+                "Both broker agreement and community takanos must be signed with uploaded documents before starting house hunting.");
+
         TransitionTo(HousingSearchStage.HouseHunting, modifiedBy);
     }
+
+    /// <summary>
+    /// Record that the broker agreement has been signed and document uploaded.
+    /// </summary>
+    public void RecordBrokerAgreementSigned(string documentUrl, Guid modifiedBy)
+    {
+        if (string.IsNullOrWhiteSpace(documentUrl))
+            throw new ArgumentException("Document URL is required", nameof(documentUrl));
+
+        BrokerAgreementSigned = true;
+        BrokerAgreementDocumentUrl = documentUrl;
+        BrokerAgreementSignedDate = DateTime.UtcNow;
+        ModifiedBy = modifiedBy;
+        ModifiedDate = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Record that the community takanos agreement has been signed and document uploaded.
+    /// </summary>
+    public void RecordCommunityTakanosSigned(string documentUrl, Guid modifiedBy)
+    {
+        if (string.IsNullOrWhiteSpace(documentUrl))
+            throw new ArgumentException("Document URL is required", nameof(documentUrl));
+
+        CommunityTakanosSigned = true;
+        CommunityTakanosDocumentUrl = documentUrl;
+        CommunityTakanosSignedDate = DateTime.UtcNow;
+        ModifiedBy = modifiedBy;
+        ModifiedDate = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Check if all required agreements are signed with uploaded documents.
+    /// </summary>
+    public bool AreAgreementsSigned =>
+        BrokerAgreementSigned && !string.IsNullOrEmpty(BrokerAgreementDocumentUrl) &&
+        CommunityTakanosSigned && !string.IsNullOrEmpty(CommunityTakanosDocumentUrl);
 
     /// <summary>
     /// Reject the housing search (board rejection or other disqualification)
