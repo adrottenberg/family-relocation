@@ -1,7 +1,6 @@
 using FamilyRelocation.Application.Applicants.Commands.ChangeStage;
 using FamilyRelocation.Application.Applicants.Commands.CreateApplicant;
 using FamilyRelocation.Application.Applicants.Commands.RecordAgreement;
-using FamilyRelocation.Application.Applicants.Commands.RejectApplicant;
 using FamilyRelocation.Application.Applicants.Commands.SetBoardDecision;
 using FamilyRelocation.Application.Applicants.Commands.UpdateApplicant;
 using FamilyRelocation.Application.Applicants.Commands.UpdatePreferences;
@@ -219,14 +218,17 @@ public class ApplicantsController : ControllerBase
     }
 
     /// <summary>
-    /// Sets the board's decision on an applicant.
+    /// Sets the board's decision on an applicant and transitions the stage accordingly.
     /// </summary>
     /// <remarks>
-    /// Records the board's decision (Approved, Rejected, Deferred, or Pending).
-    /// This does not change the housing search stage - use the /approve or /reject
-    /// endpoints to transition the stage after recording the decision.
+    /// Records the board's decision and automatically transitions the housing search stage:
+    /// - Approved: Transitions to BoardApproved stage. Applicant can then sign agreements and start house hunting.
+    /// - Rejected: Transitions to Rejected stage.
+    /// - Deferred: No stage change. Applicant remains in Submitted stage for future review.
+    /// - Pending: No stage change. Resets decision to pending.
     ///
     /// Can only set decision when applicant is in Submitted stage.
+    /// The 'notes' field can be used for approval notes, rejection reason, or deferral reason.
     /// </remarks>
     [HttpPut("{id:guid}/board-review")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -237,37 +239,6 @@ public class ApplicantsController : ControllerBase
         try
         {
             var command = new SetBoardDecisionCommand(id, request);
-            var result = await _mediator.Send(command);
-            return Ok(result);
-        }
-        catch (NotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (ValidationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-    }
-
-    /// <summary>
-    /// Rejects an applicant (transitions to Rejected stage).
-    /// </summary>
-    /// <remarks>
-    /// Transitions the housing search from Submitted to Rejected stage.
-    /// Requires the board decision to be set to Rejected first via PUT /board-review.
-    ///
-    /// Optional: Include a reason for the rejection.
-    /// </remarks>
-    [HttpPost("{id:guid}/reject")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> RejectApplicant(Guid id, [FromBody] RejectApplicantRequest? request)
-    {
-        try
-        {
-            var command = new RejectApplicantCommand(id, request);
             var result = await _mediator.Send(command);
             return Ok(result);
         }

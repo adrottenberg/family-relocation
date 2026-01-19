@@ -489,12 +489,12 @@ Authorization: Bearer {{accessToken}}
 
 ###############################################################################
 # BOARD REVIEW (UV-29)
-# Set board decision and reject/approve applicants
+# Set board decision - automatically transitions stage based on decision
 ###############################################################################
 
 ### Set Board Decision - Approved
-# Records the board's decision. Does NOT change stage.
-# Use POST /approve after this to transition to BoardApproved stage.
+# Records decision AND transitions to BoardApproved stage.
+# Response includes next steps (which agreements need to be signed).
 PUT {{baseUrl}}/api/applicants/{{applicantId}}/board-review
 Content-Type: application/json
 Authorization: Bearer {{accessToken}}
@@ -505,8 +505,7 @@ Authorization: Bearer {{accessToken}}
 }
 
 ### Set Board Decision - Rejected
-# Records the board's decision. Does NOT change stage.
-# Use POST /reject after this to transition to Rejected stage.
+# Records decision AND transitions to Rejected stage.
 PUT {{baseUrl}}/api/applicants/{{applicantId}}/board-review
 Content-Type: application/json
 Authorization: Bearer {{accessToken}}
@@ -517,7 +516,7 @@ Authorization: Bearer {{accessToken}}
 }
 
 ### Set Board Decision - Deferred
-# Applicant remains in Submitted stage for future review.
+# Records decision. No stage change - remains in Submitted for future review.
 PUT {{baseUrl}}/api/applicants/{{applicantId}}/board-review
 Content-Type: application/json
 Authorization: Bearer {{accessToken}}
@@ -526,15 +525,4 @@ Authorization: Bearer {{accessToken}}
     "decision": "Deferred",
     "reviewDate": "2026-02-01",
     "notes": "Waiting for additional references."
-}
-
-### Reject Applicant
-# Transitions from Submitted to Rejected stage.
-# Requires board decision to be "Rejected" first.
-POST {{baseUrl}}/api/applicants/{{applicantId}}/reject
-Content-Type: application/json
-Authorization: Bearer {{accessToken}}
-
-{
-    "reason": "Did not meet community requirements."
 }

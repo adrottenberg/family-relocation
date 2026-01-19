@@ -42,19 +42,55 @@ public class SetBoardDecisionResponse
     public required Guid ApplicantId { get; init; }
 
     /// <summary>
+    /// The housing search ID.
+    /// </summary>
+    public required Guid HousingSearchId { get; init; }
+
+    /// <summary>
     /// The board review details.
     /// </summary>
     public required BoardReviewDto BoardReview { get; init; }
 
     /// <summary>
-    /// The current housing search stage.
+    /// The previous housing search stage before this decision.
     /// </summary>
-    public required string CurrentStage { get; init; }
+    public required string PreviousStage { get; init; }
+
+    /// <summary>
+    /// The new housing search stage after this decision.
+    /// </summary>
+    public required string NewStage { get; init; }
 
     /// <summary>
     /// Guidance message for next steps.
     /// </summary>
     public required string Message { get; init; }
+
+    /// <summary>
+    /// Next steps information (for Approved decisions).
+    /// </summary>
+    public NextStepsInfo? NextSteps { get; init; }
+}
+
+/// <summary>
+/// Information about next steps after board approval.
+/// </summary>
+public class NextStepsInfo
+{
+    /// <summary>
+    /// Whether the broker agreement has been signed.
+    /// </summary>
+    public required bool BrokerAgreementSigned { get; init; }
+
+    /// <summary>
+    /// Whether the community takanos have been signed.
+    /// </summary>
+    public required bool CommunityTakanosSigned { get; init; }
+
+    /// <summary>
+    /// Whether all required agreements are signed and applicant can start house hunting.
+    /// </summary>
+    public required bool ReadyForHouseHunting { get; init; }
 }
 
 /// <summary>

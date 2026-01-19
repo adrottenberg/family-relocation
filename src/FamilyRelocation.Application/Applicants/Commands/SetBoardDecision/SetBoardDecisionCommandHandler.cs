@@ -45,6 +45,7 @@ public class SetBoardDecisionCommandHandler : IRequestHandler<SetBoardDecisionCo
             ?? throw new UnauthorizedAccessException("User must be authenticated to set board decision.");
 
         var request = command.Request;
+        var previousStage = housingSearch.Stage;
 
         // Set the board decision
         applicant.SetBoardDecision(
@@ -53,11 +54,28 @@ public class SetBoardDecisionCommandHandler : IRequestHandler<SetBoardDecisionCo
             reviewedByUserId: userId,
             reviewDate: request.ReviewDate);
 
+        // Transition stage based on decision
+        NextStepsInfo? nextSteps = null;
+        switch (request.Decision)
+        {
+            case BoardDecision.Approved:
+                housingSearch.ApproveBoardReview(userId);
+                nextSteps = BuildNextStepsInfo(housingSearch);
+                break;
+
+            case BoardDecision.Rejected:
+                housingSearch.Reject(request.Notes, userId);
+                break;
+
+            // Deferred and Pending don't change stage
+        }
+
         await _context.SaveChangesAsync(cancellationToken);
 
         return new SetBoardDecisionResponse
         {
             ApplicantId = applicant.Id,
+            HousingSearchId = housingSearch.Id,
             BoardReview = new BoardReviewDto
             {
                 Decision = applicant.BoardReview!.Decision.ToString(),
@@ -65,17 +83,34 @@ public class SetBoardDecisionCommandHandler : IRequestHandler<SetBoardDecisionCo
                 Notes = applicant.BoardReview.Notes,
                 ReviewedBy = applicant.BoardReview.ReviewedByUserId
             },
-            CurrentStage = housingSearch.Stage.ToString(),
-            Message = GetNextStepMessage(request.Decision)
+            PreviousStage = previousStage.ToString(),
+            NewStage = housingSearch.Stage.ToString(),
+            Message = GetNextStepMessage(request.Decision, nextSteps?.ReadyForHouseHunting ?? false),
+            NextSteps = nextSteps
         };
     }
 
-    private static string GetNextStepMessage(BoardDecision decision) => decision switch
+    private static NextStepsInfo BuildNextStepsInfo(HousingSearch housingSearch)
     {
+        var brokerSigned = housingSearch.BrokerAgreementSignedDate.HasValue;
+        var takanosSigned = housingSearch.CommunityTakanosSignedDate.HasValue;
+
+        return new NextStepsInfo
+        {
+            BrokerAgreementSigned = brokerSigned,
+            CommunityTakanosSigned = takanosSigned,
+            ReadyForHouseHunting = brokerSigned && takanosSigned
+        };
+    }
+
+    private static string GetNextStepMessage(BoardDecision decision, bool readyForHouseHunting) => decision switch
+    {
+        BoardDecision.Approved when readyForHouseHunting =>
+            "Board approved. All agreements signed. Ready to start house hunting.",
         BoardDecision.Approved =>
-            "Board approved. Use POST /api/applicants/{id}/approve to transition to BoardApproved stage.",
+            "Board approved. Awaiting signed broker agreement and community takanos before house hunting can begin.",
         BoardDecision.Rejected =>
-            "Board rejected. Use POST /api/applicants/{id}/reject to transition to Rejected stage.",
+            "Application rejected.",
         BoardDecision.Deferred =>
             "Decision deferred. Applicant remains in Submitted stage for future review.",
         BoardDecision.Pending =>
