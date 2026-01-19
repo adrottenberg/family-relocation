@@ -2140,6 +2140,154 @@ FamilyRelocation/
 
 ---
 
+## SESSION: January 19, 2026 - Sprint 2 Testing & Bug Fixes
+
+### Context
+Testing Sprint 2 frontend implementation and fixing critical bugs related to EF Core JSONB serialization and frontend/backend DTO alignment.
+
+### EF Core JSONB Serialization Fix
+
+**Problem:** "Cannot get the value of a token type 'StartObject' as a string" error when loading applicants. EF Core couldn't deserialize complex value objects stored in JSONB columns.
+
+**Root Cause:** Combination of:
+1. Inconsistent EF Core configuration for JSON columns
+2. Value objects had get-only properties without setters - EF Core couldn't set values during deserialization
+
+**Solution (Clean Approach for EF Core 10 + Npgsql 10):**
+
+1. **Use `OwnsOne/OwnsMany` with `ToJson()` pattern:**
+```csharp
+builder.OwnsOne(a => a.Husband, husband =>
+{
+    husband.ToJson();
+    husband.OwnsOne(h => h.Email);
+    husband.OwnsMany(h => h.PhoneNumbers);
+});
+```
+
+2. **Add `init` setters to all value objects used in JSONB columns:**
+```csharp
+// Before
+public int Age { get; }
+
+// After
+public int Age { get; init; }
+```
+
+**Value Objects Updated with `init` setters:**
+- `Child.cs` - Age, Gender, Name, School
+- `Contract.cs` - PropertyId, Price, ContractDate, ExpectedClosingDate, ActualClosingDate
+- `FailedContractAttempt.cs` - Contract, FailedDate, Reason
+- `HousingPreferences.cs` - Budget, MinBedrooms, MinBathrooms, RequiredFeatures, ShulProximity, MoveTimeline
+- `Money.cs` - Amount, Currency
+- `ShulProximityPreference.cs` - All properties
+
+**Key Insight:** The `init` setter preserves immutability (can only set during object initialization) while allowing EF Core's JSON deserializer to populate properties.
+
+### Frontend/Backend DTO Alignment
+
+**Problem:** Applicant detail page was blank because frontend TypeScript types didn't match backend C# DTOs.
+
+**Mismatches Fixed:**
+
+| Field | Frontend (Wrong) | Backend (Correct) |
+|-------|------------------|-------------------|
+| Phone | `phone: string` | `phoneNumbers: PhoneNumberDto[]` |
+| Wife Last Name | `lastName` | `maidenName` |
+| Budget | `budget.amount` | `budgetAmount` |
+| Housing Search | Not included | Added to ApplicantDto |
+
+**Backend Changes:**
+- Added `HousingSearch` property to `ApplicantDto`
+- Created `HousingSearchDto` and `ContractDto` in Application layer
+- Updated `GetApplicantByIdQueryHandler` to include HousingSearch with `.Include()`
+
+**Frontend Changes (api/types/index.ts):**
+```typescript
+export interface HusbandInfoDto {
+  firstName: string;
+  lastName: string;
+  phoneNumbers?: PhoneNumberDto[];  // Changed from phone: string
+  // ...
+}
+
+export interface HousingPreferencesDto {
+  budgetAmount?: number;  // Changed from budget?: MoneyDto
+  // ...
+}
+```
+
+**ApplicantDetailPage.tsx Updates:**
+- Added `getPrimaryPhone()` helper for phone number arrays
+- Updated to use `wife.maidenName` instead of `wife.lastName`
+- Updated to use `prefs.budgetAmount` instead of `prefs.budget.amount`
+
+### UI Bug Fixes
+
+**1. Duplicate "Add Applicant" Button:**
+- Button appeared in both Header.tsx and ApplicantListPage.tsx
+- Removed from Header.tsx (global nav shouldn't have page-specific actions)
+- Disabled in ApplicantListPage.tsx with tooltip "Coming soon"
+
+**2. Blank Login Button:**
+- Fixed button styling in antd-theme.ts
+
+### Database Migration
+
+Dropped database and recreated with fresh migration using proper JSONB configuration:
+```bash
+dotnet ef database drop --force
+dotnet ef migrations add InitialCreate
+dotnet ef database update
+```
+
+### Commits & PR
+
+**Commits:**
+1. `e3c56d5` - "fix: EF Core JSONB serialization and frontend UI fixes"
+2. `e9667c0` - "fix: applicant detail page - align frontend types with backend DTOs"
+
+**PR Updated:** https://github.com/adrottenberg/FamilyRelocation/pull/15
+
+### Key Takeaways
+
+1. **EF Core 10 JSONB Best Practice:** Use `OwnsOne/OwnsMany` with `ToJson()` for complex value objects
+2. **Value Object `init` Setters:** Required for EF Core JSON deserialization while preserving immutability
+3. **Type Alignment:** Frontend types must exactly match backend DTOs - use code generation or strict review process
+4. **Test with Data:** Always test APIs with actual data, not just empty responses
+
+### Test Results
+All tests pass. Application loads correctly with data:
+- Applicant list page shows data
+- Pipeline page shows Kanban board
+- Applicant detail page shows full information
+
+---
+
+## FOR NEXT SESSION
+
+### To Quickly Re-Establish Context
+
+**Just say:**
+> "I'm the developer building the Family Relocation CRM for the Jewish community in Union County. Sprint 2 is nearly complete."
+
+**I'll know:**
+- Complete domain model (Applicant, HousingSearch, etc.)
+- Tech stack (.NET 10, React + Ant Design, AWS)
+- **Sprint 2 frontend is working** - Login, List, Detail, Pipeline pages
+- **EF Core JSONB pattern:** `OwnsOne/OwnsMany` with `ToJson()` + `init` setters
+- **Frontend types aligned** with backend DTOs
+- Query object pattern, all handlers in Application layer
+- ApplicantMapper extension methods
+
+### Remaining Sprint 2 Work
+- Edit Applicant functionality (button exists but not implemented)
+- Any remaining frontend polish
+
+**And we can pick up exactly where we left off.**
+
+---
+
 **END OF CONVERSATION MEMORY LOG**
 
 This document captures our complete collaboration. Use it to quickly re-establish context in future sessions.
