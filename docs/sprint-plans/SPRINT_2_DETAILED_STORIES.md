@@ -1,10 +1,10 @@
 # SPRINT 2 DETAILED USER STORIES
-## Family Relocation System - Application Workflow & Public Form
+## Family Relocation System - Application Workflow & Frontend Foundation
 
 **Sprint Duration:** 2 weeks  
-**Sprint Goal:** Enable families to apply publicly and coordinators to manage applications through workflow stages  
-**Total Points:** ~38 points (8 stories)  
-**Prerequisites:** Sprint 1 complete (Applicant CRUD, Authentication, Domain Model)
+**Sprint Goal:** Enable families to apply publicly, coordinators to manage applications through workflow stages, and establish frontend foundation  
+**Total Points:** ~34 points (17 Backend + 17 Frontend)  
+**Prerequisites:** Sprint 1 complete (Applicant CRUD, Authentication, Domain Model, 291 tests passing)
 
 ---
 
@@ -12,18 +12,37 @@
 
 ### Stories in This Sprint
 
+#### Backend Stories (17 points)
+
 | ID | Story | Points | Epic |
 |----|-------|--------|------|
-| US-010 | Public application form submission | 8 | Public Application |
-| US-011 | Application confirmation email | 3 | Public Application |
-| US-012 | Create HousingSearch for applicant | 3 | Application Management |
-| US-013 | View HousingSearch details | 3 | Application Management |
-| US-014 | View HousingSearch pipeline (Kanban) | 8 | Application Management |
-| US-015 | Change HousingSearch stage | 5 | Application Management |
-| US-016 | Update housing preferences | 5 | Housing Preferences |
-| US-017 | Calculate monthly payment estimate | 3 | Housing Preferences |
+| US-010 | Modify applicant creation to also create HousingSearch | 3 | Public Application |
+| US-014 | View applicant pipeline (Kanban API) | 5 | Application Management |
+| US-015 | Change HousingSearch stage (API endpoint) | 2 | Application Management |
+| US-016 | Update housing preferences | 2 | Housing Preferences |
+| US-018 | Implement audit log feature | 5 | Infrastructure |
 
-**Total: 38 points**
+#### Frontend Stories (17 points)
+
+| ID | Story | Points | Epic |
+|----|-------|--------|------|
+| US-F01 | React project setup with design system | 3 | Frontend Foundation |
+| US-F02 | Authentication flow (login page) | 5 | Frontend Foundation |
+| US-F03 | App shell & navigation | 3 | Frontend Foundation |
+| US-F04 | Applicant list page | 3 | Frontend Foundation |
+| US-F05 | Applicant detail page | 3 | Frontend Foundation |
+| US-F06 | Pipeline Kanban board | 5 | Frontend Foundation |
+
+**Total: 34 points (17 Backend + 17 Frontend)**
+
+### Stories Removed/Deferred from Original Plan
+
+| ID | Story | Reason |
+|----|-------|--------|
+| US-011 | Application confirmation email | Deferred - Need proper editable email templates (DB-stored, coordinator-editable, variable placeholders) |
+| US-012 | Create HousingSearch for applicant | Removed - Now handled automatically in US-010 |
+| US-013 | View HousingSearch details | Removed - Already returned as part of Applicant response |
+| US-017 | Calculate monthly payment estimate | Deferred to P3 - Nice-to-have feature |
 
 ---
 
@@ -51,7 +70,7 @@ Applicant (Aggregate Root)
 └── Audit fields
 
 HousingSearch (Aggregate Root)
-├── ApplicantId (FK)
+├── ApplicantId (FK) - 1:1 relationship
 ├── Stage (HousingSearchStage enum)
 ├── Preferences: HousingPreferences (Value Object - jsonb)
 ├── CurrentContract: Contract? (Value Object - jsonb)
@@ -80,95 +99,523 @@ public enum MoveTimeline { Immediate, ShortTerm, MediumTerm, LongTerm, Extended,
 
 ---
 
-## US-010: Public Application Form Submission
+# PART 1: BACKEND STORIES
+
+---
+
+## US-010: Modify Applicant Creation to Also Create HousingSearch
 
 ### Story
 
-**As a** prospective family  
-**I want to** submit an application without creating an account  
-**So that** I can apply to relocate to the community easily
+**As a** prospective family or coordinator  
+**I want** a HousingSearch to be automatically created when an applicant is created  
+**So that** the applicant immediately appears in the pipeline
 
 **Priority:** P0  
-**Effort:** 8 points  
+**Effort:** 3 points  
 **Sprint:** 2
+
+### Background
+
+The existing `POST /api/applicants` endpoint is already `[AllowAnonymous]` and handles applicant creation. Rather than creating a separate public application endpoint, we modify this endpoint to also create a HousingSearch record.
 
 ### Acceptance Criteria
 
-1. Public endpoint accepts application without authentication
-2. Creates Applicant with all required information
-3. Creates HousingSearch in "Submitted" stage
-4. Validates all required fields (husband name, email, at least one phone)
-5. Checks for duplicate email (husband or wife)
-6. Returns confirmation with application ID
-7. Marks applicant as self-submitted (CreatedBy = WellKnownIds.SelfSubmittedUserId)
+1. When an applicant is created, a HousingSearch is automatically created
+2. HousingSearch is created in "Submitted" stage
+3. HousingSearch.Preferences populated from request (if provided)
+4. Both Applicant and HousingSearch created in same transaction
+5. Response includes HousingSearchId
+6. Self-submitted applicants marked with `CreatedBy = WellKnownIds.SelfSubmittedUserId`
 
 ### Acceptance Criteria (Gherkin Format)
 
 | Scenario | Given | When | Then |
 |----------|-------|------|------|
-| Valid submission | Valid application data | POST /api/applications/public | 201 Created with ApplicantId and HousingSearchId |
-| Duplicate email | Email already exists | POST /api/applications/public | 409 Conflict with error message |
-| Missing required | No husband first name | POST /api/applications/public | 400 Bad Request with validation errors |
-| Missing phone | No phone numbers provided | POST /api/applications/public | 400 Bad Request "At least one phone required" |
-| Creates both entities | Valid submission | Check database | Applicant AND HousingSearch created |
+| Creates both entities | Valid applicant data | POST /api/applicants | Applicant AND HousingSearch created |
+| Sets correct stage | Valid submission | POST /api/applicants | HousingSearch.Stage == Submitted |
+| Includes preferences | Request has preferences | POST /api/applicants | HousingSearch.Preferences populated |
+| Returns both IDs | Valid submission | POST /api/applicants | Response includes ApplicantId AND HousingSearchId |
+| Self-submitted tracking | Anonymous request | POST /api/applicants | CreatedBy = SelfSubmittedUserId |
+
+### Technical Implementation
+
+**Modify CreateApplicantCommand:**
+```csharp
+public record CreateApplicantCommand(CreateApplicantRequest Request) 
+    : IRequest<CreateApplicantResponse>;
+
+// Add to request DTO (if not already present)
+public class CreateApplicantRequest
+{
+    // ... existing fields ...
+    
+    // Optional housing preferences for initial submission
+    public HousingPreferencesRequest? HousingPreferences { get; init; }
+}
+
+// Modify response DTO
+public class CreateApplicantResponse
+{
+    public required Guid ApplicantId { get; init; }
+    public required Guid HousingSearchId { get; init; }  // NEW
+}
+```
+
+**Modify CreateApplicantCommandHandler:**
+```csharp
+public class CreateApplicantCommandHandler 
+    : IRequestHandler<CreateApplicantCommand, CreateApplicantResponse>
+{
+    private readonly IApplicationDbContext _context;
+    private readonly ICurrentUserService _currentUserService;
+
+    public async Task<CreateApplicantResponse> Handle(
+        CreateApplicantCommand request, 
+        CancellationToken cancellationToken)
+    {
+        var req = request.Request;
+        
+        // Check for duplicate email (existing logic)
+        var existingEmail = await _context.Set<Applicant>()
+            .AnyAsync(a => a.Husband.Email == req.Husband.Email, cancellationToken);
+                
+        if (existingEmail)
+        {
+            throw new ConflictException("An applicant with this email already exists.");
+        }
+
+        // Determine CreatedBy
+        var createdBy = _currentUserService.IsAuthenticated 
+            ? _currentUserService.UserId 
+            : WellKnownIds.SelfSubmittedUserId;
+
+        // Create Applicant (existing logic)
+        var applicant = new Applicant
+        {
+            Id = Guid.NewGuid(),
+            Husband = req.Husband.ToDomain(),
+            Wife = req.Wife?.ToDomain(),
+            Address = req.Address.ToDomain(),
+            Children = req.Children?.Select(c => c.ToDomain()).ToList() ?? new(),
+            CurrentKehila = req.CurrentKehila,
+            ShabbosShul = req.ShabbosShul,
+            BoardReview = new BoardReview { Decision = BoardDecision.Pending },
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = createdBy,
+        };
+
+        // NEW: Create HousingSearch
+        var housingSearch = new HousingSearch
+        {
+            Id = Guid.NewGuid(),
+            ApplicantId = applicant.Id,
+            Stage = HousingSearchStage.Submitted,
+            Preferences = req.HousingPreferences?.ToDomain() ?? new HousingPreferences(),
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = createdBy,
+        };
+
+        _context.Set<Applicant>().Add(applicant);
+        _context.Set<HousingSearch>().Add(housingSearch);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return new CreateApplicantResponse
+        {
+            ApplicantId = applicant.Id,
+            HousingSearchId = housingSearch.Id,
+        };
+    }
+}
+```
+
+**WellKnownIds:**
+```csharp
+public static class WellKnownIds
+{
+    public static readonly Guid SelfSubmittedUserId = Guid.Parse("00000000-0000-0000-0000-000000000001");
+    public static readonly Guid SystemUserId = Guid.Parse("00000000-0000-0000-0000-000000000002");
+}
+```
+
+### Test Cases
+
+```csharp
+public class CreateApplicantWithHousingSearchTests
+{
+    [Fact]
+    public async Task ValidApplicant_CreatesApplicantAndHousingSearch()
+    
+    [Fact]
+    public async Task ValidApplicant_HousingSearchStageIsSubmitted()
+    
+    [Fact]
+    public async Task WithPreferences_HousingSearchHasPreferences()
+    
+    [Fact]
+    public async Task AnonymousRequest_SetsCreatedByToSelfSubmitted()
+    
+    [Fact]
+    public async Task AuthenticatedRequest_SetsCreatedByToCurrentUser()
+    
+    [Fact]
+    public async Task ResponseIncludesBothIds()
+}
+```
+
+### Definition of Done
+
+- [ ] CreateApplicantCommand modified to also create HousingSearch
+- [ ] HousingSearch created with Stage = Submitted
+- [ ] Response includes HousingSearchId
+- [ ] Self-submitted tracked via CreatedBy
+- [ ] Transaction ensures both created or neither
+- [ ] Existing tests updated
+- [ ] New tests for HousingSearch creation
+
+---
+
+## US-014: View Applicant Pipeline (Kanban API)
+
+### Story
+
+**As a** coordinator  
+**I want to** see all applicants grouped by their housing search stage  
+**So that** I can view the pipeline and manage workflow
+
+**Priority:** P0  
+**Effort:** 5 points  
+**Sprint:** 2
+
+### Acceptance Criteria
+
+1. GET endpoint returns applicants grouped by HousingSearch stage
+2. Each item includes family name, days in stage, board decision, preferences
+3. Supports filtering by city, board decision
+4. Supports search by family name
+5. Returns counts per stage
+6. Pipeline viewed through Applicants (not HousingSearches)
 
 ### Technical Implementation
 
 **API Endpoint:**
 ```
-POST /api/applications/public
-[AllowAnonymous]
-Content-Type: application/json
+GET /api/applicants/pipeline
+[Authorize]
 ```
 
-**Request DTO:**
+**Query Parameters:**
+```
+?search=cohen&city=Union&boardDecision=Approved
+```
+
+**Response DTO:**
 ```csharp
-public class PublicApplicationRequest
+public class PipelineResponse
 {
-    // Husband (Required)
-    public required HusbandInfoRequest Husband { get; init; }
-    
-    // Wife (Optional but common)
-    public SpouseInfoRequest? Wife { get; init; }
-    
-    // Address (Required)
-    public required AddressRequest Address { get; init; }
-    
-    // Children (Optional)
-    public List<ChildRequest>? Children { get; init; }
-    
-    // Community (Optional on initial form)
-    public string? CurrentKehila { get; init; }
-    public string? ShabbosShul { get; init; }
-    
-    // Initial Housing Preferences (Optional)
-    public HousingPreferencesRequest? HousingPreferences { get; init; }
+    public required List<PipelineStageDto> Stages { get; init; }
+    public required int TotalCount { get; init; }
 }
 
-public class HusbandInfoRequest
+public class PipelineStageDto
 {
-    public required string FirstName { get; init; }
-    public required string LastName { get; init; }
-    public string? FatherName { get; init; }
-    public required string Email { get; init; }
-    public required List<PhoneNumberRequest> PhoneNumbers { get; init; }
-    public string? Occupation { get; init; }
-    public string? EmployerName { get; init; }
+    public required string Stage { get; init; }
+    public required int Count { get; init; }
+    public required List<PipelineItemDto> Items { get; init; }
 }
 
-public class SpouseInfoRequest
+public class PipelineItemDto
 {
-    public required string FirstName { get; init; }
-    public string? MaidenName { get; init; }
-    public string? FatherName { get; init; }
-    public string? Email { get; init; }
-    public List<PhoneNumberRequest>? PhoneNumbers { get; init; }
-    public string? HighSchool { get; init; }
-    public string? Occupation { get; init; }
-    public string? EmployerName { get; init; }
+    public required Guid ApplicantId { get; init; }
+    public required Guid HousingSearchId { get; init; }
+    public required string FamilyName { get; init; }
+    public required string HusbandFirstName { get; init; }
+    public string? WifeFirstName { get; init; }
+    public required int ChildrenCount { get; init; }
+    public required string BoardDecision { get; init; }
+    public required string Stage { get; init; }
+    public required int DaysInStage { get; init; }
+    public decimal? Budget { get; init; }
+    public List<string>? PreferredCities { get; init; }
+    public string? CurrentContractAddress { get; init; }
 }
+```
 
-public class HousingPreferencesRequest
+**Query:**
+```csharp
+public record GetApplicantPipelineQuery(
+    string? Search = null,
+    string? City = null,
+    string? BoardDecision = null
+) : IRequest<PipelineResponse>;
+```
+
+**Handler:**
+```csharp
+public class GetApplicantPipelineQueryHandler 
+    : IRequestHandler<GetApplicantPipelineQuery, PipelineResponse>
+{
+    private readonly IApplicationDbContext _context;
+
+    public async Task<PipelineResponse> Handle(
+        GetApplicantPipelineQuery request, 
+        CancellationToken cancellationToken)
+    {
+        var query = _context.Set<Applicant>()
+            .Include(a => a.HousingSearch)
+            .Where(a => a.HousingSearch != null)
+            .AsQueryable();
+
+        // Apply filters
+        if (!string.IsNullOrWhiteSpace(request.Search))
+        {
+            var search = request.Search.ToLower();
+            query = query.Where(a => 
+                a.Husband.LastName.ToLower().Contains(search) ||
+                a.Husband.FirstName.ToLower().Contains(search));
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.City))
+        {
+            query = query.Where(a => 
+                a.HousingSearch!.Preferences.PreferredCities.Contains(request.City));
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.BoardDecision) && 
+            Enum.TryParse<BoardDecision>(request.BoardDecision, out var decision))
+        {
+            query = query.Where(a => a.BoardReview.Decision == decision);
+        }
+
+        // Exclude rejected and paused by default
+        query = query.Where(a => 
+            a.HousingSearch!.Stage != HousingSearchStage.Rejected && 
+            a.HousingSearch!.Stage != HousingSearchStage.Paused);
+
+        var applicants = await query.ToListAsync(cancellationToken);
+
+        // Group by stage
+        var activeStages = new[] 
+        { 
+            HousingSearchStage.Submitted, 
+            HousingSearchStage.HouseHunting, 
+            HousingSearchStage.UnderContract, 
+            HousingSearchStage.Closed 
+        };
+
+        var stages = activeStages.Select(stage => new PipelineStageDto
+        {
+            Stage = stage.ToString(),
+            Count = applicants.Count(a => a.HousingSearch!.Stage == stage),
+            Items = applicants
+                .Where(a => a.HousingSearch!.Stage == stage)
+                .OrderByDescending(a => a.HousingSearch!.StageChangedAt ?? a.HousingSearch!.CreatedAt)
+                .Select(a => a.ToPipelineItemDto())
+                .ToList()
+        }).ToList();
+
+        return new PipelineResponse
+        {
+            Stages = stages,
+            TotalCount = applicants.Count
+        };
+    }
+}
+```
+
+**Mapper Extension:**
+```csharp
+public static PipelineItemDto ToPipelineItemDto(this Applicant applicant)
+{
+    var hs = applicant.HousingSearch!;
+    var stageDate = hs.StageChangedAt ?? hs.CreatedAt;
+    
+    return new PipelineItemDto
+    {
+        ApplicantId = applicant.Id,
+        HousingSearchId = hs.Id,
+        FamilyName = applicant.Husband.LastName,
+        HusbandFirstName = applicant.Husband.FirstName,
+        WifeFirstName = applicant.Wife?.FirstName,
+        ChildrenCount = applicant.Children?.Count ?? 0,
+        BoardDecision = applicant.BoardReview.Decision.ToString(),
+        Stage = hs.Stage.ToString(),
+        DaysInStage = (int)(DateTime.UtcNow - stageDate).TotalDays,
+        Budget = hs.Preferences?.BudgetAmount,
+        PreferredCities = hs.Preferences?.PreferredCities,
+        CurrentContractAddress = hs.CurrentContract?.PropertyAddress?.ToString(),
+    };
+}
+```
+
+**Controller:**
+```csharp
+[HttpGet("pipeline")]
+[Authorize]
+public async Task<ActionResult<PipelineResponse>> GetPipeline(
+    [FromQuery] string? search,
+    [FromQuery] string? city,
+    [FromQuery] string? boardDecision,
+    CancellationToken cancellationToken)
+{
+    var query = new GetApplicantPipelineQuery(search, city, boardDecision);
+    var result = await _mediator.Send(query, cancellationToken);
+    return Ok(result);
+}
+```
+
+### Definition of Done
+
+- [ ] GET /api/applicants/pipeline endpoint created
+- [ ] Returns applicants grouped by HousingSearch stage
+- [ ] Search by family name works
+- [ ] Filter by city works
+- [ ] Filter by board decision works
+- [ ] Returns counts per stage
+- [ ] Calculates DaysInStage correctly
+- [ ] Unit and integration tests
+
+---
+
+## US-015: Change HousingSearch Stage (API Endpoint)
+
+### Story
+
+**As a** coordinator  
+**I want to** change an applicant's housing search stage via API  
+**So that** I can track their progress through the pipeline
+
+**Priority:** P0  
+**Effort:** 2 points  
+**Sprint:** 2
+
+### Background
+
+Domain stage transition logic already exists in the HousingSearch entity. This story focuses on creating the API endpoint to expose that functionality.
+
+### Acceptance Criteria
+
+1. PUT endpoint changes stage for an applicant's housing search
+2. Uses existing domain transition validation logic
+3. Returns 400 for invalid transitions
+4. Updates StageChangedAt timestamp
+5. Records who made the change (ModifiedBy)
+
+### Technical Implementation
+
+**API Endpoint:**
+```
+PUT /api/applicants/{id}/housing-search/stage
+[Authorize(Roles = "Admin,Coordinator")]
+```
+
+**Request:**
+```csharp
+public class ChangeStageRequest
+{
+    public required string NewStage { get; init; }
+    public string? Notes { get; init; }
+}
+```
+
+**Command:**
+```csharp
+public record ChangeApplicantStageCommand(
+    Guid ApplicantId, 
+    string NewStage,
+    string? Notes
+) : IRequest<HousingSearchDto>;
+```
+
+**Handler:**
+```csharp
+public class ChangeApplicantStageCommandHandler 
+    : IRequestHandler<ChangeApplicantStageCommand, HousingSearchDto>
+{
+    private readonly IApplicationDbContext _context;
+    private readonly ICurrentUserService _currentUserService;
+
+    public async Task<HousingSearchDto> Handle(
+        ChangeApplicantStageCommand request, 
+        CancellationToken cancellationToken)
+    {
+        var applicant = await _context.Set<Applicant>()
+            .Include(a => a.HousingSearch)
+            .FirstOrDefaultAsync(a => a.Id == request.ApplicantId, cancellationToken)
+            ?? throw new NotFoundException("Applicant", request.ApplicantId);
+
+        if (applicant.HousingSearch == null)
+        {
+            throw new NotFoundException("HousingSearch for Applicant", request.ApplicantId);
+        }
+
+        if (!Enum.TryParse<HousingSearchStage>(request.NewStage, out var newStage))
+        {
+            throw new ValidationException($"Invalid stage: {request.NewStage}");
+        }
+
+        // Use domain method for transition (includes validation)
+        applicant.HousingSearch.TransitionTo(newStage);
+        
+        applicant.HousingSearch.ModifiedAt = DateTime.UtcNow;
+        applicant.HousingSearch.ModifiedBy = _currentUserService.UserId;
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return applicant.HousingSearch.ToDto();
+    }
+}
+```
+
+**Controller:**
+```csharp
+[HttpPut("{id}/housing-search/stage")]
+[Authorize(Roles = "Admin,Coordinator")]
+public async Task<ActionResult<HousingSearchDto>> ChangeStage(
+    Guid id,
+    [FromBody] ChangeStageRequest request,
+    CancellationToken cancellationToken)
+{
+    var command = new ChangeApplicantStageCommand(id, request.NewStage, request.Notes);
+    var result = await _mediator.Send(command, cancellationToken);
+    return Ok(result);
+}
+```
+
+### Definition of Done
+
+- [ ] PUT /api/applicants/{id}/housing-search/stage endpoint created
+- [ ] Uses existing domain transition logic
+- [ ] Returns 400 for invalid transitions
+- [ ] Updates StageChangedAt and ModifiedBy
+- [ ] Returns updated HousingSearchDto
+- [ ] Integration tests for valid and invalid transitions
+
+---
+
+## US-016: Update Housing Preferences
+
+### Story
+
+**As a** coordinator  
+**I want to** update a family's housing preferences  
+**So that** I can keep their search criteria current
+
+**Priority:** P1  
+**Effort:** 2 points  
+**Sprint:** 2
+
+### Technical Implementation
+
+**API Endpoint:**
+```
+PUT /api/applicants/{id}/housing-search/preferences
+[Authorize]
+```
+
+**Request:**
+```csharp
+public class UpdatePreferencesRequest
 {
     public decimal? BudgetAmount { get; init; }
     public int? MinBedrooms { get; init; }
@@ -182,1516 +629,9 @@ public class HousingPreferencesRequest
 
 **Command:**
 ```csharp
-public record SubmitPublicApplicationCommand(PublicApplicationRequest Application) 
-    : IRequest<PublicApplicationResult>;
-
-public class PublicApplicationResult
-{
-    public required Guid ApplicantId { get; init; }
-    public required Guid HousingSearchId { get; init; }
-    public required string ConfirmationMessage { get; init; }
-}
-```
-
-**Handler:**
-```csharp
-public class SubmitPublicApplicationCommandHandler 
-    : IRequestHandler<SubmitPublicApplicationCommand, PublicApplicationResult>
-{
-    private readonly IApplicationDbContext _context;
-    private readonly IMediator _mediator;
-
-    public async Task<PublicApplicationResult> Handle(
-        SubmitPublicApplicationCommand request, 
-        CancellationToken ct)
-    {
-        var app = request.Application;
-        
-        // Check for duplicate email (husband)
-        var husbandEmailExists = await _mediator.Send(
-            new ExistsByEmailQuery(app.Husband.Email), ct);
-        if (husbandEmailExists)
-            throw new DuplicateEmailException(app.Husband.Email);
-        
-        // Check for duplicate email (wife, if provided)
-        if (!string.IsNullOrWhiteSpace(app.Wife?.Email))
-        {
-            var wifeEmailExists = await _mediator.Send(
-                new ExistsByEmailQuery(app.Wife.Email), ct);
-            if (wifeEmailExists)
-                throw new DuplicateEmailException(app.Wife.Email);
-        }
-        
-        // Create Applicant
-        var applicant = Applicant.Create(
-            husband: app.Husband.ToDomain(),
-            wife: app.Wife?.ToDomain(),
-            address: app.Address.ToDomain(),
-            children: app.Children?.Select(c => c.ToDomain()).ToList() ?? new(),
-            currentKehila: app.CurrentKehila,
-            shabbosShul: app.ShabbosShul,
-            createdBy: WellKnownIds.SelfSubmittedUserId
-        );
-        
-        _context.Add(applicant);
-        
-        // Create HousingSearch with optional preferences
-        var preferences = app.HousingPreferences?.ToDomain() 
-            ?? HousingPreferences.Empty();
-        
-        var housingSearch = HousingSearch.Create(
-            applicantId: applicant.Id,
-            preferences: preferences,
-            createdBy: WellKnownIds.SelfSubmittedUserId
-        );
-        
-        _context.Add(housingSearch);
-        
-        await _context.SaveChangesAsync(ct);
-        
-        // Raise domain event for email notification
-        applicant.AddDomainEvent(new ApplicationSubmittedEvent(
-            applicant.Id, 
-            housingSearch.Id,
-            applicant.Husband.Email.Value));
-        
-        return new PublicApplicationResult
-        {
-            ApplicantId = applicant.Id,
-            HousingSearchId = housingSearch.Id,
-            ConfirmationMessage = "Application received! You will receive a confirmation email shortly."
-        };
-    }
-}
-```
-
-**Validator:**
-```csharp
-public class SubmitPublicApplicationCommandValidator 
-    : AbstractValidator<SubmitPublicApplicationCommand>
-{
-    public SubmitPublicApplicationCommandValidator()
-    {
-        RuleFor(x => x.Application.Husband)
-            .NotNull().WithMessage("Husband information is required");
-        
-        RuleFor(x => x.Application.Husband.FirstName)
-            .NotEmpty().WithMessage("Husband first name is required")
-            .MaximumLength(50);
-        
-        RuleFor(x => x.Application.Husband.LastName)
-            .NotEmpty().WithMessage("Husband last name is required")
-            .MaximumLength(50);
-        
-        RuleFor(x => x.Application.Husband.Email)
-            .NotEmpty().WithMessage("Email is required")
-            .EmailAddress().WithMessage("Invalid email format");
-        
-        RuleFor(x => x.Application.Husband.PhoneNumbers)
-            .NotEmpty().WithMessage("At least one phone number is required")
-            .Must(phones => phones.Count <= 5)
-            .WithMessage("Maximum 5 phone numbers allowed");
-        
-        RuleForEach(x => x.Application.Husband.PhoneNumbers)
-            .ChildRules(phone =>
-            {
-                phone.RuleFor(p => p.Number)
-                    .NotEmpty()
-                    .Matches(@"^\d{10}$").WithMessage("Phone must be 10 digits");
-            });
-        
-        RuleFor(x => x.Application.Address)
-            .NotNull().WithMessage("Address is required");
-        
-        RuleFor(x => x.Application.Address.Street)
-            .NotEmpty().WithMessage("Street is required");
-        
-        RuleFor(x => x.Application.Address.City)
-            .NotEmpty().WithMessage("City is required");
-        
-        RuleFor(x => x.Application.Address.State)
-            .NotEmpty().WithMessage("State is required")
-            .Length(2).WithMessage("State must be 2 characters");
-        
-        RuleFor(x => x.Application.Address.ZipCode)
-            .NotEmpty().WithMessage("Zip code is required")
-            .Matches(@"^\d{5}(-\d{4})?$").WithMessage("Invalid zip code format");
-        
-        // Optional wife validation (if provided)
-        When(x => x.Application.Wife != null, () =>
-        {
-            RuleFor(x => x.Application.Wife!.FirstName)
-                .NotEmpty().WithMessage("Wife first name required when wife info provided");
-            
-            RuleFor(x => x.Application.Wife!.Email)
-                .EmailAddress().WithMessage("Invalid wife email format")
-                .When(x => !string.IsNullOrWhiteSpace(x.Application.Wife?.Email));
-        });
-        
-        // Optional children validation
-        RuleForEach(x => x.Application.Children)
-            .ChildRules(child =>
-            {
-                child.RuleFor(c => c.Age)
-                    .InclusiveBetween(0, 18)
-                    .WithMessage("Child age must be 0-18");
-                
-                child.RuleFor(c => c.Gender)
-                    .IsInEnum().WithMessage("Invalid gender");
-            });
-    }
-}
-```
-
-**Controller:**
-```csharp
-[ApiController]
-[Route("api/applications")]
-public class ApplicationsController : ControllerBase
-{
-    private readonly IMediator _mediator;
-
-    [HttpPost("public")]
-    [AllowAnonymous]
-    [ProducesResponseType(typeof(PublicApplicationResult), StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
-    public async Task<ActionResult<PublicApplicationResult>> SubmitPublicApplication(
-        [FromBody] PublicApplicationRequest request,
-        CancellationToken ct)
-    {
-        var command = new SubmitPublicApplicationCommand(request);
-        var result = await _mediator.Send(command, ct);
-        
-        return CreatedAtAction(
-            nameof(HousingSearchController.GetById),
-            "HousingSearch",
-            new { id = result.HousingSearchId },
-            result);
-    }
-}
-```
-
-### Example Request
-
-```json
-POST /api/applications/public
-{
-  "husband": {
-    "firstName": "Moshe",
-    "lastName": "Cohen",
-    "fatherName": "Yaakov",
-    "email": "moshe.cohen@example.com",
-    "phoneNumbers": [
-      { "number": "9085551234", "type": "Cell", "isPrimary": true }
-    ],
-    "occupation": "Software Engineer",
-    "employerName": "Tech Corp"
-  },
-  "wife": {
-    "firstName": "Sarah",
-    "maidenName": "Goldstein",
-    "fatherName": "David",
-    "email": "sarah.cohen@example.com",
-    "highSchool": "Beth Rivkah",
-    "occupation": "Teacher"
-  },
-  "address": {
-    "street": "123 Brooklyn Ave",
-    "city": "Brooklyn",
-    "state": "NY",
-    "zipCode": "11213"
-  },
-  "children": [
-    { "age": 5, "gender": "Male" },
-    { "age": 3, "gender": "Female" }
-  ],
-  "currentKehila": "Crown Heights",
-  "shabbosShul": "770",
-  "housingPreferences": {
-    "budgetAmount": 450000,
-    "minBedrooms": 4,
-    "minBathrooms": 2,
-    "preferredCities": ["Union", "Roselle Park"],
-    "moveTimeline": "ShortTerm"
-  }
-}
-```
-
-### Example Response
-
-```json
-{
-  "applicantId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-  "housingSearchId": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
-  "confirmationMessage": "Application received! You will receive a confirmation email shortly."
-}
-```
-
-### Definition of Done
-
-- [ ] POST /api/applications/public endpoint created
-- [ ] Creates Applicant with all provided info
-- [ ] Creates HousingSearch in Submitted stage
-- [ ] Validates all required fields
-- [ ] Checks for duplicate emails
-- [ ] Returns 201 with IDs on success
-- [ ] Returns 400 with validation errors
-- [ ] Returns 409 on duplicate email
-- [ ] Unit tests for command handler (8+ tests)
-- [ ] Validation tests (15+ tests)
-- [ ] Integration tests (5+ tests)
-- [ ] All tests passing
-
----
-
-## US-011: Application Confirmation Email
-
-### Story
-
-**As a** family who submitted an application  
-**I want to** receive a confirmation email  
-**So that** I know my application was received successfully
-
-**Priority:** P0  
-**Effort:** 3 points  
-**Sprint:** 2
-
-### Acceptance Criteria
-
-1. Email sent automatically after successful application submission
-2. Email includes applicant name and application ID
-3. Email sent to husband's email (primary)
-4. CC to wife's email if provided
-5. Uses AWS SES for sending
-6. Handles SES failures gracefully (logs error, doesn't fail application)
-
-### Acceptance Criteria (Gherkin Format)
-
-| Scenario | Given | When | Then |
-|----------|-------|------|------|
-| Email sent | Application submitted | Domain event raised | Confirmation email sent to husband |
-| Wife CC'd | Wife email provided | Domain event raised | Email CC'd to wife |
-| SES failure | SES unavailable | Attempt to send | Error logged, application not affected |
-| Email content | Valid submission | Email sent | Contains name, ID, next steps |
-
-### Technical Implementation
-
-**Domain Event:**
-```csharp
-public record ApplicationSubmittedEvent(
-    Guid ApplicantId,
-    Guid HousingSearchId,
-    string HusbandEmail,
-    string? WifeEmail = null,
-    string HusbandFirstName = ""
-) : IDomainEvent;
-```
-
-**Event Handler:**
-```csharp
-public class ApplicationSubmittedEventHandler 
-    : INotificationHandler<ApplicationSubmittedEvent>
-{
-    private readonly IEmailService _emailService;
-    private readonly ILogger<ApplicationSubmittedEventHandler> _logger;
-
-    public async Task Handle(
-        ApplicationSubmittedEvent notification, 
-        CancellationToken ct)
-    {
-        try
-        {
-            var email = new ApplicationReceivedEmail
-            {
-                To = notification.HusbandEmail,
-                Cc = notification.WifeEmail,
-                ApplicantName = notification.HusbandFirstName,
-                ApplicationId = notification.HousingSearchId.ToString()[..8].ToUpper(),
-                SubmittedDate = DateTime.UtcNow
-            };
-            
-            await _emailService.SendApplicationReceivedAsync(email, ct);
-            
-            _logger.LogInformation(
-                "Confirmation email sent for application {ApplicationId}",
-                notification.HousingSearchId);
-        }
-        catch (Exception ex)
-        {
-            // Log but don't throw - email failure shouldn't fail the application
-            _logger.LogError(ex, 
-                "Failed to send confirmation email for application {ApplicationId}",
-                notification.HousingSearchId);
-        }
-    }
-}
-```
-
-**Email Service Interface:**
-```csharp
-public interface IEmailService
-{
-    Task SendApplicationReceivedAsync(ApplicationReceivedEmail email, CancellationToken ct);
-    Task SendBoardDecisionAsync(BoardDecisionEmail email, CancellationToken ct);
-    Task SendStatusChangeAsync(StatusChangeEmail email, CancellationToken ct);
-}
-
-public class ApplicationReceivedEmail
-{
-    public required string To { get; init; }
-    public string? Cc { get; init; }
-    public required string ApplicantName { get; init; }
-    public required string ApplicationId { get; init; }
-    public required DateTime SubmittedDate { get; init; }
-}
-```
-
-**AWS SES Implementation:**
-```csharp
-public class SesEmailService : IEmailService
-{
-    private readonly IAmazonSimpleEmailService _ses;
-    private readonly EmailSettings _settings;
-    private readonly ILogger<SesEmailService> _logger;
-
-    public async Task SendApplicationReceivedAsync(
-        ApplicationReceivedEmail email, 
-        CancellationToken ct)
-    {
-        var subject = "Application Received - Welcome!";
-        var htmlBody = GenerateApplicationReceivedHtml(email);
-        var textBody = GenerateApplicationReceivedText(email);
-
-        var request = new SendEmailRequest
-        {
-            Source = _settings.FromAddress,
-            Destination = new Destination
-            {
-                ToAddresses = new List<string> { email.To },
-                CcAddresses = string.IsNullOrWhiteSpace(email.Cc) 
-                    ? new List<string>() 
-                    : new List<string> { email.Cc }
-            },
-            Message = new Message
-            {
-                Subject = new Content(subject),
-                Body = new Body
-                {
-                    Html = new Content(htmlBody),
-                    Text = new Content(textBody)
-                }
-            }
-        };
-
-        await _ses.SendEmailAsync(request, ct);
-    }
-
-    private string GenerateApplicationReceivedHtml(ApplicationReceivedEmail email)
-    {
-        return $@"
-<!DOCTYPE html>
-<html>
-<head>
-    <style>
-        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
-        .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-        .header {{ background-color: #2c5282; color: white; padding: 20px; text-align: center; }}
-        .content {{ padding: 20px; background-color: #f7fafc; }}
-        .footer {{ text-align: center; padding: 20px; font-size: 12px; color: #718096; }}
-        .highlight {{ background-color: #ebf8ff; padding: 15px; border-left: 4px solid #2c5282; margin: 20px 0; }}
-    </style>
-</head>
-<body>
-    <div class='container'>
-        <div class='header'>
-            <h1>Application Received!</h1>
-        </div>
-        <div class='content'>
-            <p>Dear {email.ApplicantName},</p>
-            
-            <p>Thank you for applying to join our community! We've received your application and will review it shortly.</p>
-            
-            <div class='highlight'>
-                <strong>Application ID:</strong> {email.ApplicationId}<br/>
-                <strong>Submitted:</strong> {email.SubmittedDate:MMMM d, yyyy}
-            </div>
-            
-            <h3>What Happens Next?</h3>
-            <ol>
-                <li>Your application will be reviewed by our board</li>
-                <li>You'll receive an update within 2-3 weeks</li>
-                <li>If approved, we'll start matching you with available properties</li>
-            </ol>
-            
-            <p>If you have any questions, please reply to this email or call us at (908) 555-1234.</p>
-            
-            <p>We look forward to welcoming you to our community!</p>
-            
-            <p>Best regards,<br/>The Community Relocation Team</p>
-        </div>
-        <div class='footer'>
-            <p>Union County Jewish Community<br/>
-            123 Main Street, Union, NJ 07083</p>
-        </div>
-    </div>
-</body>
-</html>";
-    }
-
-    private string GenerateApplicationReceivedText(ApplicationReceivedEmail email)
-    {
-        return $@"
-Application Received!
-
-Dear {email.ApplicantName},
-
-Thank you for applying to join our community! We've received your application and will review it shortly.
-
-Application ID: {email.ApplicationId}
-Submitted: {email.SubmittedDate:MMMM d, yyyy}
-
-What Happens Next?
-1. Your application will be reviewed by our board
-2. You'll receive an update within 2-3 weeks
-3. If approved, we'll start matching you with available properties
-
-If you have any questions, please reply to this email or call us at (908) 555-1234.
-
-We look forward to welcoming you to our community!
-
-Best regards,
-The Community Relocation Team
-
----
-Union County Jewish Community
-123 Main Street, Union, NJ 07083
-";
-    }
-}
-```
-
-**Configuration:**
-```csharp
-// appsettings.json
-{
-  "Email": {
-    "FromAddress": "noreply@familyrelocation.org",
-    "FromName": "Family Relocation System",
-    "ReplyToAddress": "coordinator@familyrelocation.org"
-  }
-}
-
-// EmailSettings.cs
-public class EmailSettings
-{
-    public required string FromAddress { get; init; }
-    public string? FromName { get; init; }
-    public string? ReplyToAddress { get; init; }
-}
-```
-
-### Definition of Done
-
-- [ ] IEmailService interface created
-- [ ] SesEmailService implementation created
-- [ ] ApplicationSubmittedEventHandler sends email
-- [ ] HTML and text email templates
-- [ ] Error handling (doesn't fail application)
-- [ ] Logging for sent emails and failures
-- [ ] Unit tests for event handler
-- [ ] Integration test with SES (can be mocked)
-- [ ] All tests passing
-
----
-
-## US-012: Create HousingSearch for Applicant
-
-### Story
-
-**As a** coordinator  
-**I want to** create a HousingSearch for an existing applicant  
-**So that** I can track their house hunting journey
-
-**Priority:** P0  
-**Effort:** 3 points  
-**Sprint:** 2
-
-### Acceptance Criteria
-
-1. Can create HousingSearch for applicant without existing HousingSearch
-2. Cannot create if applicant already has a HousingSearch (1:1 relationship)
-3. Initial stage is "Submitted"
-4. Housing preferences optional initially
-5. Returns created HousingSearch with ID
-
-### Acceptance Criteria (Gherkin Format)
-
-| Scenario | Given | When | Then |
-|----------|-------|------|------|
-| Create success | Applicant exists, no HousingSearch | POST /api/housing-searches | 201 Created with HousingSearchId |
-| Already exists | Applicant has HousingSearch | POST /api/housing-searches | 409 Conflict |
-| Applicant not found | Invalid ApplicantId | POST /api/housing-searches | 404 Not Found |
-| With preferences | Valid preferences provided | Create HousingSearch | Preferences saved |
-
-### Technical Implementation
-
-**Command:**
-```csharp
-public record CreateHousingSearchCommand(
-    Guid ApplicantId,
-    HousingPreferencesRequest? Preferences
-) : IRequest<HousingSearchDto>;
-```
-
-**Handler:**
-```csharp
-public class CreateHousingSearchCommandHandler 
-    : IRequestHandler<CreateHousingSearchCommand, HousingSearchDto>
-{
-    private readonly IApplicationDbContext _context;
-    private readonly ICurrentUserService _currentUser;
-
-    public async Task<HousingSearchDto> Handle(
-        CreateHousingSearchCommand request, 
-        CancellationToken ct)
-    {
-        // Verify applicant exists
-        var applicantExists = await _context.Set<Applicant>()
-            .AnyAsync(a => a.Id == request.ApplicantId, ct);
-        
-        if (!applicantExists)
-            throw new NotFoundException(nameof(Applicant), request.ApplicantId);
-        
-        // Check for existing HousingSearch
-        var existingSearch = await _context.Set<HousingSearch>()
-            .AnyAsync(h => h.ApplicantId == request.ApplicantId, ct);
-        
-        if (existingSearch)
-            throw new ConflictException(
-                $"Applicant {request.ApplicantId} already has a HousingSearch");
-        
-        // Create HousingSearch
-        var preferences = request.Preferences?.ToDomain() 
-            ?? HousingPreferences.Empty();
-        
-        var housingSearch = HousingSearch.Create(
-            applicantId: request.ApplicantId,
-            preferences: preferences,
-            createdBy: _currentUser.UserId ?? WellKnownIds.SelfSubmittedUserId
-        );
-        
-        _context.Add(housingSearch);
-        await _context.SaveChangesAsync(ct);
-        
-        return housingSearch.ToDto();
-    }
-}
-```
-
-**Controller:**
-```csharp
-[ApiController]
-[Route("api/housing-searches")]
-[Authorize]
-public class HousingSearchController : ControllerBase
-{
-    private readonly IMediator _mediator;
-
-    [HttpPost]
-    [ProducesResponseType(typeof(HousingSearchDto), StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
-    public async Task<ActionResult<HousingSearchDto>> Create(
-        [FromBody] CreateHousingSearchRequest request,
-        CancellationToken ct)
-    {
-        var command = new CreateHousingSearchCommand(
-            request.ApplicantId,
-            request.Preferences);
-        
-        var result = await _mediator.Send(command, ct);
-        
-        return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
-    }
-}
-
-public class CreateHousingSearchRequest
-{
-    public required Guid ApplicantId { get; init; }
-    public HousingPreferencesRequest? Preferences { get; init; }
-}
-```
-
-### Definition of Done
-
-- [ ] POST /api/housing-searches endpoint created
-- [ ] Creates HousingSearch in Submitted stage
-- [ ] Validates applicant exists
-- [ ] Prevents duplicate HousingSearch
-- [ ] Unit tests (5+ tests)
-- [ ] Integration tests (3+ tests)
-- [ ] All tests passing
-
----
-
-## US-013: View HousingSearch Details
-
-### Story
-
-**As a** coordinator  
-**I want to** view HousingSearch details  
-**So that** I can see the current status and history of a family's house hunting journey
-
-**Priority:** P0  
-**Effort:** 3 points  
-**Sprint:** 2
-
-### Acceptance Criteria
-
-1. Returns HousingSearch with all details
-2. Includes current stage and preferences
-3. Includes failed contracts history (if any)
-4. Includes audit information (created, modified dates)
-5. Returns 404 if not found
-
-### Acceptance Criteria (Gherkin Format)
-
-| Scenario | Given | When | Then |
-|----------|-------|------|------|
-| Get by ID | HousingSearch exists | GET /api/housing-searches/{id} | 200 OK with full details |
-| Not found | Invalid ID | GET /api/housing-searches/{id} | 404 Not Found |
-| With failed contracts | Has contract history | GET /api/housing-searches/{id} | Includes failed contracts array |
-
-### Technical Implementation
-
-**Query:**
-```csharp
-public record GetHousingSearchByIdQuery(Guid Id) : IRequest<HousingSearchDto>;
-```
-
-**Handler:**
-```csharp
-public class GetHousingSearchByIdQueryHandler 
-    : IRequestHandler<GetHousingSearchByIdQuery, HousingSearchDto>
-{
-    private readonly IApplicationDbContext _context;
-
-    public async Task<HousingSearchDto> Handle(
-        GetHousingSearchByIdQuery request, 
-        CancellationToken ct)
-    {
-        var housingSearch = await _context.Set<HousingSearch>()
-            .FirstOrDefaultAsync(h => h.Id == request.Id, ct);
-        
-        if (housingSearch is null)
-            throw new NotFoundException(nameof(HousingSearch), request.Id);
-        
-        return housingSearch.ToDto();
-    }
-}
-```
-
-**DTO:**
-```csharp
-public class HousingSearchDto
-{
-    public required Guid Id { get; init; }
-    public required Guid ApplicantId { get; init; }
-    public required string Stage { get; init; }
-    public required HousingPreferencesDto Preferences { get; init; }
-    public ContractDto? CurrentContract { get; init; }
-    public List<FailedContractDto> FailedContracts { get; init; } = new();
-    public string? MovedInStatus { get; init; }
-    public string? PauseReason { get; init; }
-    public DateTime? PausedDate { get; init; }
-    public DateTime CreatedDate { get; init; }
-    public DateTime ModifiedDate { get; init; }
-}
-
-public class HousingPreferencesDto
-{
-    public decimal? BudgetAmount { get; init; }
-    public int? MinBedrooms { get; init; }
-    public decimal? MinBathrooms { get; init; }
-    public List<string> PreferredCities { get; init; } = new();
-    public List<string> RequiredFeatures { get; init; } = new();
-    public string? MoveTimeline { get; init; }
-    public ShulProximityDto? ShulProximity { get; init; }
-    
-    public string? EstimatedMonthlyPayment { get; init; } // Calculated
-}
-
-public class ContractDto
-{
-    public Guid PropertyId { get; init; }
-    public decimal Price { get; init; }
-    public DateTime ContractDate { get; init; }
-    public DateTime? ExpectedClosingDate { get; init; }
-    public DateTime? ActualClosingDate { get; init; }
-}
-
-public class FailedContractDto
-{
-    public Guid PropertyId { get; init; }
-    public decimal Price { get; init; }
-    public DateTime ContractDate { get; init; }
-    public DateTime FailedDate { get; init; }
-    public string Reason { get; init; } = string.Empty;
-    public string? Notes { get; init; }
-}
-```
-
-**Controller:**
-```csharp
-[HttpGet("{id:guid}")]
-[ProducesResponseType(typeof(HousingSearchDto), StatusCodes.Status200OK)]
-[ProducesResponseType(StatusCodes.Status404NotFound)]
-public async Task<ActionResult<HousingSearchDto>> GetById(
-    Guid id, 
-    CancellationToken ct)
-{
-    var query = new GetHousingSearchByIdQuery(id);
-    var result = await _mediator.Send(query, ct);
-    return Ok(result);
-}
-```
-
-**Mapper Extension:**
-```csharp
-public static class HousingSearchMapper
-{
-    public static HousingSearchDto ToDto(this HousingSearch housingSearch)
-    {
-        return new HousingSearchDto
-        {
-            Id = housingSearch.Id,
-            ApplicantId = housingSearch.ApplicantId,
-            Stage = housingSearch.Stage.ToString(),
-            Preferences = housingSearch.Preferences.ToDto(),
-            CurrentContract = housingSearch.CurrentContract?.ToDto(),
-            FailedContracts = housingSearch.FailedContracts
-                .Select(f => f.ToDto())
-                .ToList(),
-            MovedInStatus = housingSearch.MovedInStatus?.ToString(),
-            PauseReason = housingSearch.PauseReason,
-            PausedDate = housingSearch.PausedDate,
-            CreatedDate = housingSearch.CreatedDate,
-            ModifiedDate = housingSearch.ModifiedDate
-        };
-    }
-    
-    public static HousingPreferencesDto ToDto(this HousingPreferences prefs)
-    {
-        return new HousingPreferencesDto
-        {
-            BudgetAmount = prefs.Budget?.Amount,
-            MinBedrooms = prefs.MinBedrooms,
-            MinBathrooms = prefs.MinBathrooms,
-            PreferredCities = prefs.PreferredCities.ToList(),
-            RequiredFeatures = prefs.RequiredFeatures.ToList(),
-            MoveTimeline = prefs.MoveTimeline?.ToString(),
-            ShulProximity = prefs.ShulProximity?.ToDto(),
-            EstimatedMonthlyPayment = prefs.Budget != null 
-                ? CalculateMonthlyPayment(prefs) 
-                : null
-        };
-    }
-    
-    private static string CalculateMonthlyPayment(HousingPreferences prefs)
-    {
-        // Simple P&I calculation (will be enhanced in US-017)
-        var principal = prefs.Budget!.Amount * 0.8m; // 20% down
-        var monthlyRate = 0.065m / 12; // 6.5% annual
-        var payments = 360m; // 30 years
-        
-        var monthly = principal * 
-            (monthlyRate * (decimal)Math.Pow((double)(1 + monthlyRate), (double)payments)) /
-            ((decimal)Math.Pow((double)(1 + monthlyRate), (double)payments) - 1);
-        
-        return monthly.ToString("C0");
-    }
-}
-```
-
-### Definition of Done
-
-- [ ] GET /api/housing-searches/{id} endpoint created
-- [ ] Returns full HousingSearch details
-- [ ] Includes preferences and contract history
-- [ ] Returns 404 for missing HousingSearch
-- [ ] Mapper extension methods created
-- [ ] Unit tests (5+ tests)
-- [ ] Integration tests (3+ tests)
-- [ ] All tests passing
-
----
-
-## US-014: View HousingSearch Pipeline (Kanban)
-
-### Story
-
-**As a** coordinator  
-**I want to** view all HousingSearches in a Kanban-style pipeline  
-**So that** I can see the status of all families at a glance
-
-**Priority:** P0  
-**Effort:** 8 points  
-**Sprint:** 2
-
-### Acceptance Criteria
-
-1. Returns HousingSearches grouped by stage
-2. Each card shows: Family name, days in stage, city preference
-3. Supports filtering by city, search by family name
-4. Includes count per stage
-5. Ordered by date within each stage
-
-### Acceptance Criteria (Gherkin Format)
-
-| Scenario | Given | When | Then |
-|----------|-------|------|------|
-| Get pipeline | HousingSearches exist | GET /api/housing-searches/pipeline | Grouped by stage |
-| Filter by city | City filter applied | GET /api/housing-searches/pipeline?city=Union | Only Union families |
-| Search by name | Name search | GET /api/housing-searches/pipeline?search=Cohen | Matching families |
-| Empty stage | No families in stage | GET pipeline | Stage shown with 0 count |
-
-### Technical Implementation
-
-**Query:**
-```csharp
-public record GetHousingSearchPipelineQuery(
-    string? City = null,
-    string? Search = null
-) : IRequest<HousingSearchPipelineDto>;
-```
-
-**Handler:**
-```csharp
-public class GetHousingSearchPipelineQueryHandler 
-    : IRequestHandler<GetHousingSearchPipelineQuery, HousingSearchPipelineDto>
-{
-    private readonly IApplicationDbContext _context;
-
-    public async Task<HousingSearchPipelineDto> Handle(
-        GetHousingSearchPipelineQuery request, 
-        CancellationToken ct)
-    {
-        // Get all housing searches with applicant info
-        var query = _context.Set<HousingSearch>()
-            .Join(
-                _context.Set<Applicant>(),
-                hs => hs.ApplicantId,
-                a => a.Id,
-                (hs, a) => new { HousingSearch = hs, Applicant = a }
-            );
-        
-        // Apply filters
-        if (!string.IsNullOrWhiteSpace(request.City))
-        {
-            query = query.Where(x => 
-                x.HousingSearch.Preferences.PreferredCities.Contains(request.City));
-        }
-        
-        if (!string.IsNullOrWhiteSpace(request.Search))
-        {
-            var searchLower = request.Search.ToLower();
-            query = query.Where(x =>
-                x.Applicant.Husband.FirstName.ToLower().Contains(searchLower) ||
-                x.Applicant.Husband.LastName.ToLower().Contains(searchLower) ||
-                (x.Applicant.Wife != null && 
-                 x.Applicant.Wife.FirstName.ToLower().Contains(searchLower)));
-        }
-        
-        var results = await query.ToListAsync(ct);
-        
-        // Group by stage
-        var stages = Enum.GetValues<HousingSearchStage>()
-            .Select(stage => new PipelineStageDto
-            {
-                Stage = stage.ToString(),
-                Count = results.Count(r => r.HousingSearch.Stage == stage),
-                Cards = results
-                    .Where(r => r.HousingSearch.Stage == stage)
-                    .OrderBy(r => r.HousingSearch.ModifiedDate)
-                    .Select(r => new PipelineCardDto
-                    {
-                        HousingSearchId = r.HousingSearch.Id,
-                        ApplicantId = r.Applicant.Id,
-                        FamilyName = $"{r.Applicant.Husband.LastName} Family",
-                        HusbandName = r.Applicant.Husband.FullNameWithFather,
-                        PreferredCities = r.HousingSearch.Preferences.PreferredCities.ToList(),
-                        Budget = r.HousingSearch.Preferences.Budget?.Formatted,
-                        DaysInStage = (int)(DateTime.UtcNow - r.HousingSearch.ModifiedDate).TotalDays,
-                        IsPaused = r.HousingSearch.Stage == HousingSearchStage.Paused,
-                        PauseReason = r.HousingSearch.PauseReason
-                    })
-                    .ToList()
-            })
-            .ToList();
-        
-        return new HousingSearchPipelineDto
-        {
-            Stages = stages,
-            TotalCount = results.Count,
-            FilteredCity = request.City,
-            SearchTerm = request.Search
-        };
-    }
-}
-```
-
-**DTOs:**
-```csharp
-public class HousingSearchPipelineDto
-{
-    public List<PipelineStageDto> Stages { get; init; } = new();
-    public int TotalCount { get; init; }
-    public string? FilteredCity { get; init; }
-    public string? SearchTerm { get; init; }
-}
-
-public class PipelineStageDto
-{
-    public required string Stage { get; init; }
-    public int Count { get; init; }
-    public List<PipelineCardDto> Cards { get; init; } = new();
-}
-
-public class PipelineCardDto
-{
-    public required Guid HousingSearchId { get; init; }
-    public required Guid ApplicantId { get; init; }
-    public required string FamilyName { get; init; }
-    public required string HusbandName { get; init; }
-    public List<string> PreferredCities { get; init; } = new();
-    public string? Budget { get; init; }
-    public int DaysInStage { get; init; }
-    public bool IsPaused { get; init; }
-    public string? PauseReason { get; init; }
-}
-```
-
-**Controller:**
-```csharp
-[HttpGet("pipeline")]
-[ProducesResponseType(typeof(HousingSearchPipelineDto), StatusCodes.Status200OK)]
-public async Task<ActionResult<HousingSearchPipelineDto>> GetPipeline(
-    [FromQuery] string? city,
-    [FromQuery] string? search,
-    CancellationToken ct)
-{
-    var query = new GetHousingSearchPipelineQuery(city, search);
-    var result = await _mediator.Send(query, ct);
-    return Ok(result);
-}
-```
-
-### Example Response
-
-```json
-{
-  "stages": [
-    {
-      "stage": "Submitted",
-      "count": 3,
-      "cards": [
-        {
-          "housingSearchId": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
-          "applicantId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-          "familyName": "Cohen Family",
-          "husbandName": "Moshe Cohen (ben Yaakov)",
-          "preferredCities": ["Union", "Roselle Park"],
-          "budget": "$450,000",
-          "daysInStage": 5,
-          "isPaused": false,
-          "pauseReason": null
-        }
-      ]
-    },
-    {
-      "stage": "HouseHunting",
-      "count": 2,
-      "cards": [...]
-    },
-    {
-      "stage": "UnderContract",
-      "count": 1,
-      "cards": [...]
-    },
-    {
-      "stage": "Closed",
-      "count": 5,
-      "cards": [...]
-    },
-    {
-      "stage": "Paused",
-      "count": 1,
-      "cards": [...]
-    },
-    {
-      "stage": "Rejected",
-      "count": 0,
-      "cards": []
-    }
-  ],
-  "totalCount": 12,
-  "filteredCity": null,
-  "searchTerm": null
-}
-```
-
-### Definition of Done
-
-- [ ] GET /api/housing-searches/pipeline endpoint created
-- [ ] Returns all stages with counts
-- [ ] Cards include family name, budget, days in stage
-- [ ] Filtering by city works
-- [ ] Search by family name works
-- [ ] Unit tests (8+ tests)
-- [ ] Integration tests (5+ tests)
-- [ ] All tests passing
-
----
-
-## US-015: Change HousingSearch Stage
-
-### Story
-
-**As a** coordinator  
-**I want to** change a HousingSearch stage  
-**So that** I can track the family's progress through the process
-
-**Priority:** P0  
-**Effort:** 5 points  
-**Sprint:** 2
-
-### Acceptance Criteria
-
-1. Can change stage following valid transitions
-2. Invalid transitions rejected with error message
-3. Certain transitions require additional data (contract for UnderContract)
-4. Stage change creates activity log entry
-5. Records who changed and when
-
-### Valid Stage Transitions
-
-```
-Submitted → HouseHunting (board approved)
-Submitted → Rejected (board rejected)
-
-HouseHunting → UnderContract (requires contract info)
-HouseHunting → Paused (requires reason)
-
-UnderContract → Closed (closing complete)
-UnderContract → HouseHunting (contract failed - creates FailedContract)
-UnderContract → Paused (requires reason)
-
-Paused → HouseHunting (resume search)
-Paused → Submitted (restart process)
-
-Closed → (terminal state, no transitions out)
-Rejected → (terminal state, no transitions out)
-```
-
-### Acceptance Criteria (Gherkin Format)
-
-| Scenario | Given | When | Then |
-|----------|-------|------|------|
-| Valid transition | Stage=Submitted | Change to HouseHunting | Success, stage updated |
-| Invalid transition | Stage=Submitted | Change to UnderContract | 400 Bad Request |
-| To UnderContract | Stage=HouseHunting | Change to UnderContract without contract | 400 Bad Request |
-| Contract fails | Stage=UnderContract | Change to HouseHunting | FailedContract created |
-| To Paused | Any active stage | Change to Paused without reason | 400 Bad Request |
-
-### Technical Implementation
-
-**Command:**
-```csharp
-public record ChangeHousingSearchStageCommand(
-    Guid HousingSearchId,
-    string NewStage,
-    ContractRequest? Contract = null,      // Required for UnderContract
-    string? PauseReason = null,            // Required for Paused
-    FailedContractRequest? FailedContract = null  // Required when leaving UnderContract
-) : IRequest<HousingSearchDto>;
-
-public class ContractRequest
-{
-    public required Guid PropertyId { get; init; }
-    public required decimal Price { get; init; }
-    public required DateTime ContractDate { get; init; }
-    public DateTime? ExpectedClosingDate { get; init; }
-}
-
-public class FailedContractRequest
-{
-    public required string Reason { get; init; }
-    public string? Notes { get; init; }
-}
-```
-
-**Handler:**
-```csharp
-public class ChangeHousingSearchStageCommandHandler 
-    : IRequestHandler<ChangeHousingSearchStageCommand, HousingSearchDto>
-{
-    private readonly IApplicationDbContext _context;
-    private readonly ICurrentUserService _currentUser;
-
-    public async Task<HousingSearchDto> Handle(
-        ChangeHousingSearchStageCommand request, 
-        CancellationToken ct)
-    {
-        var housingSearch = await _context.Set<HousingSearch>()
-            .FirstOrDefaultAsync(h => h.Id == request.HousingSearchId, ct);
-        
-        if (housingSearch is null)
-            throw new NotFoundException(nameof(HousingSearch), request.HousingSearchId);
-        
-        if (!Enum.TryParse<HousingSearchStage>(request.NewStage, out var newStage))
-            throw new ValidationException($"Invalid stage: {request.NewStage}");
-        
-        var currentStage = housingSearch.Stage;
-        var userId = _currentUser.UserId 
-            ?? throw new UnauthorizedAccessException("User ID required");
-        
-        // Validate and execute transition
-        switch (newStage)
-        {
-            case HousingSearchStage.HouseHunting:
-                if (currentStage == HousingSearchStage.Submitted)
-                {
-                    housingSearch.MoveToHouseHunting(userId);
-                }
-                else if (currentStage == HousingSearchStage.UnderContract)
-                {
-                    // Contract failed
-                    if (request.FailedContract is null)
-                        throw new ValidationException(
-                            "Failed contract details required when moving from UnderContract");
-                    
-                    housingSearch.RecordFailedContract(
-                        request.FailedContract.Reason,
-                        request.FailedContract.Notes,
-                        userId);
-                }
-                else if (currentStage == HousingSearchStage.Paused)
-                {
-                    housingSearch.Resume(userId);
-                }
-                else
-                {
-                    throw new InvalidStageTransitionException(currentStage, newStage);
-                }
-                break;
-            
-            case HousingSearchStage.UnderContract:
-                if (currentStage != HousingSearchStage.HouseHunting)
-                    throw new InvalidStageTransitionException(currentStage, newStage);
-                
-                if (request.Contract is null)
-                    throw new ValidationException(
-                        "Contract details required when moving to UnderContract");
-                
-                var contract = new Contract(
-                    request.Contract.PropertyId,
-                    new Money(request.Contract.Price),
-                    request.Contract.ContractDate,
-                    request.Contract.ExpectedClosingDate);
-                
-                housingSearch.MoveToUnderContract(contract, userId);
-                break;
-            
-            case HousingSearchStage.Closed:
-                if (currentStage != HousingSearchStage.UnderContract)
-                    throw new InvalidStageTransitionException(currentStage, newStage);
-                
-                housingSearch.Close(DateTime.UtcNow, userId);
-                break;
-            
-            case HousingSearchStage.Paused:
-                if (string.IsNullOrWhiteSpace(request.PauseReason))
-                    throw new ValidationException("Pause reason required");
-                
-                housingSearch.Pause(request.PauseReason, userId);
-                break;
-            
-            case HousingSearchStage.Rejected:
-                if (currentStage != HousingSearchStage.Submitted)
-                    throw new InvalidStageTransitionException(currentStage, newStage);
-                
-                housingSearch.Reject(userId);
-                break;
-            
-            default:
-                throw new ValidationException($"Cannot transition to stage: {newStage}");
-        }
-        
-        await _context.SaveChangesAsync(ct);
-        
-        return housingSearch.ToDto();
-    }
-}
-
-public class InvalidStageTransitionException : ValidationException
-{
-    public InvalidStageTransitionException(
-        HousingSearchStage from, 
-        HousingSearchStage to)
-        : base($"Cannot transition from {from} to {to}")
-    {
-    }
-}
-```
-
-**Domain Methods (HousingSearch entity):**
-```csharp
-public class HousingSearch
-{
-    // ... existing code ...
-    
-    public void MoveToHouseHunting(Guid modifiedBy)
-    {
-        if (Stage != HousingSearchStage.Submitted && Stage != HousingSearchStage.Paused)
-            throw new InvalidOperationException(
-                $"Cannot move to HouseHunting from {Stage}");
-        
-        Stage = HousingSearchStage.HouseHunting;
-        PauseReason = null;
-        PausedDate = null;
-        ModifiedBy = modifiedBy;
-        ModifiedDate = DateTime.UtcNow;
-        
-        AddDomainEvent(new HousingSearchStageChangedEvent(Id, Stage));
-    }
-    
-    public void MoveToUnderContract(Contract contract, Guid modifiedBy)
-    {
-        if (Stage != HousingSearchStage.HouseHunting)
-            throw new InvalidOperationException(
-                $"Cannot move to UnderContract from {Stage}");
-        
-        CurrentContract = contract;
-        Stage = HousingSearchStage.UnderContract;
-        ModifiedBy = modifiedBy;
-        ModifiedDate = DateTime.UtcNow;
-        
-        AddDomainEvent(new HousingSearchStageChangedEvent(Id, Stage));
-    }
-    
-    public void RecordFailedContract(string reason, string? notes, Guid modifiedBy)
-    {
-        if (Stage != HousingSearchStage.UnderContract || CurrentContract is null)
-            throw new InvalidOperationException("No active contract to fail");
-        
-        var failedAttempt = new FailedContractAttempt(
-            CurrentContract,
-            DateTime.UtcNow,
-            reason,
-            notes);
-        
-        FailedContracts.Add(failedAttempt);
-        CurrentContract = null;
-        Stage = HousingSearchStage.HouseHunting;
-        ModifiedBy = modifiedBy;
-        ModifiedDate = DateTime.UtcNow;
-        
-        AddDomainEvent(new ContractFailedEvent(Id, failedAttempt));
-    }
-    
-    public void Pause(string reason, Guid modifiedBy)
-    {
-        if (Stage == HousingSearchStage.Closed || Stage == HousingSearchStage.Rejected)
-            throw new InvalidOperationException($"Cannot pause from terminal stage {Stage}");
-        
-        PauseReason = reason;
-        PausedDate = DateTime.UtcNow;
-        Stage = HousingSearchStage.Paused;
-        ModifiedBy = modifiedBy;
-        ModifiedDate = DateTime.UtcNow;
-        
-        AddDomainEvent(new HousingSearchPausedEvent(Id, reason));
-    }
-    
-    public void Resume(Guid modifiedBy)
-    {
-        if (Stage != HousingSearchStage.Paused)
-            throw new InvalidOperationException("Can only resume from Paused stage");
-        
-        Stage = HousingSearchStage.HouseHunting;
-        PauseReason = null;
-        PausedDate = null;
-        ModifiedBy = modifiedBy;
-        ModifiedDate = DateTime.UtcNow;
-        
-        AddDomainEvent(new HousingSearchResumedEvent(Id));
-    }
-    
-    public void Close(DateTime closingDate, Guid modifiedBy)
-    {
-        if (Stage != HousingSearchStage.UnderContract)
-            throw new InvalidOperationException(
-                $"Cannot close from {Stage}, must be UnderContract");
-        
-        if (CurrentContract is null)
-            throw new InvalidOperationException("No contract to close");
-        
-        CurrentContract = CurrentContract with 
-        { 
-            ActualClosingDate = closingDate 
-        };
-        Stage = HousingSearchStage.Closed;
-        ModifiedBy = modifiedBy;
-        ModifiedDate = DateTime.UtcNow;
-        
-        AddDomainEvent(new HousingSearchClosedEvent(Id, closingDate));
-    }
-    
-    public void Reject(Guid modifiedBy)
-    {
-        if (Stage != HousingSearchStage.Submitted)
-            throw new InvalidOperationException(
-                $"Cannot reject from {Stage}, must be Submitted");
-        
-        Stage = HousingSearchStage.Rejected;
-        ModifiedBy = modifiedBy;
-        ModifiedDate = DateTime.UtcNow;
-        
-        AddDomainEvent(new HousingSearchRejectedEvent(Id));
-    }
-}
-```
-
-**Controller:**
-```csharp
-[HttpPut("{id:guid}/stage")]
-[ProducesResponseType(typeof(HousingSearchDto), StatusCodes.Status200OK)]
-[ProducesResponseType(StatusCodes.Status400BadRequest)]
-[ProducesResponseType(StatusCodes.Status404NotFound)]
-public async Task<ActionResult<HousingSearchDto>> ChangeStage(
-    Guid id,
-    [FromBody] ChangeStageRequest request,
-    CancellationToken ct)
-{
-    var command = new ChangeHousingSearchStageCommand(
-        id,
-        request.NewStage,
-        request.Contract,
-        request.PauseReason,
-        request.FailedContract);
-    
-    var result = await _mediator.Send(command, ct);
-    return Ok(result);
-}
-
-public class ChangeStageRequest
-{
-    public required string NewStage { get; init; }
-    public ContractRequest? Contract { get; init; }
-    public string? PauseReason { get; init; }
-    public FailedContractRequest? FailedContract { get; init; }
-}
-```
-
-### Example Requests
-
-**Approve (Submitted → HouseHunting):**
-```json
-PUT /api/housing-searches/{id}/stage
-{
-  "newStage": "HouseHunting"
-}
-```
-
-**Under Contract:**
-```json
-PUT /api/housing-searches/{id}/stage
-{
-  "newStage": "UnderContract",
-  "contract": {
-    "propertyId": "c3d4e5f6-a7b8-9012-cdef-123456789012",
-    "price": 425000,
-    "contractDate": "2026-01-20",
-    "expectedClosingDate": "2026-03-15"
-  }
-}
-```
-
-**Contract Failed:**
-```json
-PUT /api/housing-searches/{id}/stage
-{
-  "newStage": "HouseHunting",
-  "failedContract": {
-    "reason": "HomeInspectionIssues",
-    "notes": "Structural issues found in basement"
-  }
-}
-```
-
-**Pause:**
-```json
-PUT /api/housing-searches/{id}/stage
-{
-  "newStage": "Paused",
-  "pauseReason": "Family emergency - will resume in 3 months"
-}
-```
-
-### Definition of Done
-
-- [ ] PUT /api/housing-searches/{id}/stage endpoint created
-- [ ] All valid transitions work correctly
-- [ ] Invalid transitions rejected with clear error
-- [ ] Contract required for UnderContract transition
-- [ ] Failed contract recorded when leaving UnderContract
-- [ ] Pause reason required for Paused transition
-- [ ] Domain events raised for stage changes
-- [ ] Unit tests for all transitions (15+ tests)
-- [ ] Integration tests (8+ tests)
-- [ ] All tests passing
-
----
-
-## US-016: Update Housing Preferences
-
-### Story
-
-**As a** coordinator  
-**I want to** update a family's housing preferences  
-**So that** we can match them with appropriate properties
-
-**Priority:** P0  
-**Effort:** 5 points  
-**Sprint:** 2
-
-### Acceptance Criteria
-
-1. Can update all housing preference fields
-2. Validates budget is positive
-3. Validates bedrooms/bathrooms are reasonable
-4. Cities limited to Union and Roselle Park
-5. MoveTimeline must be valid enum value
-6. ShulProximity properly validated
-7. Returns updated HousingSearch
-
-### Acceptance Criteria (Gherkin Format)
-
-| Scenario | Given | When | Then |
-|----------|-------|------|------|
-| Update success | Valid preferences | PUT /api/housing-searches/{id}/preferences | 200 OK with updated data |
-| Invalid budget | Negative budget | PUT preferences | 400 Bad Request |
-| Invalid city | City not Union/Roselle Park | PUT preferences | 400 Bad Request |
-| Not found | Invalid HousingSearch ID | PUT preferences | 404 Not Found |
-
-### Technical Implementation
-
-**Command:**
-```csharp
 public record UpdateHousingPreferencesCommand(
-    Guid HousingSearchId,
-    HousingPreferencesRequest Preferences
+    Guid ApplicantId,
+    UpdatePreferencesRequest Preferences
 ) : IRequest<HousingSearchDto>;
 ```
 
@@ -1700,174 +640,348 @@ public record UpdateHousingPreferencesCommand(
 public class UpdateHousingPreferencesCommandHandler 
     : IRequestHandler<UpdateHousingPreferencesCommand, HousingSearchDto>
 {
-    private readonly IApplicationDbContext _context;
-    private readonly ICurrentUserService _currentUser;
-    private static readonly HashSet<string> ValidCities = new() { "Union", "Roselle Park" };
-
     public async Task<HousingSearchDto> Handle(
         UpdateHousingPreferencesCommand request, 
-        CancellationToken ct)
+        CancellationToken cancellationToken)
     {
-        var housingSearch = await _context.Set<HousingSearch>()
-            .FirstOrDefaultAsync(h => h.Id == request.HousingSearchId, ct);
-        
-        if (housingSearch is null)
-            throw new NotFoundException(nameof(HousingSearch), request.HousingSearchId);
-        
-        var prefs = request.Preferences;
-        
-        // Validate cities
-        if (prefs.PreferredCities?.Any() == true)
+        var applicant = await _context.Set<Applicant>()
+            .Include(a => a.HousingSearch)
+            .FirstOrDefaultAsync(a => a.Id == request.ApplicantId, cancellationToken)
+            ?? throw new NotFoundException("Applicant", request.ApplicantId);
+
+        if (applicant.HousingSearch == null)
         {
-            var invalidCities = prefs.PreferredCities
-                .Where(c => !ValidCities.Contains(c))
-                .ToList();
-            
-            if (invalidCities.Any())
-                throw new ValidationException(
-                    $"Invalid cities: {string.Join(", ", invalidCities)}. " +
-                    $"Valid options: {string.Join(", ", ValidCities)}");
+            throw new NotFoundException("HousingSearch for Applicant", request.ApplicantId);
         }
-        
-        // Build preferences value object
-        var newPreferences = new HousingPreferences(
-            budget: prefs.BudgetAmount.HasValue 
-                ? new Money(prefs.BudgetAmount.Value) 
-                : null,
-            minBedrooms: prefs.MinBedrooms,
-            minBathrooms: prefs.MinBathrooms,
-            preferredCities: prefs.PreferredCities ?? new(),
-            requiredFeatures: prefs.RequiredFeatures ?? new(),
-            moveTimeline: ParseMoveTimeline(prefs.MoveTimeline),
-            shulProximity: prefs.ShulProximity?.ToDomain()
-        );
-        
-        var userId = _currentUser.UserId 
-            ?? throw new UnauthorizedAccessException("User ID required");
-        
-        housingSearch.UpdatePreferences(newPreferences, userId);
-        
-        await _context.SaveChangesAsync(ct);
-        
-        return housingSearch.ToDto();
+
+        applicant.HousingSearch.Preferences = request.Preferences.ToDomain();
+        applicant.HousingSearch.ModifiedAt = DateTime.UtcNow;
+        applicant.HousingSearch.ModifiedBy = _currentUserService.UserId;
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return applicant.HousingSearch.ToDto();
     }
-    
-    private static MoveTimeline? ParseMoveTimeline(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-            return null;
-        
-        if (!Enum.TryParse<MoveTimeline>(value, out var result))
-            throw new ValidationException($"Invalid move timeline: {value}");
-        
-        return result;
-    }
-}
-```
-
-**Validator:**
-```csharp
-public class UpdateHousingPreferencesCommandValidator 
-    : AbstractValidator<UpdateHousingPreferencesCommand>
-{
-    private static readonly HashSet<string> ValidCities = new() { "Union", "Roselle Park" };
-    private static readonly HashSet<string> ValidMoveTimelines = 
-        Enum.GetNames<MoveTimeline>().ToHashSet();
-
-    public UpdateHousingPreferencesCommandValidator()
-    {
-        RuleFor(x => x.HousingSearchId)
-            .NotEmpty().WithMessage("HousingSearch ID is required");
-        
-        RuleFor(x => x.Preferences.BudgetAmount)
-            .GreaterThan(0).WithMessage("Budget must be positive")
-            .LessThanOrEqualTo(10_000_000).WithMessage("Budget seems unrealistic")
-            .When(x => x.Preferences.BudgetAmount.HasValue);
-        
-        RuleFor(x => x.Preferences.MinBedrooms)
-            .InclusiveBetween(1, 10).WithMessage("Bedrooms must be 1-10")
-            .When(x => x.Preferences.MinBedrooms.HasValue);
-        
-        RuleFor(x => x.Preferences.MinBathrooms)
-            .InclusiveBetween(1, 6).WithMessage("Bathrooms must be 1-6")
-            .When(x => x.Preferences.MinBathrooms.HasValue);
-        
-        RuleForEach(x => x.Preferences.PreferredCities)
-            .Must(city => ValidCities.Contains(city))
-            .WithMessage("City must be Union or Roselle Park");
-        
-        RuleFor(x => x.Preferences.MoveTimeline)
-            .Must(mt => ValidMoveTimelines.Contains(mt!))
-            .WithMessage($"Invalid move timeline. Valid options: {string.Join(", ", ValidMoveTimelines)}")
-            .When(x => !string.IsNullOrWhiteSpace(x.Preferences.MoveTimeline));
-        
-        When(x => x.Preferences.ShulProximity != null, () =>
-        {
-            RuleFor(x => x.Preferences.ShulProximity!.MaxDistanceMiles)
-                .GreaterThan(0).WithMessage("Max distance must be positive")
-                .LessThanOrEqualTo(5).WithMessage("Max distance cannot exceed 5 miles");
-        });
-    }
-}
-```
-
-**Controller:**
-```csharp
-[HttpPut("{id:guid}/preferences")]
-[ProducesResponseType(typeof(HousingSearchDto), StatusCodes.Status200OK)]
-[ProducesResponseType(StatusCodes.Status400BadRequest)]
-[ProducesResponseType(StatusCodes.Status404NotFound)]
-public async Task<ActionResult<HousingSearchDto>> UpdatePreferences(
-    Guid id,
-    [FromBody] HousingPreferencesRequest preferences,
-    CancellationToken ct)
-{
-    var command = new UpdateHousingPreferencesCommand(id, preferences);
-    var result = await _mediator.Send(command, ct);
-    return Ok(result);
-}
-```
-
-### Example Request
-
-```json
-PUT /api/housing-searches/{id}/preferences
-{
-  "budgetAmount": 475000,
-  "minBedrooms": 4,
-  "minBathrooms": 2.5,
-  "preferredCities": ["Union", "Roselle Park"],
-  "requiredFeatures": ["Garage", "Basement", "Central AC"],
-  "moveTimeline": "ShortTerm",
-  "shulProximity": {
-    "preferenceType": "AnyShul",
-    "maxDistanceMiles": 0.5
-  }
 }
 ```
 
 ### Definition of Done
 
-- [ ] PUT /api/housing-searches/{id}/preferences endpoint created
-- [ ] All fields validated properly
-- [ ] Cities restricted to Union/Roselle Park
-- [ ] MoveTimeline enum validated
-- [ ] ShulProximity validated
-- [ ] Domain event raised (HousingPreferencesUpdated)
-- [ ] Unit tests (10+ tests)
-- [ ] Validation tests (12+ tests)
-- [ ] Integration tests (5+ tests)
-- [ ] All tests passing
+- [ ] PUT /api/applicants/{id}/housing-search/preferences endpoint created
+- [ ] Validates preferences
+- [ ] Returns updated HousingSearchDto
+- [ ] Unit and integration tests
 
 ---
 
-## US-017: Calculate Monthly Payment Estimate
+## US-018: Implement Audit Log Feature
 
 ### Story
 
-**As a** coordinator  
-**I want to** see estimated monthly payment based on housing preferences  
-**So that** I can help families understand affordability
+**As an** administrator  
+**I want** all changes to be automatically logged  
+**So that** I can track who changed what and when
+
+**Priority:** P1  
+**Effort:** 5 points  
+**Sprint:** 2
+
+### Acceptance Criteria
+
+1. AuditLog entity captures all changes to tracked entities
+2. Automatic capture via EF Core SaveChanges interceptor
+3. Records: EntityType, EntityId, Action, OldValues, NewValues, UserId, Timestamp
+4. GET endpoint to query audit logs with filters
+5. Audit history viewable on Applicant detail page (frontend)
+
+### Technical Implementation
+
+**AuditLog Entity:**
+```csharp
+public class AuditLogEntry
+{
+    public Guid Id { get; set; }
+    public required string EntityType { get; set; }
+    public required Guid EntityId { get; set; }
+    public required string Action { get; set; }  // Created, Updated, Deleted
+    public string? OldValues { get; set; }  // JSON
+    public string? NewValues { get; set; }  // JSON
+    public Guid? UserId { get; set; }
+    public string? UserName { get; set; }
+    public DateTime Timestamp { get; set; }
+    public string? IpAddress { get; set; }
+}
+```
+
+**EF Core Configuration:**
+```csharp
+public class AuditLogEntryConfiguration : IEntityTypeConfiguration<AuditLogEntry>
+{
+    public void Configure(EntityTypeBuilder<AuditLogEntry> builder)
+    {
+        builder.ToTable("AuditLogs");
+        builder.HasKey(e => e.Id);
+        builder.Property(e => e.EntityType).HasMaxLength(100).IsRequired();
+        builder.Property(e => e.Action).HasMaxLength(20).IsRequired();
+        builder.Property(e => e.OldValues).HasColumnType("jsonb");
+        builder.Property(e => e.NewValues).HasColumnType("jsonb");
+        builder.Property(e => e.UserName).HasMaxLength(100);
+        builder.Property(e => e.IpAddress).HasMaxLength(50);
+        
+        builder.HasIndex(e => e.EntityType);
+        builder.HasIndex(e => e.EntityId);
+        builder.HasIndex(e => e.Timestamp);
+        builder.HasIndex(e => e.UserId);
+    }
+}
+```
+
+**SaveChanges Interceptor:**
+```csharp
+public class AuditingInterceptor : SaveChangesInterceptor
+{
+    private readonly ICurrentUserService _currentUserService;
+    private readonly IHttpContextAccessor _httpContextAccessor;
+
+    public override async ValueTask<InterceptionResult<int>> SavingChangesAsync(
+        DbContextEventData eventData,
+        InterceptionResult<int> result,
+        CancellationToken cancellationToken = default)
+    {
+        var context = eventData.Context;
+        if (context == null) return result;
+
+        var auditEntries = new List<AuditLogEntry>();
+        var userId = _currentUserService.UserId;
+        var userName = _currentUserService.UserName;
+        var ipAddress = _httpContextAccessor.HttpContext?.Connection?.RemoteIpAddress?.ToString();
+
+        foreach (var entry in context.ChangeTracker.Entries())
+        {
+            if (entry.Entity is AuditLogEntry) continue;  // Don't audit the audit log
+            if (!ShouldAudit(entry.Entity)) continue;
+
+            var auditEntry = new AuditLogEntry
+            {
+                Id = Guid.NewGuid(),
+                EntityType = entry.Entity.GetType().Name,
+                EntityId = GetEntityId(entry),
+                Action = entry.State.ToString(),
+                UserId = userId,
+                UserName = userName,
+                Timestamp = DateTime.UtcNow,
+                IpAddress = ipAddress,
+            };
+
+            switch (entry.State)
+            {
+                case EntityState.Added:
+                    auditEntry.NewValues = SerializeEntity(entry);
+                    break;
+                case EntityState.Modified:
+                    auditEntry.OldValues = SerializeOriginalValues(entry);
+                    auditEntry.NewValues = SerializeCurrentValues(entry);
+                    break;
+                case EntityState.Deleted:
+                    auditEntry.OldValues = SerializeEntity(entry);
+                    break;
+            }
+
+            auditEntries.Add(auditEntry);
+        }
+
+        if (auditEntries.Any())
+        {
+            context.Set<AuditLogEntry>().AddRange(auditEntries);
+        }
+
+        return result;
+    }
+
+    private bool ShouldAudit(object entity)
+    {
+        // Audit Applicant, HousingSearch, and other important entities
+        return entity is Applicant or HousingSearch;
+    }
+
+    private Guid GetEntityId(EntityEntry entry)
+    {
+        var idProperty = entry.Properties.FirstOrDefault(p => p.Metadata.Name == "Id");
+        return idProperty?.CurrentValue is Guid id ? id : Guid.Empty;
+    }
+
+    private string SerializeEntity(EntityEntry entry)
+    {
+        var dict = entry.Properties
+            .Where(p => !p.Metadata.IsShadowProperty())
+            .ToDictionary(p => p.Metadata.Name, p => p.CurrentValue);
+        return JsonSerializer.Serialize(dict);
+    }
+
+    private string SerializeOriginalValues(EntityEntry entry)
+    {
+        var dict = entry.Properties
+            .Where(p => p.IsModified)
+            .ToDictionary(p => p.Metadata.Name, p => p.OriginalValue);
+        return JsonSerializer.Serialize(dict);
+    }
+
+    private string SerializeCurrentValues(EntityEntry entry)
+    {
+        var dict = entry.Properties
+            .Where(p => p.IsModified)
+            .ToDictionary(p => p.Metadata.Name, p => p.CurrentValue);
+        return JsonSerializer.Serialize(dict);
+    }
+}
+```
+
+**Query Endpoint:**
+
+```
+GET /api/audit-logs
+[Authorize(Roles = "Admin")]
+```
+
+**Query Parameters:**
+```
+?entityType=Applicant&entityId={guid}&userId={guid}&from=2026-01-01&to=2026-01-31&page=1&pageSize=50
+```
+
+**Query:**
+```csharp
+public record GetAuditLogsQuery(
+    string? EntityType = null,
+    Guid? EntityId = null,
+    Guid? UserId = null,
+    DateTime? From = null,
+    DateTime? To = null,
+    int Page = 1,
+    int PageSize = 50
+) : IRequest<PaginatedList<AuditLogDto>>;
+```
+
+**Response DTO:**
+```csharp
+public class AuditLogDto
+{
+    public Guid Id { get; init; }
+    public required string EntityType { get; init; }
+    public Guid EntityId { get; init; }
+    public required string Action { get; init; }
+    public Dictionary<string, object?>? OldValues { get; init; }
+    public Dictionary<string, object?>? NewValues { get; init; }
+    public Guid? UserId { get; init; }
+    public string? UserName { get; init; }
+    public DateTime Timestamp { get; init; }
+}
+```
+
+**Handler:**
+```csharp
+public class GetAuditLogsQueryHandler 
+    : IRequestHandler<GetAuditLogsQuery, PaginatedList<AuditLogDto>>
+{
+    public async Task<PaginatedList<AuditLogDto>> Handle(
+        GetAuditLogsQuery request, 
+        CancellationToken cancellationToken)
+    {
+        var query = _context.Set<AuditLogEntry>().AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(request.EntityType))
+            query = query.Where(a => a.EntityType == request.EntityType);
+
+        if (request.EntityId.HasValue)
+            query = query.Where(a => a.EntityId == request.EntityId.Value);
+
+        if (request.UserId.HasValue)
+            query = query.Where(a => a.UserId == request.UserId.Value);
+
+        if (request.From.HasValue)
+            query = query.Where(a => a.Timestamp >= request.From.Value);
+
+        if (request.To.HasValue)
+            query = query.Where(a => a.Timestamp <= request.To.Value);
+
+        query = query.OrderByDescending(a => a.Timestamp);
+
+        return await PaginatedList<AuditLogDto>.CreateAsync(
+            query.Select(a => a.ToDto()),
+            request.Page,
+            request.PageSize,
+            cancellationToken);
+    }
+}
+```
+
+### Definition of Done
+
+- [ ] AuditLogEntry entity and table created
+- [ ] EF Core interceptor captures changes automatically
+- [ ] Applicant and HousingSearch changes are audited
+- [ ] GET /api/audit-logs endpoint with filters
+- [ ] Pagination works correctly
+- [ ] Unit tests for interceptor
+- [ ] Integration tests for endpoint
+
+---
+
+# PART 2: FRONTEND STORIES
+
+---
+
+## 🎨 DESIGN SYSTEM REFERENCE
+
+All frontend stories should follow the design system documented in:
+- **Design System**: `docs/design/crm-design-system-v4.html`
+- **Theme Config**: `src/FamilyRelocation.Web/src/theme/antd-theme.ts`
+- **Prototypes**: `docs/design/prototype-*.html`
+
+### Key Design Tokens
+
+```typescript
+colors: {
+  primary: {
+    700: '#1e40af',  // Button text, icons
+    150: '#d0e4fc',  // Button background
+    100: '#dbeafe',  // Button hover
+    50: '#eff6ff',   // Sidebar active
+  },
+  brand: {
+    600: '#2d7a3a',  // Logo text color
+    500: '#3d9a4a',  // Logo, success
+  },
+  neutral: {
+    900: '#1a1d1a',  // Primary text
+    600: '#5c605c',  // Secondary text
+    500: '#7a7e7a',  // Tertiary text
+    300: '#c4c7c4',  // Borders
+    100: '#f1f2f1',  // Backgrounds
+    50: '#f8f9f8',   // Page background
+  }
+}
+
+// Button Style (Option B - Light)
+.btn-primary {
+  background: #d0e4fc;
+  color: #1e40af;
+  border: 1px solid #bfdbfe;
+}
+
+// Typography
+font-family: 'Assistant', 'Heebo', sans-serif;
+font-size-base: 14px;
+```
+
+---
+
+## US-F01: React Project Setup with Design System
+
+### Story
+
+**As a** developer  
+**I want to** set up the React project with proper tooling and design system  
+**So that** I have a solid foundation matching our design specifications
 
 **Priority:** P0  
 **Effort:** 3 points  
@@ -1875,366 +989,354 @@ PUT /api/housing-searches/{id}/preferences
 
 ### Acceptance Criteria
 
-1. Calculate P&I (Principal & Interest) based on budget
-2. Default assumptions: 20% down, 6.5% rate, 30-year term
-3. Allow overriding assumptions
-4. Display in HousingPreferences DTO
-5. Also available as standalone calculation endpoint
-
-### Acceptance Criteria (Gherkin Format)
-
-| Scenario | Given | When | Then |
-|----------|-------|------|------|
-| Default calc | Budget $450,000 | Calculate payment | ~$2,275/month (P&I) |
-| Custom down | Budget $450,000, 10% down | Calculate payment | ~$2,563/month |
-| Custom rate | Budget $450,000, 7.0% rate | Calculate payment | ~$2,395/month |
-| No budget | Budget not set | Get preferences | Monthly payment is null |
+1. Vite project created with React + TypeScript template
+2. Ant Design installed and configured with custom theme
+3. React Router configured with basic routes
+4. TanStack Query configured for API calls
+5. Zustand configured for client state
+6. Axios configured with base URL and interceptors
+7. Folder structure established
+8. Google Fonts (Assistant, Heebo) configured
+9. CSS variables from design system injected
+10. Proxy to backend API working in development
 
 ### Technical Implementation
 
-**Calculator Service:**
-```csharp
-public interface IMortgageCalculator
-{
-    MonthlyPaymentResult Calculate(MortgageCalculationRequest request);
-}
+**Create Project:**
+```bash
+npm create vite@latest family-relocation-web -- --template react-ts
+cd family-relocation-web
 
-public class MortgageCalculationRequest
-{
-    public required decimal PurchasePrice { get; init; }
-    public decimal DownPaymentPercent { get; init; } = 20m;
-    public decimal AnnualInterestRate { get; init; } = 6.5m;
-    public int LoanTermYears { get; init; } = 30;
-    public decimal? AnnualPropertyTax { get; init; }
-    public decimal? AnnualInsurance { get; init; }
-}
+# Core dependencies
+npm install antd @ant-design/icons
+npm install react-router-dom
+npm install @tanstack/react-query @tanstack/react-query-devtools
+npm install zustand
+npm install axios
+npm install dayjs
 
-public class MonthlyPaymentResult
-{
-    public required decimal Principal { get; init; }
-    public required decimal Interest { get; init; }
-    public required decimal PrincipalAndInterest { get; init; }
-    public decimal PropertyTax { get; init; }
-    public decimal Insurance { get; init; }
-    public required decimal TotalMonthly { get; init; }
-    
-    public string PrincipalAndInterestFormatted => PrincipalAndInterest.ToString("C0");
-    public string TotalMonthlyFormatted => TotalMonthly.ToString("C0");
-}
-
-public class MortgageCalculator : IMortgageCalculator
-{
-    public MonthlyPaymentResult Calculate(MortgageCalculationRequest request)
-    {
-        var downPayment = request.PurchasePrice * (request.DownPaymentPercent / 100);
-        var loanAmount = request.PurchasePrice - downPayment;
-        var monthlyRate = request.AnnualInterestRate / 100 / 12;
-        var numberOfPayments = request.LoanTermYears * 12;
-        
-        // P&I calculation: M = P * [r(1+r)^n] / [(1+r)^n - 1]
-        var powerFactor = (decimal)Math.Pow((double)(1 + monthlyRate), numberOfPayments);
-        var monthlyPI = loanAmount * (monthlyRate * powerFactor) / (powerFactor - 1);
-        
-        // Property tax (estimated 2% annually if not provided)
-        var monthlyTax = (request.AnnualPropertyTax ?? request.PurchasePrice * 0.02m) / 12;
-        
-        // Insurance (estimated 0.5% annually if not provided)
-        var monthlyInsurance = (request.AnnualInsurance ?? request.PurchasePrice * 0.005m) / 12;
-        
-        // Separate P&I into principal and interest for first payment
-        var firstMonthInterest = loanAmount * monthlyRate;
-        var firstMonthPrincipal = monthlyPI - firstMonthInterest;
-        
-        return new MonthlyPaymentResult
-        {
-            Principal = Math.Round(firstMonthPrincipal, 2),
-            Interest = Math.Round(firstMonthInterest, 2),
-            PrincipalAndInterest = Math.Round(monthlyPI, 2),
-            PropertyTax = Math.Round(monthlyTax, 2),
-            Insurance = Math.Round(monthlyInsurance, 2),
-            TotalMonthly = Math.Round(monthlyPI + monthlyTax + monthlyInsurance, 2)
-        };
-    }
-}
+# Dev dependencies
+npm install -D @types/node
 ```
 
-**Query for Standalone Calculation:**
-```csharp
-public record CalculateMonthlyPaymentQuery(
-    decimal PurchasePrice,
-    decimal DownPaymentPercent = 20,
-    decimal AnnualInterestRate = 6.5m,
-    int LoanTermYears = 30,
-    decimal? AnnualPropertyTax = null,
-    decimal? AnnualInsurance = null
-) : IRequest<MonthlyPaymentResult>;
-
-public class CalculateMonthlyPaymentQueryHandler 
-    : IRequestHandler<CalculateMonthlyPaymentQuery, MonthlyPaymentResult>
-{
-    private readonly IMortgageCalculator _calculator;
-
-    public async Task<MonthlyPaymentResult> Handle(
-        CalculateMonthlyPaymentQuery request, 
-        CancellationToken ct)
-    {
-        var calcRequest = new MortgageCalculationRequest
-        {
-            PurchasePrice = request.PurchasePrice,
-            DownPaymentPercent = request.DownPaymentPercent,
-            AnnualInterestRate = request.AnnualInterestRate,
-            LoanTermYears = request.LoanTermYears,
-            AnnualPropertyTax = request.AnnualPropertyTax,
-            AnnualInsurance = request.AnnualInsurance
-        };
-        
-        return await Task.FromResult(_calculator.Calculate(calcRequest));
-    }
-}
+**Folder Structure:**
 ```
-
-**Controller:**
-```csharp
-[HttpGet("calculate-payment")]
-[AllowAnonymous]  // Allow public access for families
-[ProducesResponseType(typeof(MonthlyPaymentResult), StatusCodes.Status200OK)]
-public async Task<ActionResult<MonthlyPaymentResult>> CalculatePayment(
-    [FromQuery] decimal purchasePrice,
-    [FromQuery] decimal downPaymentPercent = 20,
-    [FromQuery] decimal annualInterestRate = 6.5m,
-    [FromQuery] int loanTermYears = 30,
-    [FromQuery] decimal? annualPropertyTax = null,
-    [FromQuery] decimal? annualInsurance = null,
-    CancellationToken ct = default)
-{
-    var query = new CalculateMonthlyPaymentQuery(
-        purchasePrice,
-        downPaymentPercent,
-        annualInterestRate,
-        loanTermYears,
-        annualPropertyTax,
-        annualInsurance);
-    
-    var result = await _mediator.Send(query, ct);
-    return Ok(result);
-}
-```
-
-**Update HousingPreferencesDto:**
-```csharp
-public class HousingPreferencesDto
-{
-    // ... existing properties ...
-    
-    // Calculated monthly payment (if budget is set)
-    public MonthlyPaymentResult? EstimatedMonthlyPayment { get; init; }
-}
-
-// In mapper:
-public static HousingPreferencesDto ToDto(
-    this HousingPreferences prefs,
-    IMortgageCalculator calculator)
-{
-    MonthlyPaymentResult? payment = null;
-    
-    if (prefs.Budget != null)
-    {
-        payment = calculator.Calculate(new MortgageCalculationRequest
-        {
-            PurchasePrice = prefs.Budget.Amount
-        });
-    }
-    
-    return new HousingPreferencesDto
-    {
-        BudgetAmount = prefs.Budget?.Amount,
-        MinBedrooms = prefs.MinBedrooms,
-        MinBathrooms = prefs.MinBathrooms,
-        PreferredCities = prefs.PreferredCities.ToList(),
-        RequiredFeatures = prefs.RequiredFeatures.ToList(),
-        MoveTimeline = prefs.MoveTimeline?.ToString(),
-        ShulProximity = prefs.ShulProximity?.ToDto(),
-        EstimatedMonthlyPayment = payment
-    };
-}
-```
-
-### Example Calculation
-
-**Request:**
-```
-GET /api/housing-searches/calculate-payment?purchasePrice=450000&downPaymentPercent=20&annualInterestRate=6.5&loanTermYears=30
-```
-
-**Response:**
-```json
-{
-  "principal": 327.50,
-  "interest": 1950.00,
-  "principalAndInterest": 2277.50,
-  "propertyTax": 750.00,
-  "insurance": 187.50,
-  "totalMonthly": 3215.00,
-  "principalAndInterestFormatted": "$2,278",
-  "totalMonthlyFormatted": "$3,215"
-}
+src/
+├── api/
+│   ├── client.ts           # Axios instance with interceptors
+│   ├── endpoints/
+│   │   ├── applicants.ts
+│   │   ├── housingSearches.ts
+│   │   └── auth.ts
+│   └── types/
+├── components/
+│   ├── common/
+│   │   ├── StatusTag.tsx    # Board decision tags
+│   │   ├── StageTag.tsx     # Pipeline stage tags
+│   │   ├── LoadingSpinner.tsx
+│   │   └── PageHeader.tsx
+│   └── layout/
+│       ├── AppLayout.tsx
+│       ├── Sidebar.tsx
+│       └── Header.tsx
+├── features/
+│   ├── auth/
+│   ├── applicants/
+│   └── pipeline/
+├── hooks/
+├── store/
+│   ├── authStore.ts
+│   └── uiStore.ts
+├── theme/
+│   └── antd-theme.ts        # Copy from docs/design/
+├── utils/
+├── App.tsx
+├── main.tsx
+└── routes.tsx
 ```
 
 ### Definition of Done
 
-- [ ] MortgageCalculator service created
-- [ ] P&I calculation is accurate
-- [ ] GET /api/housing-searches/calculate-payment endpoint created
-- [ ] HousingPreferencesDto includes calculated payment
-- [ ] Default values work (20% down, 6.5%, 30 years)
-- [ ] Custom values work
-- [ ] Unit tests for calculator (10+ tests)
-- [ ] Integration tests (3+ tests)
-- [ ] All tests passing
+- [ ] Vite project created with TypeScript
+- [ ] All dependencies installed
+- [ ] Ant Design configured with `antd-theme.ts`
+- [ ] Google Fonts loading (Assistant, Heebo)
+- [ ] CSS variables injected
+- [ ] Folder structure created
+- [ ] Axios client with interceptors
+- [ ] Proxy to backend working
+- [ ] `npm run dev` starts without errors
+- [ ] `npm run build` succeeds
+- [ ] Primary button renders with light blue style
 
 ---
 
-## 📋 SPRINT 2 SUMMARY
+## US-F02: Authentication Flow (Login Page)
 
-### NuGet Packages Needed
+### Story
 
-**Application Layer:**
-```bash
-# Already installed from Sprint 1
-MediatR
-FluentValidation
-```
+**As a** coordinator  
+**I want to** log in to the system  
+**So that** I can access the CRM features
 
-**Infrastructure Layer:**
-```bash
-dotnet add package AWSSDK.SimpleEmail
-```
+**Priority:** P0  
+**Effort:** 5 points  
+**Sprint:** 2
 
-### New Files to Create
+### Design Reference
 
-```
-Application/
-  HousingSearches/
-    Commands/
-      CreateHousingSearch/
-        CreateHousingSearchCommand.cs
-        CreateHousingSearchCommandHandler.cs
-      ChangeHousingSearchStage/
-        ChangeHousingSearchStageCommand.cs
-        ChangeHousingSearchStageCommandHandler.cs
-      UpdateHousingPreferences/
-        UpdateHousingPreferencesCommand.cs
-        UpdateHousingPreferencesCommandHandler.cs
-        UpdateHousingPreferencesCommandValidator.cs
-    Queries/
-      GetHousingSearchById/
-        GetHousingSearchByIdQuery.cs
-        GetHousingSearchByIdQueryHandler.cs
-      GetHousingSearchPipeline/
-        GetHousingSearchPipelineQuery.cs
-        GetHousingSearchPipelineQueryHandler.cs
-      CalculateMonthlyPayment/
-        CalculateMonthlyPaymentQuery.cs
-        CalculateMonthlyPaymentQueryHandler.cs
-    DTOs/
-      HousingSearchDto.cs
-      HousingPreferencesDto.cs
-      ContractDto.cs
-      FailedContractDto.cs
-      PipelineDto.cs
-    Mappers/
-      HousingSearchMapper.cs
-  
-  Applications/
-    Commands/
-      SubmitPublicApplication/
-        SubmitPublicApplicationCommand.cs
-        SubmitPublicApplicationCommandHandler.cs
-        SubmitPublicApplicationCommandValidator.cs
-    DTOs/
-      PublicApplicationRequest.cs
-      PublicApplicationResult.cs
-  
-  Common/
-    Services/
-      IMortgageCalculator.cs
-    Exceptions/
-      ConflictException.cs
-      InvalidStageTransitionException.cs
+**Prototype:** `docs/design/prototype-login-page.html`
 
-Infrastructure/
-  Services/
-    MortgageCalculator.cs
-  Email/
-    IEmailService.cs
-    SesEmailService.cs
-    EmailSettings.cs
-    Templates/
-      ApplicationReceivedEmail.cs
+### Layout Specifications
 
-API/
-  Controllers/
-    ApplicationsController.cs
-    HousingSearchController.cs
-```
+| Element | Specification |
+|---------|---------------|
+| Container | Centered, max-width 420px |
+| Background | Gradient: `brand-50` to `primary-50` |
+| Card | White, border-radius 16px, shadow-lg, padding 40px |
+| Logo | Tree image (64px height) + "וועד הישוב" text |
 
-### Test Coverage Goals
+### States to Implement
 
-| Area | Target |
-|------|--------|
-| Command Handlers | 90%+ |
-| Query Handlers | 90%+ |
-| Validators | 100% |
-| Domain Methods | 100% |
-| Controllers | 80%+ |
+1. **Default** - Form ready for input
+2. **Loading** - Button shows spinner, inputs disabled
+3. **Error** - Red alert shown above form
+4. **Success** - Redirect to `/dashboard`
 
-### Sprint 2 Definition of Done
+### Definition of Done
 
-- [ ] All 8 stories implemented
-- [ ] All endpoints working
-- [ ] Email notifications sending
-- [ ] Pipeline view returning grouped data
-- [ ] Stage transitions validated
-- [ ] Monthly payment calculator accurate
-- [ ] All tests passing (target: 100+ new tests)
-- [ ] Code reviewed
-- [ ] Documentation updated
+- [ ] Login page matches prototype design
+- [ ] Logo with Hebrew text displays correctly
+- [ ] Form validation works (email format, required fields)
+- [ ] Loading state shows spinner in button
+- [ ] Error state shows alert with message
+- [ ] Successful login stores tokens and redirects
+- [ ] Protected routes redirect to login if not authenticated
 
 ---
 
-## 🎯 DAILY BREAKDOWN (Suggested)
+## US-F03: App Shell & Navigation
 
-### Days 1-2: Public Application (US-010, US-011)
-- Create SubmitPublicApplicationCommand
-- Implement validation
-- Set up email service
-- Create email templates
+### Story
 
-### Days 3-4: HousingSearch CRUD (US-012, US-013)
-- Create HousingSearch command/query
-- Build DTOs and mappers
-- Implement controller endpoints
+**As a** coordinator  
+**I want to** navigate between different sections of the CRM  
+**So that** I can access all features easily
 
-### Days 5-6: Pipeline View (US-014)
-- Build pipeline query with grouping
-- Implement filtering and search
-- Create pipeline DTOs
+**Priority:** P0  
+**Effort:** 3 points  
+**Sprint:** 2
 
-### Days 7-8: Stage Transitions (US-015)
-- Implement all valid transitions
-- Add domain methods to HousingSearch
-- Handle contract creation/failure
+### Design Reference
 
-### Days 9-10: Preferences & Calculator (US-016, US-017)
-- Update preferences command
-- Mortgage calculator service
-- Integration and final testing
+**Prototype:** `docs/design/prototype-pipeline-kanban.html` (sidebar section)
+
+### Sidebar Specifications
+
+| Element | Specification |
+|---------|---------------|
+| Width | 220px fixed |
+| Background | White |
+| Border | 1px solid `neutral-200` on right |
+| Logo area | Padding 16px, border-bottom |
+| Nav items | Padding 12px 14px, border-radius 8px |
+| **Active item** | Background `primary-50` (#eff6ff), color `primary-700` (#1e40af) |
+| Hover item | Background `neutral-100`, color `neutral-900` |
+| User section | Bottom, border-top, padding 16px |
+
+### Definition of Done
+
+- [ ] Sidebar renders with logo and Hebrew text
+- [ ] Navigation items highlight when active (light blue)
+- [ ] User info displays at bottom of sidebar
+- [ ] Header shows page title
+- [ ] Routes work: /, /applicants, /pipeline
+- [ ] Layout is fixed (sidebar doesn't scroll with content)
+
+---
+
+## US-F04: Applicant List Page
+
+### Story
+
+**As a** coordinator  
+**I want to** see a list of all applicants  
+**So that** I can manage family applications
+
+**Priority:** P0  
+**Effort:** 3 points  
+**Sprint:** 2
+
+### Table Specifications
+
+| Element | Specification |
+|---------|---------------|
+| Header bg | `neutral-50` |
+| Header text | 12px, uppercase, `neutral-500` |
+| Row hover | `primary-50` background |
+| Row padding | 16px |
+
+### Definition of Done
+
+- [ ] Page header with title, count, and "Add Applicant" button
+- [ ] Filters row with search, status, and stage dropdowns
+- [ ] Table displays applicant data with custom tags
+- [ ] Row hover shows light blue background
+- [ ] Clicking row navigates to detail page
+- [ ] Loading state shows spinner
+- [ ] Empty state shows message
+
+---
+
+## US-F05: Applicant Detail Page
+
+### Story
+
+**As a** coordinator  
+**I want to** view detailed information about an applicant  
+**So that** I can review their application and housing search
+
+**Priority:** P0  
+**Effort:** 3 points  
+**Sprint:** 2
+
+### Tabs
+
+1. **Overview** - Husband, Wife, Address, Preferences
+2. **Housing Search** - Stage, preferences, contracts
+3. **Children** - List with ages and genders
+4. **Activity** - Audit log history (calls US-018 API)
+
+### Definition of Done
+
+- [ ] Back link navigates to applicant list
+- [ ] Header shows family name, status tags, and action buttons
+- [ ] Tabs switch between Overview, Housing Search, Children, Activity
+- [ ] Info sections display in 2-column grid
+- [ ] Activity tab shows audit history
+- [ ] Data loads from API with loading state
+- [ ] 404 handling if applicant not found
+
+---
+
+## US-F06: Pipeline Kanban Board
+
+### Story
+
+**As a** coordinator  
+**I want to** view families in a Kanban board by housing search stage  
+**So that** I can visualize and manage the pipeline
+
+**Priority:** P0  
+**Effort:** 5 points  
+**Sprint:** 2
+
+### Design Reference
+
+**Prototype:** `docs/design/prototype-pipeline-kanban.html`
+
+### Stage Colors
+
+| Stage | Dot/Border Color | Background |
+|-------|------------------|------------|
+| Submitted | `#3b82f6` | `#dbeafe` |
+| House Hunting | `#f59e0b` | `#fef3c7` |
+| Under Contract | `#8b5cf6` | `#ede9fe` |
+| Closed | `#10b981` | `#d1fae5` |
+
+### Card Specifications
+
+| Element | Specification |
+|---------|---------------|
+| Background | White |
+| Border-left | 4px solid (stage color) |
+| Border-radius | 10px |
+| Padding | 16px |
+| Shadow | `shadow-sm` |
+| Hover | Lift effect (`shadow-md`, translateY -2px) |
+
+### Definition of Done
+
+- [ ] Four columns render with correct colors
+- [ ] Cards display family info with stage-colored border
+- [ ] Drag and drop changes stage (calls PUT /api/applicants/{id}/housing-search/stage)
+- [ ] Click on card opens detail modal or navigates
+- [ ] Search filters cards across all columns
+- [ ] City/Status filters work
+- [ ] Loading state shows skeletons
+- [ ] Error handling for failed stage changes
+
+---
+
+## 📋 SPRINT 2 COMPLETE SUMMARY
+
+### All Stories
+
+| ID | Story | Points | Type |
+|----|-------|--------|------|
+| US-010 | Modify applicant creation to also create HousingSearch | 3 | Backend |
+| US-014 | View applicant pipeline (Kanban API) | 5 | Backend |
+| US-015 | Change HousingSearch stage (API endpoint) | 2 | Backend |
+| US-016 | Update housing preferences | 2 | Backend |
+| US-018 | Implement audit log feature | 5 | Backend |
+| US-F01 | React project setup with design system | 3 | Frontend |
+| US-F02 | Authentication flow (login page) | 5 | Frontend |
+| US-F03 | App shell & navigation | 3 | Frontend |
+| US-F04 | Applicant list page | 3 | Frontend |
+| US-F05 | Applicant detail page | 3 | Frontend |
+| US-F06 | Pipeline Kanban board | 5 | Frontend |
+
+**Total: 34 points (17 Backend + 17 Frontend)**
+
+### Stories Deferred
+
+| ID | Story | Deferred To | Reason |
+|----|-------|-------------|--------|
+| US-011 | Email notifications | Sprint 4+ | Need editable templates with DB storage |
+| US-017 | Monthly payment calculator | P3 | Nice-to-have feature |
+
+---
+
+### 🎯 DAILY BREAKDOWN
+
+**Week 1: Backend Focus**
+
+| Day | Tasks |
+|-----|-------|
+| Day 1 | US-010: Modify CreateApplicant to create HousingSearch |
+| Day 2 | US-014: Pipeline query endpoint |
+| Day 3 | US-015: Stage change endpoint + US-016: Preferences |
+| Day 4-5 | US-018: Audit log feature |
+
+**Week 2: Frontend Focus**
+
+| Day | Tasks |
+|-----|-------|
+| Day 6 | US-F01: React project setup with theme |
+| Day 7 | US-F02: Login page + Auth store |
+| Day 8 | US-F03: App shell + navigation |
+| Day 9 | US-F04: Applicant list page |
+| Day 10 | US-F05: Applicant detail + US-F06: Pipeline Kanban |
+
+---
+
+### What You'll Have at End of Sprint 2
+
+**Backend:**
+- ✅ Applicant creation automatically creates HousingSearch
+- ✅ Pipeline (Kanban) data API via /api/applicants/pipeline
+- ✅ Stage transition API endpoint
+- ✅ Housing preferences update
+- ✅ Audit log with automatic change tracking
+
+**Frontend:**
+- ✅ Working React application with design system
+- ✅ Login page with Cognito auth
+- ✅ App shell with navigation
+- ✅ Applicant list with search/filter
+- ✅ Applicant detail page with audit history
+- ✅ Pipeline Kanban board with drag & drop
 
 ---
 
 **Sprint 2 Detailed Stories Complete! 🚀**
-
-**Reference Documents:**
-- CONVERSATION_MEMORY_LOG.md - Full context
-- SPRINT_1_DETAILED_STORIES.md - Sprint 1 patterns
-- SOLUTION_STRUCTURE_AND_CODE_v3.md - Code reference

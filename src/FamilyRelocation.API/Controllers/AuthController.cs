@@ -6,18 +6,34 @@ using AuthModels = FamilyRelocation.API.Models.Auth;
 
 namespace FamilyRelocation.API.Controllers;
 
+/// <summary>
+/// Handles user authentication via AWS Cognito.
+/// </summary>
 [ApiController]
 [Route("api/auth")]
 public class AuthController : ControllerBase
 {
     private readonly IAuthenticationService _authService;
 
+    /// <summary>
+    /// Initializes the authentication controller.
+    /// </summary>
+    /// <param name="authService">The authentication service.</param>
     public AuthController(IAuthenticationService authService)
     {
         _authService = authService;
     }
 
+    /// <summary>
+    /// Authenticates a user with email and password.
+    /// </summary>
+    /// <param name="request">Login credentials.</param>
+    /// <returns>JWT tokens on success, or a challenge response if additional verification is needed.</returns>
     [HttpPost("login")]
+    [ProducesResponseType(typeof(AuthModels.LoginResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(AuthModels.ChallengeResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Login([FromBody] AuthModels.LoginRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Email))
@@ -59,7 +75,16 @@ public class AuthController : ControllerBase
         });
     }
 
+    /// <summary>
+    /// Responds to an authentication challenge (e.g., NEW_PASSWORD_REQUIRED, SMS_MFA).
+    /// </summary>
+    /// <param name="request">Challenge response data.</param>
+    /// <returns>JWT tokens on success, or another challenge if needed.</returns>
     [HttpPost("respond-to-challenge")]
+    [ProducesResponseType(typeof(AuthModels.LoginResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(AuthModels.ChallengeResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> RespondToChallenge([FromBody] AuthModels.ChallengeRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Email))
@@ -112,7 +137,15 @@ public class AuthController : ControllerBase
         });
     }
 
+    /// <summary>
+    /// Refreshes access tokens using a valid refresh token.
+    /// </summary>
+    /// <param name="request">Refresh token request with username and token.</param>
+    /// <returns>New access and ID tokens.</returns>
     [HttpPost("refresh")]
+    [ProducesResponseType(typeof(AuthModels.RefreshTokenResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Refresh([FromBody] AuthModels.RefreshTokenRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Username))
@@ -136,7 +169,14 @@ public class AuthController : ControllerBase
         });
     }
 
+    /// <summary>
+    /// Initiates a password reset by sending a verification code to the user's email.
+    /// </summary>
+    /// <param name="request">Email address for password reset.</param>
+    /// <returns>Success message indicating code was sent.</returns>
     [HttpPost("forgot-password")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> ForgotPassword([FromBody] AuthModels.ForgotPasswordRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Email))
@@ -156,7 +196,14 @@ public class AuthController : ControllerBase
         return Ok(new { message = result.Message });
     }
 
+    /// <summary>
+    /// Completes password reset with the verification code and new password.
+    /// </summary>
+    /// <param name="request">Email, verification code, and new password.</param>
+    /// <returns>Success message confirming password was reset.</returns>
     [HttpPost("confirm-forgot-password")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> ConfirmForgotPassword([FromBody] AuthModels.ConfirmForgotPasswordRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Email))
@@ -178,7 +225,14 @@ public class AuthController : ControllerBase
         return Ok(new { message = result.Message });
     }
 
+    /// <summary>
+    /// Resends the email confirmation verification code.
+    /// </summary>
+    /// <param name="request">Email address to resend confirmation to.</param>
+    /// <returns>Success message indicating code was sent.</returns>
     [HttpPost("resend-confirmation")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> ResendConfirmation([FromBody] AuthModels.ResendConfirmationRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Email))
@@ -198,7 +252,14 @@ public class AuthController : ControllerBase
         return Ok(new { message = result.Message });
     }
 
+    /// <summary>
+    /// Confirms a user's email address with the verification code.
+    /// </summary>
+    /// <param name="request">Email and verification code.</param>
+    /// <returns>Success message confirming email was verified.</returns>
     [HttpPost("confirm-email")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> ConfirmEmail([FromBody] AuthModels.ConfirmEmailRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Email))
@@ -221,8 +282,14 @@ public class AuthController : ControllerBase
     /// Admin-only: Register a new user with a temporary password.
     /// The user will be required to change their password on first login.
     /// </summary>
+    /// <param name="request">User registration details with optional temporary password.</param>
+    /// <returns>User ID and temporary password for sharing with the new user.</returns>
     [HttpPost("register")]
     [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(AuthModels.RegisterUserResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> RegisterUser([FromBody] AuthModels.RegisterUserRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Email))

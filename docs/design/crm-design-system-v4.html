@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Family Relocation CRM - Design System v4</title>
+    <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;500;600;700&family=Heebo:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* Brand Colors - Green (from Logo) */
+            --brand-600: #2d7a3a; --brand-500: #3d9a4a; --brand-400: #4db85a;
+            --brand-300: #7ed68b; --brand-200: #b5e8bb; --brand-100: #e8f7ea; --brand-50: #f4fbf5;
+            
+            /* Primary Colors - Light Blue Style (Option B) */
+            --primary-700: #1e40af;
+            --primary-600: #1e40af;  /* Text/icon color on light bg */
+            --primary-500: #3b82f6;
+            --primary-400: #60a5fa;
+            --primary-300: #93c5fd;
+            --primary-200: #bfdbfe;
+            --primary-150: #d0e4fc;  /* Button background */
+            --primary-100: #dbeafe;
+            --primary-50: #eff6ff;
+            
+            /* Neutral Colors */
+            --neutral-900: #1a1d1a; --neutral-800: #2d302d; --neutral-700: #404340;
+            --neutral-600: #5c605c; --neutral-500: #7a7e7a; --neutral-400: #9ca09c;
+            --neutral-300: #c4c7c4; --neutral-200: #e2e4e2; --neutral-100: #f1f2f1; --neutral-50: #f8f9f8;
+            
+            /* Status Colors */
+            --status-pending: #f59e0b; --status-pending-bg: #fef3c7;
+            --status-approved: #10b981; --status-approved-bg: #d1fae5;
+            --status-rejected: #ef4444; --status-rejected-bg: #fee2e2;
+            --status-deferred: #6366f1; --status-deferred-bg: #e0e7ff;
+            
+            /* Stage Colors */
+            --stage-submitted: #3b82f6; --stage-submitted-bg: #dbeafe;
+            --stage-hunting: #f59e0b; --stage-hunting-bg: #fef3c7;
+            --stage-contract: #8b5cf6; --stage-contract-bg: #ede9fe;
+            --stage-closed: #10b981; --stage-closed-bg: #d1fae5;
+            
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1);
+            --radius-sm: 4px; --radius-md: 6px; --radius-lg: 8px; --radius-xl: 12px;
+            --font-family: 'Assistant', 'Heebo', sans-serif;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: var(--font-family); font-size: 14px; color: var(--neutral-800); background: var(--neutral-50); line-height: 1.5; }
+        .design-system { max-width: 1200px; margin: 0 auto; padding: 32px; }
+        .section { background: white; border-radius: var(--radius-xl); padding: 32px; margin-bottom: 32px; box-shadow: var(--shadow-md); }
+        .section-title { font-size: 20px; font-weight: 700; color: var(--neutral-900); margin-bottom: 24px; padding-bottom: 12px; border-bottom: 2px solid var(--primary-600); display: inline-block; }
+        .color-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .color-swatch { text-align: center; }
+        .color-box { height: 50px; border-radius: var(--radius-lg); margin-bottom: 8px; }
+        .color-label { font-size: 11px; color: var(--neutral-600); }
+        .color-value { font-size: 10px; font-family: monospace; color: var(--neutral-500); }
+        .button-grid { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
+        .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; font-family: var(--font-family); font-size: 14px; font-weight: 600; border-radius: var(--radius-md); border: none; cursor: pointer; transition: all 0.15s; }
+        
+        /* NEW: Option B - Light background with dark text */
+        .btn-primary { 
+            background: var(--primary-150); 
+            color: var(--primary-700); 
+            border: 1px solid var(--primary-200);
+        }
+        .btn-primary:hover { 
+            background: var(--primary-100); 
+            border-color: var(--primary-300);
+        }
+        
+        .btn-secondary { background: white; color: var(--neutral-700); border: 1px solid var(--neutral-300); }
+        .btn-secondary:hover { background: var(--neutral-50); border-color: var(--neutral-400); }
+        .btn-success { background: var(--brand-100); color: var(--brand-600); border: 1px solid var(--brand-200); }
+        .btn-success:hover { background: var(--brand-50); }
+        .btn-danger { background: var(--status-rejected-bg); color: #991b1b; border: 1px solid #fecaca; }
+        .btn-danger:hover { background: #fee2e2; }
+        .btn-ghost { background: transparent; color: var(--primary-700); }
+        .btn-ghost:hover { background: var(--primary-50); }
+        
+        .tag-grid { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 24px; }
+        .tag { display: inline-flex; padding: 4px 12px; font-size: 12px; font-weight: 600; border-radius: var(--radius-sm); }
+        .tag-pending { background: var(--status-pending-bg); color: #92400e; }
+        .tag-approved { background: var(--status-approved-bg); color: #065f46; }
+        .tag-rejected { background: var(--status-rejected-bg); color: #991b1b; }
+        .tag-deferred { background: var(--status-deferred-bg); color: #3730a3; }
+        .tag-submitted { background: var(--stage-submitted-bg); color: #1e40af; }
+        .tag-hunting { background: var(--stage-hunting-bg); color: #92400e; }
+        .tag-contract { background: var(--stage-contract-bg); color: #5b21b6; }
+        .tag-closed { background: var(--stage-closed-bg); color: #065f46; }
+        
+        .form-input { width: 100%; padding: 8px 12px; font-family: var(--font-family); font-size: 14px; border: 1px solid var(--neutral-300); border-radius: var(--radius-md); }
+        .form-input:focus { outline: none; border-color: var(--primary-400); box-shadow: 0 0 0 3px var(--primary-50); }
+        .form-label { display: block; font-size: 13px; font-weight: 600; color: var(--neutral-700); margin-bottom: 8px; }
+        
+        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; margin-bottom: 24px; }
+        .stat-card { background: white; border-radius: var(--radius-lg); padding: 20px; border: 1px solid var(--neutral-200); }
+        .stat-label { font-size: 13px; color: var(--neutral-500); }
+        .stat-value { font-size: 24px; font-weight: 700; color: var(--neutral-900); }
+        .stat-change { font-size: 13px; color: var(--status-approved); }
+        
+        .table { width: 100%; border-collapse: collapse; }
+        .table th { text-align: left; padding: 12px 16px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--neutral-500); background: var(--neutral-50); border-bottom: 1px solid var(--neutral-200); }
+        .table td { padding: 16px; border-bottom: 1px solid var(--neutral-100); }
+        .table tr:hover { background: var(--primary-50); cursor: pointer; }
+        
+        .pipeline-container { display: flex; gap: 16px; overflow-x: auto; padding-bottom: 16px; }
+        .pipeline-column { min-width: 260px; background: var(--neutral-100); border-radius: var(--radius-lg); padding: 16px; }
+        .pipeline-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+        .pipeline-title { font-weight: 600; color: var(--neutral-900); display: flex; align-items: center; gap: 8px; }
+        .pipeline-count { background: var(--neutral-300); color: var(--neutral-700); font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 10px; }
+        .pipeline-card { background: white; border-radius: var(--radius-md); padding: 16px; margin-bottom: 12px; box-shadow: var(--shadow-sm); cursor: pointer; border-left: 3px solid transparent; transition: all 0.2s; }
+        .pipeline-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+        .pipeline-card.submitted { border-left-color: var(--stage-submitted); }
+        .pipeline-card.hunting { border-left-color: var(--stage-hunting); }
+        .pipeline-card.contract { border-left-color: var(--stage-contract); }
+        .pipeline-card.closed { border-left-color: var(--stage-closed); }
+        .pipeline-card-name { font-weight: 600; color: var(--neutral-900); margin-bottom: 4px; }
+        .pipeline-card-detail { font-size: 12px; color: var(--neutral-500); margin-bottom: 8px; }
+        .pipeline-card-meta { display: flex; justify-content: space-between; align-items: center; }
+        .pipeline-city-tag { font-size: 10px; padding: 2px 6px; background: var(--neutral-100); border-radius: var(--radius-sm); color: var(--neutral-600); margin-right: 4px; }
+        .pipeline-card-days { font-size: 12px; color: var(--neutral-400); }
+        
+        .layout-preview { display: flex; border: 1px solid var(--neutral-200); border-radius: var(--radius-lg); overflow: hidden; height: 480px; }
+        .sidebar-preview { width: 200px; background: white; border-right: 1px solid var(--neutral-200); display: flex; flex-direction: column; }
+        .sidebar-logo { padding: 16px; border-bottom: 1px solid var(--neutral-100); display: flex; align-items: center; gap: 12px; }
+        .sidebar-logo-img { height: 40px; width: auto; }
+        .sidebar-logo-text { font-weight: 700; color: var(--brand-600); font-size: 16px; line-height: 1.2; }
+        .sidebar-nav { padding: 16px; flex: 1; }
+        .sidebar-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--radius-md); color: var(--neutral-600); font-weight: 500; margin-bottom: 4px; cursor: pointer; font-size: 13px; }
+        .sidebar-item:hover { background: var(--neutral-100); color: var(--neutral-900); }
+        /* NEW: Lighter active state with better icon visibility */
+        .sidebar-item.active { background: var(--primary-50); color: var(--primary-700); }
+        
+        .layout-main { flex: 1; display: flex; flex-direction: column; }
+        .layout-header { height: 52px; background: white; border-bottom: 1px solid var(--neutral-200); display: flex; align-items: center; justify-content: space-between; padding: 0 24px; }
+        .layout-header-search { display: flex; align-items: center; gap: 8px; background: var(--neutral-100); padding: 8px 16px; border-radius: var(--radius-md); color: var(--neutral-400); width: 260px; font-size: 13px; }
+        .layout-avatar { width: 32px; height: 32px; background: var(--primary-100); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--primary-700); font-weight: 600; font-size: 13px; }
+        .layout-content { flex: 1; background: var(--neutral-50); padding: 24px; overflow-y: auto; }
+        .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+        .page-title { font-size: 20px; font-weight: 700; color: var(--neutral-900); }
+        .page-subtitle { font-size: 13px; color: var(--neutral-500); margin-top: 4px; }
+        
+        .note { background: var(--primary-50); border: 1px solid var(--primary-200); border-radius: var(--radius-md); padding: 16px; margin-bottom: 24px; }
+        .note-title { font-weight: 600; color: var(--primary-700); margin-bottom: 4px; }
+        .note-text { font-size: 13px; color: var(--primary-600); }
+        .note-brand { background: var(--brand-50); border-color: var(--brand-200); }
+        .note-brand .note-title { color: var(--brand-600); }
+        .note-brand .note-text { color: var(--brand-500); }
+        
+        .detail-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--neutral-200); margin-bottom: 20px; }
+        .detail-tab { padding: 12px 16px; font-weight: 500; color: var(--neutral-500); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+        .detail-tab.active { color: var(--primary-700); border-bottom-color: var(--primary-600); }
+        .detail-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; }
+        .detail-section { background: white; border-radius: var(--radius-lg); border: 1px solid var(--neutral-200); padding: 20px; }
+        .detail-section-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--neutral-500); margin-bottom: 16px; }
+        .detail-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--neutral-100); }
+        .detail-row:last-child { border-bottom: none; }
+        .detail-label { color: var(--neutral-500); font-size: 13px; }
+        .detail-value { font-weight: 500; color: var(--neutral-900); }
+        h3 { font-size: 15px; font-weight: 600; margin-bottom: 16px; color: var(--neutral-700); }
+        
+        .style-note {
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+            border: 2px solid var(--primary-300);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 32px;
+        }
+        .style-note-title { font-size: 16px; font-weight: 700; color: var(--primary-700); margin-bottom: 8px; }
+        .style-note-text { color: var(--primary-600); }
+    </style>
+</head>
+<body>
+<div class="design-system">
+    <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 8px;">
+        <img src="data:image/webp;base64,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" alt="Logo Tree" style="height: 50px;">
+        <div>
+            <h1 style="font-size: 32px; font-weight: 700; color: var(--brand-600); margin: 0;">Family Relocation CRM</h1>
+            <p style="font-size: 15px; color: var(--neutral-500); margin: 4px 0 0 0;">Design System v4 • Light Button Style</p>
+        </div>
+    </div>
+    <p style="font-size: 17px; color: var(--neutral-600); margin-bottom: 32px;">Union County Jewish Community • וועד הישוב דקהילת יוניאן</p>
+
+    <div class="style-note">
+        <div class="style-note-title">✨ New Button Style: Light Background + Dark Text</div>
+        <div class="style-note-text">Primary buttons now use a soft light blue background (#d0e4fc) with dark blue text (#1e40af). This is much easier on the eyes while still being clearly identifiable as a call-to-action.</div>
+    </div>
+
+    <!-- Buttons -->
+    <div class="section">
+        <h2 class="section-title">Buttons</h2>
+        <h3>Button Variants</h3>
+        <div class="button-grid">
+            <button class="btn btn-primary">➕ Add Applicant</button>
+            <button class="btn btn-secondary">Cancel</button>
+            <button class="btn btn-success">✓ Approve</button>
+            <button class="btn btn-danger">✗ Reject</button>
+            <button class="btn btn-ghost">Edit</button>
+        </div>
+        <h3>Primary Button States</h3>
+        <div class="button-grid">
+            <button class="btn btn-primary">Default State</button>
+            <button class="btn btn-primary" style="background: var(--primary-100);">Hover State</button>
+        </div>
+        <div class="note">
+            <div class="note-title">Button CSS</div>
+            <pre style="font-size:12px;background:white;padding:12px;border-radius:6px;margin-top:8px;overflow-x:auto;">.btn-primary {
+    background: #d0e4fc;
+    color: #1e40af;
+    border: 1px solid #bfdbfe;
+}
+.btn-primary:hover {
+    background: #dbeafe;
+    border-color: #93c5fd;
+}</pre>
+        </div>
+    </div>
+
+    <!-- Color Palette -->
+    <div class="section">
+        <h2 class="section-title">Color Palette</h2>
+        <h3>Primary Blue (Buttons & Interactive Elements)</h3>
+        <div class="color-grid">
+            <div class="color-swatch"><div class="color-box" style="background: var(--primary-700);"></div><div class="color-label">700 (text)</div><div class="color-value">#1e40af</div></div>
+            <div class="color-swatch"><div class="color-box" style="background: var(--primary-500);"></div><div class="color-label">500</div><div class="color-value">#3b82f6</div></div>
+            <div class="color-swatch"><div class="color-box" style="background: var(--primary-200);"></div><div class="color-label">200 (border)</div><div class="color-value">#bfdbfe</div></div>
+            <div class="color-swatch"><div class="color-box" style="background: var(--primary-150);"></div><div class="color-label">150 (btn bg)</div><div class="color-value">#d0e4fc</div></div>
+            <div class="color-swatch"><div class="color-box" style="background: var(--primary-100);"></div><div class="color-label">100 (hover)</div><div class="color-value">#dbeafe</div></div>
+            <div class="color-swatch"><div class="color-box" style="background: var(--primary-50);"></div><div class="color-label">50 (subtle)</div><div class="color-value">#eff6ff</div></div>
+        </div>
+        <h3>Brand Green (Logo & Success)</h3>
+        <div class="color-grid">
+            <div class="color-swatch"><div class="color-box" style="background: var(--brand-600);"></div><div class="color-label">600</div><div class="color-value">#2d7a3a</div></div>
+            <div class="color-swatch"><div class="color-box" style="background: var(--brand-500);"></div><div class="color-label">500 (logo)</div><div class="color-value">#3d9a4a</div></div>
+            <div class="color-swatch"><div class="color-box" style="background: var(--brand-200);"></div><div class="color-label">200</div><div class="color-value">#b5e8bb</div></div>
+            <div class="color-swatch"><div class="color-box" style="background: var(--brand-100);"></div><div class="color-label">100</div><div class="color-value">#e8f7ea</div></div>
+        </div>
+        <h3>Status & Stage Colors</h3>
+        <div class="color-grid">
+            <div class="color-swatch"><div class="color-box" style="background: var(--status-pending);"></div><div class="color-label">Pending</div><div class="color-value">#f59e0b</div></div>
+            <div class="color-swatch"><div class="color-box" style="background: var(--status-approved);"></div><div class="color-label">Approved</div><div class="color-value">#10b981</div></div>
+            <div class="color-swatch"><div class="color-box" style="background: var(--status-rejected);"></div><div class="color-label">Rejected</div><div class="color-value">#ef4444</div></div>
+            <div class="color-swatch"><div class="color-box" style="background: var(--status-deferred);"></div><div class="color-label">Deferred</div><div class="color-value">#6366f1</div></div>
+        </div>
+    </div>
+
+    <!-- Status Tags -->
+    <div class="section">
+        <h2 class="section-title">Status Tags</h2>
+        <h3>Board Decision</h3>
+        <div class="tag-grid">
+            <span class="tag tag-pending">Pending</span>
+            <span class="tag tag-approved">Approved</span>
+            <span class="tag tag-rejected">Rejected</span>
+            <span class="tag tag-deferred">Deferred</span>
+        </div>
+        <h3>Pipeline Stage</h3>
+        <div class="tag-grid">
+            <span class="tag tag-submitted">Submitted</span>
+            <span class="tag tag-hunting">House Hunting</span>
+            <span class="tag tag-contract">Under Contract</span>
+            <span class="tag tag-closed">Closed</span>
+        </div>
+    </div>
+
+    <!-- Dashboard Stats -->
+    <div class="section">
+        <h2 class="section-title">Dashboard Stats</h2>
+        <div class="stats-grid">
+            <div class="stat-card"><div class="stat-label">Total Applicants</div><div class="stat-value">47</div><div class="stat-change">↑ 12% this month</div></div>
+            <div class="stat-card"><div class="stat-label">Pending Review</div><div class="stat-value">8</div><div class="stat-change" style="color: var(--status-pending);">3 new</div></div>
+            <div class="stat-card"><div class="stat-label">House Hunting</div><div class="stat-value">12</div><div class="stat-change">Active</div></div>
+            <div class="stat-card"><div class="stat-label">Closed This Year</div><div class="stat-value">23</div><div class="stat-change">↑ 8 vs last year</div></div>
+        </div>
+    </div>
+
+    <!-- Table -->
+    <div class="section">
+        <h2 class="section-title">Applicant Table</h2>
+        <table class="table">
+            <thead><tr><th>Family</th><th>Email</th><th>Phone</th><th>Board</th><th>Stage</th><th>Created</th></tr></thead>
+            <tbody>
+                <tr><td><strong>Cohen Family</strong><br><span style="font-size:12px;color:var(--neutral-500);">Moshe & Sarah</span></td><td>moshe@email.com</td><td>(908) 555-1234</td><td><span class="tag tag-approved">Approved</span></td><td><span class="tag tag-hunting">Hunting</span></td><td>Jan 15</td></tr>
+                <tr><td><strong>Levy Family</strong><br><span style="font-size:12px;color:var(--neutral-500);">David & Rachel</span></td><td>david@email.com</td><td>(718) 555-5678</td><td><span class="tag tag-pending">Pending</span></td><td><span class="tag tag-submitted">Submitted</span></td><td>Jan 12</td></tr>
+                <tr><td><strong>Friedman Family</strong><br><span style="font-size:12px;color:var(--neutral-500);">Yosef & Leah</span></td><td>yosef@email.com</td><td>(347) 555-9012</td><td><span class="tag tag-approved">Approved</span></td><td><span class="tag tag-contract">Contract</span></td><td>Dec 28</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pipeline -->
+    <div class="section">
+        <h2 class="section-title">Pipeline View (Kanban)</h2>
+        <div class="pipeline-container">
+            <div class="pipeline-column">
+                <div class="pipeline-header"><span class="pipeline-title"><span style="color:var(--stage-submitted);">●</span> Submitted</span><span class="pipeline-count">3</span></div>
+                <div class="pipeline-card submitted"><div class="pipeline-card-name">Levy Family</div><div class="pipeline-card-detail">David & Rachel • 4 children</div><div class="pipeline-card-meta"><div><span class="pipeline-city-tag">Union</span></div><span class="pipeline-card-days">6 days</span></div></div>
+                <div class="pipeline-card submitted"><div class="pipeline-card-name">Weiss Family</div><div class="pipeline-card-detail">Avi & Miriam • 2 children</div><div class="pipeline-card-meta"><div><span class="pipeline-city-tag">Union</span><span class="pipeline-city-tag">Roselle Park</span></div><span class="pipeline-card-days">2 days</span></div></div>
+            </div>
+            <div class="pipeline-column">
+                <div class="pipeline-header"><span class="pipeline-title"><span style="color:var(--stage-hunting);">●</span> House Hunting</span><span class="pipeline-count">5</span></div>
+                <div class="pipeline-card hunting"><div class="pipeline-card-name">Cohen Family</div><div class="pipeline-card-detail">Moshe & Sarah • $450K</div><div class="pipeline-card-meta"><div><span class="pipeline-city-tag">Union</span></div><span class="pipeline-card-days">23 days</span></div></div>
+            </div>
+            <div class="pipeline-column">
+                <div class="pipeline-header"><span class="pipeline-title"><span style="color:var(--stage-contract);">●</span> Under Contract</span><span class="pipeline-count">2</span></div>
+                <div class="pipeline-card contract"><div class="pipeline-card-name">Friedman Family</div><div class="pipeline-card-detail">123 Oak St • $485K</div><div class="pipeline-card-meta"><div><span class="pipeline-city-tag">Union</span></div><span class="pipeline-card-days">Closing Feb 15</span></div></div>
+            </div>
+            <div class="pipeline-column">
+                <div class="pipeline-header"><span class="pipeline-title"><span style="color:var(--stage-closed);">●</span> Closed</span><span class="pipeline-count">12</span></div>
+                <div class="pipeline-card closed"><div class="pipeline-card-name">Goldberg Family</div><div class="pipeline-card-detail">456 Elm Ave • Moved in!</div><div class="pipeline-card-meta"><div><span class="pipeline-city-tag">Union</span></div><span class="pipeline-card-days">Jan 5</span></div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Full Layout -->
+    <div class="section">
+        <h2 class="section-title">Full Layout Preview</h2>
+        <div class="layout-preview">
+            <div class="sidebar-preview">
+                <div class="sidebar-logo">
+                    <img src="data:image/webp;base64,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" class="sidebar-logo-img" alt="Logo">
+                    <span class="sidebar-logo-text">וועד הישוב</span>
+                </div>
+                <nav class="sidebar-nav">
+                    <div class="sidebar-item">📊 Dashboard</div>
+                    <div class="sidebar-item active">👥 Applicants</div>
+                    <div class="sidebar-item">📋 Pipeline</div>
+                    <div class="sidebar-item">🏠 Properties</div>
+                    <div class="sidebar-item">📝 Activity</div>
+                    <div class="sidebar-item">⚙️ Settings</div>
+                </nav>
+            </div>
+            <div class="layout-main">
+                <div class="layout-header">
+                    <div class="layout-header-search">🔍 Search applicants...</div>
+                    <div style="display:flex;align-items:center;gap:12px;"><span style="font-size:13px;color:var(--neutral-600);">Coordinator</span><div class="layout-avatar">YK</div></div>
+                </div>
+                <div class="layout-content">
+                    <div class="page-header">
+                        <div><h1 class="page-title">Applicants</h1><p class="page-subtitle">47 total • 8 pending review</p></div>
+                        <button class="btn btn-primary">➕ Add Applicant</button>
+                    </div>
+                    <div style="background:white;border-radius:8px;padding:16px;border:1px solid var(--neutral-200);">
+                        <div style="display:flex;gap:12px;margin-bottom:16px;">
+                            <input class="form-input" placeholder="🔍 Search by name..." style="max-width:220px;">
+                            <select class="form-input" style="max-width:140px;"><option>All Decisions</option></select>
+                        </div>
+                        <div style="font-size:13px;color:var(--neutral-500);">[Table rows appear here]</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ant Design Config -->
+    <div class="section">
+        <h2 class="section-title">Ant Design Configuration</h2>
+        <div class="note">
+            <div class="note-title">ConfigProvider Theme for Light Button Style</div>
+            <pre style="font-size:12px;background:white;padding:12px;border-radius:6px;margin-top:8px;overflow-x:auto;">const theme = {
+  token: {
+    colorPrimary: '#1e40af',       // Dark blue for text
+    colorPrimaryBg: '#d0e4fc',     // Light blue for backgrounds
+    colorPrimaryBorder: '#bfdbfe', // Border color
+    colorSuccess: '#10b981',
+    colorWarning: '#f59e0b',
+    colorError: '#ef4444',
+    borderRadius: 6,
+    fontFamily: "'Assistant', 'Heebo', sans-serif",
+  },
+  components: {
+    Button: {
+      primaryColor: '#1e40af',           // Dark text
+      colorPrimaryHover: '#1e40af',
+      colorPrimaryActive: '#1e3a8a',
+      primaryBg: '#d0e4fc',              // Light background
+      primaryBgHover: '#dbeafe',
+    },
+  },
+};</pre>
+        </div>
+    </div>
+</div>
+</body>
+</html>

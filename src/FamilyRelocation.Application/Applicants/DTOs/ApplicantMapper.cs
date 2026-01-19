@@ -1,4 +1,5 @@
 using FamilyRelocation.Domain.Entities;
+using FamilyRelocation.Domain.Enums;
 using FamilyRelocation.Domain.ValueObjects;
 
 namespace FamilyRelocation.Application.Applicants.DTOs;
@@ -10,6 +11,9 @@ public static class ApplicantMapper
 {
     #region Domain to DTO (for responses)
 
+    /// <summary>
+    /// Maps an Applicant entity to an ApplicantDto.
+    /// </summary>
     public static ApplicantDto ToDto(this Applicant applicant)
     {
         return new ApplicantDto
@@ -30,6 +34,9 @@ public static class ApplicantMapper
         };
     }
 
+    /// <summary>
+    /// Maps a HusbandInfo value object to a HusbandInfoDto.
+    /// </summary>
     public static HusbandInfoDto ToDto(this HusbandInfo husband)
     {
         return new HusbandInfoDto
@@ -44,6 +51,9 @@ public static class ApplicantMapper
         };
     }
 
+    /// <summary>
+    /// Maps a SpouseInfo value object to a SpouseInfoDto.
+    /// </summary>
     public static SpouseInfoDto ToDto(this SpouseInfo wife)
     {
         return new SpouseInfoDto
@@ -59,6 +69,9 @@ public static class ApplicantMapper
         };
     }
 
+    /// <summary>
+    /// Maps an Address value object to an AddressDto.
+    /// </summary>
     public static AddressDto ToDto(this Address address)
     {
         return new AddressDto
@@ -71,6 +84,9 @@ public static class ApplicantMapper
         };
     }
 
+    /// <summary>
+    /// Maps a Child value object to a ChildDto.
+    /// </summary>
     public static ChildDto ToDto(this Child child)
     {
         return new ChildDto
@@ -82,6 +98,9 @@ public static class ApplicantMapper
         };
     }
 
+    /// <summary>
+    /// Maps a PhoneNumber value object to a PhoneNumberDto.
+    /// </summary>
     public static PhoneNumberDto ToDto(this PhoneNumber phone)
     {
         return new PhoneNumberDto
@@ -92,6 +111,9 @@ public static class ApplicantMapper
         };
     }
 
+    /// <summary>
+    /// Maps a BoardReview entity to a BoardReviewDto.
+    /// </summary>
     public static BoardReviewDto ToDto(this BoardReview boardReview)
     {
         return new BoardReviewDto
@@ -124,6 +146,9 @@ public static class ApplicantMapper
 
     #region DTO to Domain (for create/update)
 
+    /// <summary>
+    /// Maps a HusbandInfoDto to a HusbandInfo value object.
+    /// </summary>
     public static HusbandInfo ToDomain(this HusbandInfoDto dto)
     {
         var phoneNumbers = NormalizePhoneNumbers(dto.PhoneNumbers);
@@ -138,6 +163,9 @@ public static class ApplicantMapper
             employerName: dto.EmployerName);
     }
 
+    /// <summary>
+    /// Maps a SpouseInfoDto to a SpouseInfo value object.
+    /// </summary>
     public static SpouseInfo ToDomain(this SpouseInfoDto dto)
     {
         var phoneNumbers = NormalizePhoneNumbers(dto.PhoneNumbers);
@@ -153,6 +181,9 @@ public static class ApplicantMapper
             highSchool: dto.HighSchool);
     }
 
+    /// <summary>
+    /// Maps an AddressDto to an Address value object.
+    /// </summary>
     public static Address ToDomain(this AddressDto dto)
     {
         return new Address(
@@ -163,6 +194,9 @@ public static class ApplicantMapper
             street2: dto.Street2);
     }
 
+    /// <summary>
+    /// Maps a ChildDto to a Child value object.
+    /// </summary>
     public static Child ToDomain(this ChildDto dto)
     {
         var gender = Enum.Parse<Gender>(dto.Gender, ignoreCase: true);
@@ -198,6 +232,43 @@ public static class ApplicantMapper
         return Enum.TryParse<PhoneType>(type, ignoreCase: true, out var phoneType)
             ? phoneType
             : PhoneType.Mobile;
+    }
+
+    /// <summary>
+    /// Maps a HousingPreferencesDto to a HousingPreferences value object.
+    /// </summary>
+    public static HousingPreferences ToDomain(this HousingPreferencesDto dto)
+    {
+        Money? budget = dto.BudgetAmount.HasValue
+            ? new Money(dto.BudgetAmount.Value)
+            : null;
+
+        MoveTimeline? moveTimeline = null;
+        if (!string.IsNullOrEmpty(dto.MoveTimeline) &&
+            Enum.TryParse<MoveTimeline>(dto.MoveTimeline, ignoreCase: true, out var timeline))
+        {
+            moveTimeline = timeline;
+        }
+
+        return new HousingPreferences(
+            budget: budget,
+            minBedrooms: dto.MinBedrooms,
+            minBathrooms: dto.MinBathrooms,
+            requiredFeatures: dto.RequiredFeatures,
+            shulProximity: dto.ShulProximity?.ToDomain(),
+            moveTimeline: moveTimeline);
+    }
+
+    /// <summary>
+    /// Maps a ShulProximityPreferenceDto to a ShulProximityPreference value object.
+    /// </summary>
+    public static ShulProximityPreference ToDomain(this ShulProximityPreferenceDto dto)
+    {
+        return new ShulProximityPreference(
+            preferredShulIds: dto.PreferredShulIds,
+            maxWalkingDistanceMiles: dto.MaxWalkingDistanceMiles,
+            maxWalkingTimeMinutes: dto.MaxWalkingTimeMinutes,
+            anyShulAcceptable: dto.AnyShulAcceptable);
     }
 
     #endregion

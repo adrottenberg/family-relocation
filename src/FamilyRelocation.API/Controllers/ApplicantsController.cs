@@ -9,6 +9,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace FamilyRelocation.API.Controllers;
 
+/// <summary>
+/// Controller for managing applicant family records.
+/// </summary>
 [ApiController]
 [Route("api/applicants")]
 [Authorize]
@@ -16,6 +19,10 @@ public class ApplicantsController : ControllerBase
 {
     private readonly IMediator _mediator;
 
+    /// <summary>
+    /// Initializes the controller with required dependencies.
+    /// </summary>
+    /// <param name="mediator">MediatR mediator for CQRS.</param>
     public ApplicantsController(IMediator mediator)
     {
         _mediator = mediator;
@@ -33,7 +40,8 @@ public class ApplicantsController : ControllerBase
     }
 
     /// <summary>
-    /// Creates a new applicant (family) - publicly accessible for board approval applications
+    /// Creates a new applicant (family) and their housing search.
+    /// Publicly accessible for board approval applications.
     /// </summary>
     [HttpPost]
     [AllowAnonymous]
@@ -45,7 +53,7 @@ public class ApplicantsController : ControllerBase
         try
         {
             var result = await _mediator.Send(command);
-            return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
+            return CreatedAtAction(nameof(GetById), new { id = result.ApplicantId }, result);
         }
         catch (DuplicateEmailException ex)
         {

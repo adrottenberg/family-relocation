@@ -27,9 +27,11 @@ public class ApplicantsControllerTests
     {
         // Arrange
         var command = CreateValidCommand();
+        var applicantId = Guid.NewGuid();
+        var housingSearchId = Guid.NewGuid();
         var expectedDto = new ApplicantDto
         {
-            Id = Guid.NewGuid(),
+            Id = applicantId,
             Husband = new HusbandInfoDto
             {
                 FirstName = "Moshe",
@@ -41,9 +43,15 @@ public class ApplicantsControllerTests
             IsSelfSubmitted = true,
             CreatedDate = DateTime.UtcNow
         };
+        var expectedResponse = new CreateApplicantResponse
+        {
+            ApplicantId = applicantId,
+            HousingSearchId = housingSearchId,
+            Applicant = expectedDto
+        };
 
         _mediatorMock.Setup(m => m.Send(It.IsAny<CreateApplicantCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(expectedDto);
+            .ReturnsAsync(expectedResponse);
 
         // Act
         var result = await _controller.Create(command);
@@ -51,8 +59,73 @@ public class ApplicantsControllerTests
         // Assert
         var createdResult = result.Should().BeOfType<CreatedAtActionResult>().Subject;
         createdResult.ActionName.Should().Be("GetById");
-        createdResult.RouteValues!["id"].Should().Be(expectedDto.Id);
-        createdResult.Value.Should().Be(expectedDto);
+        createdResult.RouteValues!["id"].Should().Be(applicantId);
+        var response = createdResult.Value.Should().BeOfType<CreateApplicantResponse>().Subject;
+        response.ApplicantId.Should().Be(applicantId);
+        response.HousingSearchId.Should().Be(housingSearchId);
+    }
+
+    [Fact]
+    public async Task Create_WithHousingPreferences_ReturnsCreatedResultWithPreferences()
+    {
+        // Arrange
+        var command = new CreateApplicantCommand
+        {
+            Husband = new HusbandInfoDto
+            {
+                FirstName = "Moshe",
+                LastName = "Cohen"
+            },
+            HousingPreferences = new HousingPreferencesDto
+            {
+                BudgetAmount = 500000m,
+                MinBedrooms = 4,
+                MinBathrooms = 2.5m,
+                MoveTimeline = "ShortTerm"
+            }
+        };
+        var applicantId = Guid.NewGuid();
+        var housingSearchId = Guid.NewGuid();
+        var expectedDto = new ApplicantDto
+        {
+            Id = applicantId,
+            Husband = new HusbandInfoDto
+            {
+                FirstName = "Moshe",
+                LastName = "Cohen"
+            },
+            FamilyName = "Moshe Cohen",
+            NumberOfChildren = 0,
+            IsPendingBoardReview = true,
+            IsSelfSubmitted = true,
+            CreatedDate = DateTime.UtcNow
+        };
+        var expectedResponse = new CreateApplicantResponse
+        {
+            ApplicantId = applicantId,
+            HousingSearchId = housingSearchId,
+            Applicant = expectedDto
+        };
+
+        _mediatorMock.Setup(m => m.Send(It.IsAny<CreateApplicantCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedResponse);
+
+        // Act
+        var result = await _controller.Create(command);
+
+        // Assert
+        var createdResult = result.Should().BeOfType<CreatedAtActionResult>().Subject;
+        var response = createdResult.Value.Should().BeOfType<CreateApplicantResponse>().Subject;
+        response.HousingSearchId.Should().NotBeEmpty();
+
+        // Verify command was sent with preferences
+        _mediatorMock.Verify(
+            m => m.Send(It.Is<CreateApplicantCommand>(c =>
+                c.HousingPreferences != null &&
+                c.HousingPreferences.BudgetAmount == 500000m &&
+                c.HousingPreferences.MinBedrooms == 4),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]
@@ -85,9 +158,11 @@ public class ApplicantsControllerTests
     {
         // Arrange
         var command = CreateValidCommand();
+        var applicantId = Guid.NewGuid();
+        var housingSearchId = Guid.NewGuid();
         var expectedDto = new ApplicantDto
         {
-            Id = Guid.NewGuid(),
+            Id = applicantId,
             Husband = new HusbandInfoDto
             {
                 FirstName = "Moshe",
@@ -99,9 +174,15 @@ public class ApplicantsControllerTests
             IsSelfSubmitted = true,
             CreatedDate = DateTime.UtcNow
         };
+        var expectedResponse = new CreateApplicantResponse
+        {
+            ApplicantId = applicantId,
+            HousingSearchId = housingSearchId,
+            Applicant = expectedDto
+        };
 
         _mediatorMock.Setup(m => m.Send(It.IsAny<CreateApplicantCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(expectedDto);
+            .ReturnsAsync(expectedResponse);
 
         // Act
         await _controller.Create(command);

@@ -1,8 +1,8 @@
 # CONVERSATION MEMORY LOG
 ## Family Relocation CRM System - Complete Session Context
 
-**Session Date:** January 6-9, 2026  
-**Total Duration:** 4 days, multiple sessions  
+**Session Date:** January 6-19, 2026
+**Total Duration:** Multiple sessions over 2 weeks  
 **Project:** Custom Family Relocation System for Jewish Community in Union County, NJ  
 **User Role:** Experienced software developer, limited time, building solo
 
@@ -1938,24 +1938,194 @@ All 291 tests pass (196 Domain + 83 API + 12 Integration)
 
 ---
 
+## SESSION: January 18-19, 2026 - Sprint 2 Planning & Design System
+
+### Context
+Planning Sprint 2 after completing Sprint 1. Focus on frontend foundation and design system creation.
+
+### Sprint 2 Planning Discussion
+
+**Original proposal had 8 backend stories (~38 points).** User provided detailed feedback to simplify:
+
+**Feedback Item #1: US-010** - Don't create a new endpoint. Modify existing `POST /api/applicants` (already `[AllowAnonymous]`) to also create HousingSearch. Reduced from 8 to 3 points.
+
+**Feedback Item #2: US-011** - Remove email notifications from Sprint 2. Defer to later sprint for proper editable email templates (DB-stored, coordinator-editable, variable placeholders).
+
+**Feedback Item #3: US-012** - Remove. No longer needed since US-010 creates HousingSearch automatically.
+
+**Feedback Item #4: US-013** - Remove. HousingSearch details already returned as part of Applicant response.
+
+**Feedback Item #5: US-014** - Change endpoint from `GET /api/housing-searches/pipeline` to `GET /api/applicants/pipeline`. Pipeline viewed through Applicants, not HousingSearches.
+
+**Feedback Item #6: US-015** - Rewrite to focus on API endpoint only. Domain stage transition logic already exists. Need `PUT /api/applicants/{id}/housing-search/stage`. Reduced points since domain logic done.
+
+**Feedback Item #7: Add US-018** - Implement Audit Log feature:
+- `AuditLogEntry` entity (EntityType, EntityId, Action, OldValues, NewValues, UserId, Timestamp)
+- EF Core SaveChanges interceptor for automatic capture
+- `GET /api/audit-logs` endpoint with filters
+- View audit history on Applicant detail page
+
+**Feedback Item #8: US-017** - Remove monthly payment calculator from Sprint 2. Defer to P3 as nice-to-have.
+
+### Final Sprint 2 Stories
+
+**Backend (17 points):**
+
+| ID | Story | Points |
+|----|-------|--------|
+| US-010 | Modify applicant creation to also create HousingSearch | 3 |
+| US-014 | View applicant pipeline (GET /api/applicants/pipeline) | 5 |
+| US-015 | Change HousingSearch stage (PUT /api/applicants/{id}/housing-search/stage) | 2 |
+| US-016 | Update housing preferences | 2 |
+| US-018 | Implement audit log feature | 5 |
+
+**Frontend (17 points):**
+
+| ID | Story | Points |
+|----|-------|--------|
+| US-F01 | React project setup with design system | 3 |
+| US-F02 | Authentication flow (login page) | 5 |
+| US-F03 | App shell & navigation | 3 |
+| US-F04 | Applicant list page | 3 |
+| US-F05 | Applicant detail page | 3 |
+| US-F06 | Pipeline Kanban board | 5 |
+
+**Total: 34 points (17 Backend + 17 Frontend)**
+
+### Design System Created
+
+**Color Strategy (Two-Color Approach):**
+- **Brand Green** (`#3d9a4a`) - Logo, sidebar accents, success states
+- **Primary Blue** - Interactive elements (buttons, links, focus states)
+
+**Button Style Decision (Option B - Light):**
+User selected light background with dark text for better accessibility:
+```css
+.btn-primary {
+    background: #d0e4fc;
+    color: #1e40af;
+    border: 1px solid #bfdbfe;
+}
+```
+
+**Rationale:** Original saturated blue (#2563eb) was "harsh on the eyes"
+
+**Key Design Tokens:**
+```typescript
+colors: {
+  primary: {
+    700: '#1e40af',  // Button text, icons
+    150: '#d0e4fc',  // Button background
+    100: '#dbeafe',  // Hover state
+    50: '#eff6ff',   // Sidebar active
+  },
+  brand: {
+    600: '#2d7a3a',  // Logo text color
+    500: '#3d9a4a',  // Logo/success
+  }
+}
+```
+
+**Typography:**
+- Font: Assistant, Heebo (supports Hebrew)
+- Base size: 14px
+- Hebrew text: "וועד הישוב" in sidebar/logo
+
+### Interactive Prototypes Created
+
+**Login Page** (`prototype-login-page.html`):
+- Centered card with gradient background
+- Logo + Hebrew organization name
+- Email/password form with validation
+- Demo controls for testing states (loading, error, success)
+
+**Pipeline Kanban** (`prototype-pipeline-kanban.html`):
+- Full app layout with sidebar navigation
+- 4 columns: Submitted → House Hunting → Under Contract → Closed
+- Drag & drop between columns
+- Click cards to open detail modal
+- Search and filter functionality
+- Stage-colored card borders
+
+### Files Delivered
+
+| File | Location | Purpose |
+|------|----------|---------|
+| `SPRINT_2_DETAILED_STORIES.md` | `docs/` | Backend + frontend story specs |
+| `crm-design-system-v4.html` | `docs/design/` | Complete design system reference |
+| `prototype-login-page.html` | `docs/design/` | Interactive login prototype |
+| `prototype-pipeline-kanban.html` | `docs/design/` | Interactive Kanban prototype |
+| `antd-theme.ts` | `src/.../Web/src/theme/` | Ant Design ConfigProvider config |
+| `README.md` | `docs/design/` | Design folder documentation |
+
+### Solution Structure Update
+
+```
+FamilyRelocation/
+├── src/
+│   ├── FamilyRelocation.Api/
+│   ├── FamilyRelocation.Application/
+│   ├── FamilyRelocation.Domain/
+│   ├── FamilyRelocation.Infrastructure/
+│   └── FamilyRelocation.Web/              # NEW - React frontend
+│       └── src/
+│           └── theme/
+│               └── antd-theme.ts          # Theme config
+├── tests/
+├── docs/
+│   ├── design/                            # NEW folder
+│   │   ├── crm-design-system-v4.html
+│   │   ├── prototype-login-page.html
+│   │   ├── prototype-pipeline-kanban.html
+│   │   └── README.md
+│   └── SPRINT_2_DETAILED_STORIES.md
+└── FamilyRelocation.sln
+```
+
+---
+
 ## FOR NEXT SESSION
 
 ### To Quickly Re-Establish Context
 
 **Just say:**
-> "I'm the developer building the Family Relocation CRM for the Jewish community in Union County. We documented everything in January 2026."
+> "I'm the developer building the Family Relocation CRM for the Jewish community in Union County. We're starting Sprint 2."
 
 **I'll know:**
 - Complete domain model (Applicant, HousingSearch, etc.)
-- Tech stack (.NET 10, React, AWS)
+- Tech stack (.NET 10, React + Ant Design, AWS)
 - Your working style (comprehensive docs, wait for complete review)
 - All 68 user stories and priorities
 - Cultural context (Orthodox community, no smartphones, desktop-first)
-- **Sprint 1 is complete** - all 9 stories implemented
+- **Sprint 1 is complete** - all 9 stories, 291 tests passing
+- **Sprint 2 is planned** - 11 stories (5 backend + 6 frontend), 34 points
+- **Design system finalized** - Light blue buttons (Option B), Hebrew support
 - **Query object pattern** instead of repository pattern
 - **All handlers in Application layer**
 - **ApplicantMapper extension methods** for DTO conversions
 - **PaginatedList<T>** for paginated API responses
+
+### Key Sprint 2 Decisions
+1. **US-010**: Modify existing POST /api/applicants to also create HousingSearch (not new endpoint)
+2. **US-014**: Pipeline at /api/applicants/pipeline (not /housing-searches/pipeline)
+3. **US-015**: Stage change at PUT /api/applicants/{id}/housing-search/stage
+4. **US-018**: New audit log feature with EF Core interceptor
+5. **Deferred**: Email notifications (US-011), monthly calculator (US-017)
+
+### Key Technical Patterns Established
+1. Query object pattern (no repositories)
+2. All handlers in Application layer
+3. EF Core ToJson() for JSON columns
+4. Generic IApplicationDbContext with Set<T>()
+5. ApplicantMapper extension methods
+6. MemberNotNullWhen for nullable results
+7. Ant Design theme via ConfigProvider
+
+### Design System Quick Reference
+- Primary button: `#d0e4fc` bg, `#1e40af` text
+- Brand green: `#3d9a4a`
+- Font: Assistant, Heebo
+- Hebrew org name: וועד הישוב
 
 **And we can pick up exactly where we left off.**
 

@@ -16,5 +16,10 @@ public interface IApplicationDbContext
     /// </summary>
     void Add<TEntity>(TEntity entity) where TEntity : class;
 
+    /// <summary>
+    /// Saves all changes made to the context.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The number of state entries written to the database.</returns>
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

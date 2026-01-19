@@ -111,7 +111,8 @@ Content-Type: application/json
 @applicantId = paste-applicant-id-here
 
 ### Create Applicant (Anonymous - no auth required)
-# Creates a new applicant for board approval
+# Creates a new applicant AND a HousingSearch for board approval
+# Response includes both applicantId and housingSearchId
 POST {{baseUrl}}/api/applicants
 Content-Type: application/json
 
@@ -169,10 +170,22 @@ Content-Type: application/json
         }
     ],
     "currentKehila": "Flatbush",
-    "shabbosShul": "Young Israel"
+    "shabbosShul": "Young Israel",
+    "housingPreferences": {
+        "budgetAmount": 550000,
+        "minBedrooms": 4,
+        "minBathrooms": 2.5,
+        "requiredFeatures": ["basement", "garage", "yard"],
+        "moveTimeline": "ShortTerm",
+        "shulProximity": {
+            "maxWalkingDistanceMiles": 0.5,
+            "anyShulAcceptable": true
+        }
+    }
 }
 
 ### Create Applicant (Minimal - husband only)
+# HousingSearch still created with default preferences
 POST {{baseUrl}}/api/applicants
 Content-Type: application/json
 

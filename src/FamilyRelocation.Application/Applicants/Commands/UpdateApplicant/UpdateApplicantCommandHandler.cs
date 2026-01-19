@@ -8,11 +8,17 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FamilyRelocation.Application.Applicants.Commands.UpdateApplicant;
 
+/// <summary>
+/// Handles the UpdateApplicantCommand to update an existing applicant's information.
+/// </summary>
 public class UpdateApplicantCommandHandler : IRequestHandler<UpdateApplicantCommand, ApplicantDto>
 {
     private readonly IApplicationDbContext _context;
     private readonly ICurrentUserService _currentUserService;
 
+    /// <summary>
+    /// Initializes a new instance of the handler.
+    /// </summary>
     public UpdateApplicantCommandHandler(
         IApplicationDbContext context,
         ICurrentUserService currentUserService)
@@ -21,6 +27,7 @@ public class UpdateApplicantCommandHandler : IRequestHandler<UpdateApplicantComm
         _currentUserService = currentUserService;
     }
 
+    /// <inheritdoc />
     public async Task<ApplicantDto> Handle(UpdateApplicantCommand request, CancellationToken cancellationToken)
     {
         var applicant = await _context.Set<Applicant>()
