@@ -425,3 +425,35 @@ Authorization: Bearer {{accessToken}}
     "agreementType": "CommunityTakanos",
     "documentUrl": "https://s3.amazonaws.com/family-relocation/agreements/takanos-12345.pdf"
 }
+
+###############################################################################
+# HOUSING PREFERENCES
+# Update the housing search criteria for an applicant
+###############################################################################
+
+### Update Housing Preferences
+PUT {{baseUrl}}/api/applicants/{{applicantId}}/preferences
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "budgetAmount": 550000,
+    "minBedrooms": 4,
+    "minBathrooms": 2.5,
+    "requiredFeatures": ["Basement", "Garage", "Yard"],
+    "shulProximity": {
+        "maxWalkingDistanceMiles": 0.5,
+        "anyShulAcceptable": false
+    },
+    "moveTimeline": "ShortTerm"
+}
+
+### Update Housing Preferences - Minimal
+PUT {{baseUrl}}/api/applicants/{{applicantId}}/preferences
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "budgetAmount": 450000,
+    "minBedrooms": 3
+}

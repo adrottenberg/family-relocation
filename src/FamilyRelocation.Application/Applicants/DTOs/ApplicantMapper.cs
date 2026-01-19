@@ -125,6 +125,38 @@ public static class ApplicantMapper
     }
 
     /// <summary>
+    /// Maps a HousingPreferences value object to a HousingPreferencesDto.
+    /// </summary>
+    public static HousingPreferencesDto ToDto(this HousingPreferences preferences)
+    {
+        return new HousingPreferencesDto
+        {
+            BudgetAmount = preferences.Budget?.Amount,
+            MinBedrooms = preferences.MinBedrooms,
+            MinBathrooms = preferences.MinBathrooms,
+            RequiredFeatures = preferences.RequiredFeatures.Count > 0
+                ? preferences.RequiredFeatures.ToList()
+                : null,
+            ShulProximity = preferences.ShulProximity?.ToDto(),
+            MoveTimeline = preferences.MoveTimeline?.ToString()
+        };
+    }
+
+    /// <summary>
+    /// Maps a ShulProximityPreference value object to a ShulProximityPreferenceDto.
+    /// </summary>
+    public static ShulProximityPreferenceDto ToDto(this ShulProximityPreference proximity)
+    {
+        return new ShulProximityPreferenceDto
+        {
+            PreferredShulIds = proximity.PreferredShulIds?.ToList(),
+            MaxWalkingDistanceMiles = proximity.MaxWalkingDistanceMiles,
+            MaxWalkingTimeMinutes = proximity.MaxWalkingTimeMinutes,
+            AnyShulAcceptable = proximity.AnyShulAcceptable
+        };
+    }
+
+    /// <summary>
     /// Map to lightweight list DTO for list views.
     /// </summary>
     public static ApplicantListDto ToListDto(this Applicant applicant)
