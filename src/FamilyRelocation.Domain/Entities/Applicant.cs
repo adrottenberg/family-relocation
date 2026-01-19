@@ -139,9 +139,10 @@ public class Applicant : Entity<Guid>
     public void SetBoardDecision(
         BoardDecision decision,
         string? notes,
-        Guid reviewedByUserId)
+        Guid reviewedByUserId,
+        DateTime? reviewDate = null)
     {
-        BoardReview = new BoardReview(decision, reviewedByUserId, notes);
+        BoardReview = new BoardReview(decision, reviewedByUserId, notes, reviewDate);
         SetModified(reviewedByUserId);
 
         AddDomainEvent(new ApplicantBoardDecisionMade(ApplicantId, decision, reviewedByUserId));

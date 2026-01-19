@@ -15,7 +15,8 @@ public class HousingSearch : Entity<Guid>
     // Valid stage transitions (state machine)
     private static readonly Dictionary<HousingSearchStage, HousingSearchStage[]> ValidTransitions = new()
     {
-        [HousingSearchStage.Submitted] = [HousingSearchStage.HouseHunting, HousingSearchStage.Rejected],
+        [HousingSearchStage.Submitted] = [HousingSearchStage.BoardApproved, HousingSearchStage.Rejected],
+        [HousingSearchStage.BoardApproved] = [HousingSearchStage.HouseHunting],
         [HousingSearchStage.Rejected] = [],
         [HousingSearchStage.HouseHunting] = [HousingSearchStage.UnderContract, HousingSearchStage.Paused],
         [HousingSearchStage.UnderContract] = [HousingSearchStage.Closed, HousingSearchStage.HouseHunting],
@@ -56,13 +57,13 @@ public class HousingSearch : Entity<Guid>
     public string? Notes { get; private set; }
 
     // Required Agreements (must be signed before starting house hunting)
-    public bool BrokerAgreementSigned { get; private set; }
     public string? BrokerAgreementDocumentUrl { get; private set; }
     public DateTime? BrokerAgreementSignedDate { get; private set; }
+    public bool BrokerAgreementSigned => BrokerAgreementSignedDate.HasValue;
 
-    public bool CommunityTakanosSigned { get; private set; }
     public string? CommunityTakanosDocumentUrl { get; private set; }
     public DateTime? CommunityTakanosSignedDate { get; private set; }
+    public bool CommunityTakanosSigned => CommunityTakanosSignedDate.HasValue;
 
     // Audit
     public Guid CreatedBy { get; private set; }
@@ -125,16 +126,37 @@ public class HousingSearch : Entity<Guid>
     }
 
     /// <summary>
-    /// Begin house hunting (from Submitted stage).
-    /// Requires signed agreements. Board approval is checked by the handler.
+    /// Transition to BoardApproved stage after board approval.
+    /// If agreements are already signed, automatically continues to HouseHunting.
+    /// </summary>
+    /// <param name="modifiedBy">User ID making the change.</param>
+    public void ApproveBoardReview(Guid modifiedBy)
+    {
+        if (Stage != HousingSearchStage.Submitted)
+            throw new InvalidOperationException(
+                $"Can only approve from Submitted stage. Current stage: {Stage}");
+
+        TransitionTo(HousingSearchStage.BoardApproved, modifiedBy);
+
+        // If agreements are already signed, automatically start house hunting
+        if (AreAgreementsSigned)
+        {
+            TransitionTo(HousingSearchStage.HouseHunting, modifiedBy);
+        }
+    }
+
+    /// <summary>
+    /// Begin house hunting (from BoardApproved stage).
+    /// Requires signed agreements.
     /// </summary>
     /// <param name="modifiedBy">User ID making the change.</param>
     public void StartHouseHunting(Guid modifiedBy)
     {
-        if (Stage != HousingSearchStage.Submitted)
+        if (Stage != HousingSearchStage.BoardApproved)
             throw new InvalidOperationException(
-                $"StartHouseHunting can only be called from Submitted stage. " +
-                $"Use Resume to restart from Paused, or ContractFellThrough from UnderContract/Closed.");
+                $"StartHouseHunting can only be called from BoardApproved stage. " +
+                $"Use Resume to restart from Paused, or ContractFellThrough from UnderContract/Closed. " +
+                $"Current stage: {Stage}");
 
         if (!AreAgreementsSigned)
             throw new InvalidOperationException(
@@ -151,7 +173,6 @@ public class HousingSearch : Entity<Guid>
         if (string.IsNullOrWhiteSpace(documentUrl))
             throw new ArgumentException("Document URL is required", nameof(documentUrl));
 
-        BrokerAgreementSigned = true;
         BrokerAgreementDocumentUrl = documentUrl;
         BrokerAgreementSignedDate = DateTime.UtcNow;
         ModifiedBy = modifiedBy;
@@ -166,7 +187,6 @@ public class HousingSearch : Entity<Guid>
         if (string.IsNullOrWhiteSpace(documentUrl))
             throw new ArgumentException("Document URL is required", nameof(documentUrl));
 
-        CommunityTakanosSigned = true;
         CommunityTakanosDocumentUrl = documentUrl;
         CommunityTakanosSignedDate = DateTime.UtcNow;
         ModifiedBy = modifiedBy;
@@ -181,10 +201,15 @@ public class HousingSearch : Entity<Guid>
         CommunityTakanosSigned && !string.IsNullOrEmpty(CommunityTakanosDocumentUrl);
 
     /// <summary>
-    /// Reject the housing search (board rejection or other disqualification)
+    /// Reject the housing search (board rejection).
+    /// Can only reject from Submitted stage.
     /// </summary>
     public void Reject(string? reason, Guid modifiedBy)
     {
+        if (Stage != HousingSearchStage.Submitted)
+            throw new InvalidOperationException(
+                $"Can only reject from Submitted stage. Current stage: {Stage}");
+
         if (!string.IsNullOrWhiteSpace(reason))
         {
             Notes = string.IsNullOrEmpty(Notes)

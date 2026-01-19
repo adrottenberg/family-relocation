@@ -1,6 +1,7 @@
 using FamilyRelocation.Application.Applicants.Commands.ChangeStage;
 using FamilyRelocation.Application.Applicants.Commands.CreateApplicant;
 using FamilyRelocation.Application.Applicants.Commands.RecordAgreement;
+using FamilyRelocation.Application.Applicants.Commands.SetBoardDecision;
 using FamilyRelocation.Application.Applicants.Commands.UpdateApplicant;
 using FamilyRelocation.Application.Applicants.Commands.UpdatePreferences;
 using FamilyRelocation.Application.Applicants.DTOs;
@@ -213,6 +214,41 @@ public class ApplicantsController : ControllerBase
         catch (NotFoundException ex)
         {
             return NotFound(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Sets the board's decision on an applicant and transitions the stage accordingly.
+    /// </summary>
+    /// <remarks>
+    /// Records the board's decision and automatically transitions the housing search stage:
+    /// - Approved: Transitions to BoardApproved stage. Applicant can then sign agreements and start house hunting.
+    /// - Rejected: Transitions to Rejected stage.
+    /// - Deferred: No stage change. Applicant remains in Submitted stage for future review.
+    /// - Pending: No stage change. Resets decision to pending.
+    ///
+    /// Can only set decision when applicant is in Submitted stage.
+    /// The 'notes' field can be used for approval notes, rejection reason, or deferral reason.
+    /// </remarks>
+    [HttpPut("{id:guid}/board-review")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> SetBoardDecision(Guid id, [FromBody] SetBoardDecisionRequest request)
+    {
+        try
+        {
+            var command = new SetBoardDecisionCommand(id, request);
+            var result = await _mediator.Send(command);
+            return Ok(result);
+        }
+        catch (NotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (ValidationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
         }
     }
 }

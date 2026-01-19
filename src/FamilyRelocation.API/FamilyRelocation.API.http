@@ -486,3 +486,43 @@ Authorization: Bearer {{accessToken}}
 # Returns all audit entries for a specific applicant
 GET {{baseUrl}}/api/audit-logs/applicant/{{applicantId}}
 Authorization: Bearer {{accessToken}}
+
+###############################################################################
+# BOARD REVIEW (UV-29)
+# Set board decision - automatically transitions stage based on decision
+###############################################################################
+
+### Set Board Decision - Approved
+# Records decision AND transitions to BoardApproved stage.
+# Response includes next steps (which agreements need to be signed).
+PUT {{baseUrl}}/api/applicants/{{applicantId}}/board-review
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "decision": "Approved",
+    "notes": "Strong references from Rabbi Cohen. Family is well-suited."
+}
+
+### Set Board Decision - Rejected
+# Records decision AND transitions to Rejected stage.
+PUT {{baseUrl}}/api/applicants/{{applicantId}}/board-review
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "decision": "Rejected",
+    "notes": "Does not meet community requirements."
+}
+
+### Set Board Decision - Deferred
+# Records decision. No stage change - remains in Submitted for future review.
+PUT {{baseUrl}}/api/applicants/{{applicantId}}/board-review
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "decision": "Deferred",
+    "reviewDate": "2026-02-01",
+    "notes": "Waiting for additional references."
+}

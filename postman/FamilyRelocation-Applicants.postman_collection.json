@@ -911,6 +911,168 @@
 				}
 			],
 			"description": "Audit log endpoints for tracking all changes to Applicant and HousingSearch entities.\n\n**Admin Only**: These endpoints require the Admin role.\n\n**Tracked Entities:**\n- Applicant (Created, Modified, Deleted)\n- HousingSearch (Created, Modified, Deleted)\n\n**Response includes:**\n- Entity type and ID\n- Action (Added, Modified, Deleted)\n- Old/new values as JSON\n- User who made the change\n- Timestamp\n- IP address"
+		},
+		{
+			"name": "Board Review",
+			"item": [
+				{
+					"name": "Set Board Decision - Approved",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"decision\": \"Approved\",\n    \"notes\": \"Strong references from Rabbi Cohen. Family is well-suited.\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/applicants/{{applicantId}}/board-review",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"applicants",
+								"{{applicantId}}",
+								"board-review"
+							]
+						},
+						"description": "Records the board's approval decision. Does NOT automatically change the stage - use POST /approve after this to transition to BoardApproved stage."
+					}
+				},
+				{
+					"name": "Set Board Decision - Rejected",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"decision\": \"Rejected\",\n    \"notes\": \"Does not meet community requirements.\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/applicants/{{applicantId}}/board-review",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"applicants",
+								"{{applicantId}}",
+								"board-review"
+							]
+						},
+						"description": "Records the board's rejection decision. Does NOT automatically change the stage - use POST /reject after this to transition to Rejected stage."
+					}
+				},
+				{
+					"name": "Set Board Decision - Deferred",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"decision\": \"Deferred\",\n    \"reviewDate\": \"2026-02-01\",\n    \"notes\": \"Waiting for additional references.\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/applicants/{{applicantId}}/board-review",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"applicants",
+								"{{applicantId}}",
+								"board-review"
+							]
+						},
+						"description": "Records that the board deferred their decision. Applicant remains in Submitted stage for future review."
+					}
+				},
+				{
+					"name": "Reject Applicant",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"reason\": \"Did not meet community requirements.\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/applicants/{{applicantId}}/reject",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"applicants",
+								"{{applicantId}}",
+								"reject"
+							]
+						},
+						"description": "Transitions the housing search from Submitted to Rejected stage.\n\n**Prerequisite:** Board decision must be set to \"Rejected\" first via PUT /board-review."
+					}
+				}
+			],
+			"description": "Board review workflow endpoints.\n\n**Workflow:**\n1. Board reviews application at meeting\n2. Coordinator records decision via PUT /board-review\n3. If Approved: Use POST /approve (UV-30) to transition to BoardApproved\n4. If Rejected: Use POST /reject to transition to Rejected\n5. If Deferred: No stage change, review again at future meeting\n\n**Stage Flow:**\n- Submitted → BoardApproved (on approval) → HouseHunting (after agreements)\n- Submitted → Rejected (on rejection)"
 		}
 	],
 	"variable": [
