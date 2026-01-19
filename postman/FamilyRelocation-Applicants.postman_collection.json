@@ -2,7 +2,7 @@
 	"info": {
 		"_postman_id": "family-relocation-applicants-collection",
 		"name": "FamilyRelocation Applicants API",
-		"description": "Collection for testing Applicants CRUD endpoints in the FamilyRelocation API.\n\n## Setup\n1. Import the Auth collection first and login to get an access token\n2. Set the `baseUrl` variable to your API URL (default: https://localhost:7267)\n\n## Endpoints\n- **Create Applicant**: Public endpoint (no auth required) for submitting new applicant families\n- **List Applicants**: Paginated list with search, filter, and sort (requires auth)\n- **Get Applicant by ID**: Protected endpoint (requires authentication)\n- **Update Applicant**: Update applicant details (requires authentication)\n- **Change Stage**: Transition housing search stage (requires authentication)\n- **Record Agreement**: Record signed agreements (requires authentication)\n- **Update Preferences**: Update housing preferences (requires authentication)\n\n## Test Flow\n1. Login via Auth collection to get tokens\n2. Create an applicant (no auth needed)\n3. Copy the returned ID to `applicantId` variable\n4. Record agreements, change stage, update preferences as needed",
+		"description": "Collection for testing Applicants CRUD endpoints in the FamilyRelocation API.\n\n## Setup\n1. Import the Auth collection first and login to get an access token\n2. Set the `baseUrl` variable to your API URL (default: https://localhost:7267)\n\n## Endpoints\n- **Create Applicant**: Public endpoint (no auth required) for submitting new applicant families\n- **List Applicants**: Paginated list with search, filter, and sort (requires auth)\n- **Get Applicant by ID**: Protected endpoint (requires authentication)\n- **Update Applicant**: Update applicant details (requires authentication)\n- **Change Stage**: Transition housing search stage (requires authentication)\n- **Record Agreement**: Record signed agreements (requires authentication)\n- **Update Preferences**: Update housing preferences (requires authentication)\n- **Audit Logs**: View change history for entities (Admin only)\n\n## Test Flow\n1. Login via Auth collection to get tokens\n2. Create an applicant (no auth needed)\n3. Copy the returned ID to `applicantId` variable\n4. Record agreements, change stage, update preferences as needed\n5. View audit history to track all changes",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
@@ -739,6 +739,178 @@
 					}
 				}
 			]
+		},
+		{
+			"name": "Audit Logs",
+			"item": [
+				{
+					"name": "Get All Audit Logs",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/audit-logs?page=1&pageSize=50",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"audit-logs"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "pageSize",
+									"value": "50"
+								}
+							]
+						},
+						"description": "Get all audit log entries. Admin only.\n\n**Query Parameters:**\n- `page`: Page number (default: 1)\n- `pageSize`: Items per page (default: 50, max: 100)"
+					}
+				},
+				{
+					"name": "Get Audit Logs with Filters",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/audit-logs?entityType=Applicant&action=Modified&from=2026-01-01&to=2026-12-31",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"audit-logs"
+							],
+							"query": [
+								{
+									"key": "entityType",
+									"value": "Applicant",
+									"description": "Filter by entity type (Applicant, HousingSearch)"
+								},
+								{
+									"key": "action",
+									"value": "Modified",
+									"description": "Filter by action (Added, Modified, Deleted)"
+								},
+								{
+									"key": "from",
+									"value": "2026-01-01",
+									"description": "Filter by timestamp (on or after)"
+								},
+								{
+									"key": "to",
+									"value": "2026-12-31",
+									"description": "Filter by timestamp (on or before)"
+								}
+							]
+						},
+						"description": "Get audit logs with filters. Admin only.\n\n**Available Filters:**\n- `entityType`: Applicant, HousingSearch\n- `entityId`: Specific entity GUID\n- `userId`: User who made the change\n- `action`: Added, Modified, Deleted\n- `from`/`to`: Date range"
+					}
+				},
+				{
+					"name": "Get Audit Logs for Entity",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/audit-logs?entityType=Applicant&entityId={{applicantId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"audit-logs"
+							],
+							"query": [
+								{
+									"key": "entityType",
+									"value": "Applicant"
+								},
+								{
+									"key": "entityId",
+									"value": "{{applicantId}}"
+								}
+							]
+						},
+						"description": "Get all audit entries for a specific entity."
+					}
+				},
+				{
+					"name": "Get Applicant History",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/audit-logs/applicant/{{applicantId}}?page=1&pageSize=50",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"audit-logs",
+								"applicant",
+								"{{applicantId}}"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "pageSize",
+									"value": "50"
+								}
+							]
+						},
+						"description": "Convenience endpoint to get all audit history for a specific applicant. Useful for the Applicant detail page Activity tab."
+					}
+				}
+			],
+			"description": "Audit log endpoints for tracking all changes to Applicant and HousingSearch entities.\n\n**Admin Only**: These endpoints require the Admin role.\n\n**Tracked Entities:**\n- Applicant (Created, Modified, Deleted)\n- HousingSearch (Created, Modified, Deleted)\n\n**Response includes:**\n- Entity type and ID\n- Action (Added, Modified, Deleted)\n- Old/new values as JSON\n- User who made the change\n- Timestamp\n- IP address"
 		}
 	],
 	"variable": [
