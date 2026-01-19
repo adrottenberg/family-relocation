@@ -51,7 +51,7 @@ public class ChangeStageCommandHandler : IRequestHandler<ChangeStageCommand, Cha
         switch (targetStage)
         {
             case HousingSearchStage.HouseHunting:
-                TransitionToHouseHunting(applicant, housingSearch, request, userId);
+                TransitionToHouseHunting(housingSearch, request, userId);
                 break;
 
             case HousingSearchStage.Rejected:
@@ -74,6 +74,12 @@ public class ChangeStageCommandHandler : IRequestHandler<ChangeStageCommand, Cha
                 TransitionToMovedIn(housingSearch, request, userId);
                 break;
 
+            case HousingSearchStage.BoardApproved:
+            case HousingSearchStage.Submitted:
+                throw new ValidationException(
+                    $"Cannot transition to {targetStage} via this endpoint. " +
+                    "Use the board review endpoints instead.");
+
             default:
                 throw new ValidationException($"Cannot transition to stage: {targetStage}");
         }
@@ -88,18 +94,14 @@ public class ChangeStageCommandHandler : IRequestHandler<ChangeStageCommand, Cha
     }
 
     private static void TransitionToHouseHunting(
-        Applicant applicant,
         HousingSearch housingSearch,
         ChangeStageRequest request,
         Guid userId)
     {
         switch (housingSearch.Stage)
         {
-            case HousingSearchStage.Submitted:
-                // Board approval checked here; agreements checked in domain
-                if (applicant.BoardReview?.Decision != BoardDecision.Approved)
-                    throw new ValidationException(
-                        "Cannot start house hunting until applicant is approved by the board.");
+            case HousingSearchStage.BoardApproved:
+                // Domain validates agreements are signed
                 housingSearch.StartHouseHunting(userId);
                 break;
 
@@ -114,7 +116,8 @@ public class ChangeStageCommandHandler : IRequestHandler<ChangeStageCommand, Cha
 
             default:
                 throw new ValidationException(
-                    $"Cannot transition from {housingSearch.Stage} to HouseHunting.");
+                    $"Cannot transition from {housingSearch.Stage} to HouseHunting. " +
+                    "Applicant must be in BoardApproved stage first.");
         }
     }
 

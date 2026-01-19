@@ -15,7 +15,8 @@ public class HousingSearch : Entity<Guid>
     // Valid stage transitions (state machine)
     private static readonly Dictionary<HousingSearchStage, HousingSearchStage[]> ValidTransitions = new()
     {
-        [HousingSearchStage.Submitted] = [HousingSearchStage.HouseHunting, HousingSearchStage.Rejected],
+        [HousingSearchStage.Submitted] = [HousingSearchStage.BoardApproved, HousingSearchStage.Rejected],
+        [HousingSearchStage.BoardApproved] = [HousingSearchStage.HouseHunting, HousingSearchStage.Rejected],
         [HousingSearchStage.Rejected] = [],
         [HousingSearchStage.HouseHunting] = [HousingSearchStage.UnderContract, HousingSearchStage.Paused],
         [HousingSearchStage.UnderContract] = [HousingSearchStage.Closed, HousingSearchStage.HouseHunting],
@@ -125,16 +126,31 @@ public class HousingSearch : Entity<Guid>
     }
 
     /// <summary>
-    /// Begin house hunting (from Submitted stage).
-    /// Requires signed agreements. Board approval is checked by the handler.
+    /// Transition to BoardApproved stage after board approval.
+    /// This is called after the board approves the applicant.
+    /// </summary>
+    /// <param name="modifiedBy">User ID making the change.</param>
+    public void ApproveBoardReview(Guid modifiedBy)
+    {
+        if (Stage != HousingSearchStage.Submitted)
+            throw new InvalidOperationException(
+                $"Can only approve from Submitted stage. Current stage: {Stage}");
+
+        TransitionTo(HousingSearchStage.BoardApproved, modifiedBy);
+    }
+
+    /// <summary>
+    /// Begin house hunting (from BoardApproved stage).
+    /// Requires signed agreements.
     /// </summary>
     /// <param name="modifiedBy">User ID making the change.</param>
     public void StartHouseHunting(Guid modifiedBy)
     {
-        if (Stage != HousingSearchStage.Submitted)
+        if (Stage != HousingSearchStage.BoardApproved)
             throw new InvalidOperationException(
-                $"StartHouseHunting can only be called from Submitted stage. " +
-                $"Use Resume to restart from Paused, or ContractFellThrough from UnderContract/Closed.");
+                $"StartHouseHunting can only be called from BoardApproved stage. " +
+                $"Use Resume to restart from Paused, or ContractFellThrough from UnderContract/Closed. " +
+                $"Current stage: {Stage}");
 
         if (!AreAgreementsSigned)
             throw new InvalidOperationException(
@@ -181,10 +197,15 @@ public class HousingSearch : Entity<Guid>
         CommunityTakanosSigned && !string.IsNullOrEmpty(CommunityTakanosDocumentUrl);
 
     /// <summary>
-    /// Reject the housing search (board rejection or other disqualification)
+    /// Reject the housing search (board rejection or other disqualification).
+    /// Can only reject from Submitted or BoardApproved stages.
     /// </summary>
     public void Reject(string? reason, Guid modifiedBy)
     {
+        if (Stage != HousingSearchStage.Submitted && Stage != HousingSearchStage.BoardApproved)
+            throw new InvalidOperationException(
+                $"Can only reject from Submitted or BoardApproved stage. Current stage: {Stage}");
+
         if (!string.IsNullOrWhiteSpace(reason))
         {
             Notes = string.IsNullOrEmpty(Notes)
