@@ -2107,10 +2107,14 @@ FamilyRelocation/
 
 ### Key Sprint 2 Decisions
 1. **US-010**: Modify existing POST /api/applicants to also create HousingSearch (not new endpoint)
-2. **US-014**: Pipeline at /api/applicants/pipeline (not /housing-searches/pipeline)
-3. **US-015**: Stage change at PUT /api/applicants/{id}/housing-search/stage
+2. **US-014**: Pipeline uses existing GET /api/applicants with ?stage= filter (simpler than separate endpoint)
+3. **US-015/UV-19**: Stage change at PUT /api/applicants/{id}/stage
 4. **US-018**: New audit log feature with EF Core interceptor
 5. **Deferred**: Email notifications (US-011), monthly calculator (US-017)
+
+### Upcoming Infrastructure Work
+1. **S3 Document Storage**: Need to set up S3 bucket for agreement document uploads (broker agreement, community takanos). Frontend will upload directly to S3 and pass URL to API.
+2. **Migration**: Run `dotnet ef migrations add AddAgreementFields` to add agreement columns to HousingSearches table.
 
 ### Key Technical Patterns Established
 1. Query object pattern (no repositories)
