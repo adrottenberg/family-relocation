@@ -5,11 +5,11 @@ namespace FamilyRelocation.Domain.ValueObjects;
 /// </summary>
 public sealed record Contract
 {
-    public Guid PropertyId { get; }
-    public Money Price { get; }
-    public DateTime ContractDate { get; }
-    public DateTime? ExpectedClosingDate { get; }
-    public DateTime? ActualClosingDate { get; private set; }
+    public Guid PropertyId { get; init; }
+    public Money Price { get; init; }
+    public DateTime ContractDate { get; init; }
+    public DateTime? ExpectedClosingDate { get; init; }
+    public DateTime? ActualClosingDate { get; init; }
 
     // Private parameterless constructor for EF Core
     private Contract()

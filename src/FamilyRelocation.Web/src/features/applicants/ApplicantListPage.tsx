@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Table, Input, Select, Button, Tag, Space, Typography, Card, Empty } from 'antd';
+import { Table, Input, Select, Button, Tag, Space, Typography, Card, Empty, Tooltip } from 'antd';
 import { SearchOutlined, PlusOutlined, FilterOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { applicantsApi } from '../../api';
-import type { ApplicantDto } from '../../api/types';
+import type { ApplicantListItemDto } from '../../api/types';
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
 import { colors, statusTagStyles, stageTagStyles } from '../../theme/antd-theme';
 import './ApplicantListPage.css';
@@ -23,7 +23,7 @@ const ApplicantListPage = () => {
     queryKey: ['applicants', search, boardDecision, stage, pagination.current, pagination.pageSize],
     queryFn: () =>
       applicantsApi.getAll({
-        pageNumber: pagination.current,
+        page: pagination.current,
         pageSize: pagination.pageSize,
         search: search || undefined,
         boardDecision: boardDecision || undefined,
@@ -68,48 +68,45 @@ const ApplicantListPage = () => {
     return names[stage] || stage;
   };
 
-  const columns: ColumnsType<ApplicantDto> = [
+  const columns: ColumnsType<ApplicantListItemDto> = [
     {
       title: 'FAMILY NAME',
       key: 'familyName',
-      render: (_, record) => (
-        <div>
-          <Text strong>{record.husband.lastName}</Text>
+      render: (_, record) => {
+        const nameParts = record.husbandFullName.split(' ');
+        const lastName = nameParts.pop() || record.husbandFullName;
+        const firstName = nameParts.join(' ') || '';
+        return (
           <div>
-            <Text type="secondary" style={{ fontSize: 13 }}>
-              {record.husband.firstName}
-              {record.wife && ` & ${record.wife.firstName}`}
-            </Text>
+            <Text strong>{lastName}</Text>
+            <div>
+              <Text type="secondary" style={{ fontSize: 13 }}>
+                {firstName}
+                {record.wifeMaidenName && ` & ${record.wifeMaidenName}`}
+              </Text>
+            </div>
           </div>
-        </div>
-      ),
+        );
+      },
     },
     {
       title: 'CONTACT',
       key: 'contact',
       render: (_, record) => (
         <div>
-          <div>{record.husband.email}</div>
+          <div>{record.husbandEmail || 'N/A'}</div>
           <Text type="secondary" style={{ fontSize: 13 }}>
-            {record.husband.phone}
+            {record.husbandPhone || 'N/A'}
           </Text>
         </div>
       ),
-    },
-    {
-      title: 'CHILDREN',
-      dataIndex: 'children',
-      key: 'children',
-      width: 100,
-      align: 'center',
-      render: (children: ApplicantDto['children']) => children?.length || 0,
     },
     {
       title: 'BOARD STATUS',
       key: 'boardDecision',
       width: 130,
       render: (_, record) => {
-        const decision = record.boardReview?.decision || 'Pending';
+        const decision = record.boardDecision || 'Pending';
         const style = getStatusTagStyle(decision);
         return <Tag style={style}>{decision}</Tag>;
       },
@@ -119,18 +116,9 @@ const ApplicantListPage = () => {
       key: 'stage',
       width: 140,
       render: (_, record) => {
-        const stageName = record.housingSearch?.stage || 'N/A';
+        const stageName = record.stage || 'N/A';
         const style = getStageTagStyle(stageName);
         return <Tag style={style}>{formatStageName(stageName)}</Tag>;
-      },
-    },
-    {
-      title: 'PREFERRED CITIES',
-      key: 'cities',
-      render: (_, record) => {
-        const cities = record.housingSearch?.preferences?.preferredCities;
-        if (!cities?.length) return <Text type="secondary">Not specified</Text>;
-        return cities.slice(0, 2).join(', ') + (cities.length > 2 ? ` +${cities.length - 2}` : '');
       },
     },
     {
@@ -171,13 +159,15 @@ const ApplicantListPage = () => {
             <Text type="secondary">{data.totalCount} total</Text>
           )}
         </div>
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={() => navigate('/applicants/new')}
-        >
-          Add Applicant
-        </Button>
+        <Tooltip title="Coming soon">
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            disabled
+          >
+            Add Applicant
+          </Button>
+        </Tooltip>
       </div>
 
       {/* Filters */}

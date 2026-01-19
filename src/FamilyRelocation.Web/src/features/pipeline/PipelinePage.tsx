@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, Input, Select, Typography, Spin, Empty, message } from 'antd';
 import { SearchOutlined, UserOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { applicantsApi } from '../../api';
-import type { PipelineItemDto, PipelineStageDto } from '../../api/types';
+import type { ApplicantListItemDto } from '../../api/types';
 import { colors } from '../../theme/antd-theme';
 import './PipelinePage.css';
 
@@ -20,6 +20,28 @@ const stageConfig: Record<string, { color: string; bg: string; label: string }> 
   Closed: { color: '#10b981', bg: '#d1fae5', label: 'Closed' },
 };
 
+// Pipeline item type for kanban cards
+interface PipelineItem {
+  applicantId: string;
+  housingSearchId: string;
+  familyName: string;
+  husbandFirstName: string;
+  wifeFirstName?: string;
+  childrenCount: number;
+  boardDecision: string;
+  stage: string;
+  daysInStage: number;
+  budget?: number;
+  preferredCities?: string[];
+}
+
+// Pipeline stage type for kanban columns
+interface PipelineStage {
+  stage: string;
+  count: number;
+  items: PipelineItem[];
+}
+
 const PipelinePage = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -27,15 +49,60 @@ const PipelinePage = () => {
   const [cityFilter, setCityFilter] = useState<string | undefined>();
   const [boardDecisionFilter, setBoardDecisionFilter] = useState<string | undefined>();
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['pipeline', search, cityFilter, boardDecisionFilter],
+  // Fetch all applicants with a large page size for the pipeline view
+  const { data: rawData, isLoading, error } = useQuery({
+    queryKey: ['pipeline', search, boardDecisionFilter],
     queryFn: () =>
-      applicantsApi.getPipeline({
+      applicantsApi.getAll({
+        pageSize: 1000,
         search: search || undefined,
-        city: cityFilter || undefined,
         boardDecision: boardDecisionFilter || undefined,
       }),
   });
+
+  // Transform flat applicant list into pipeline stages
+  const data = useMemo(() => {
+    if (!rawData?.items) return null;
+
+    const stageOrder = ['Submitted', 'BoardApproved', 'HouseHunting', 'UnderContract', 'Closed'];
+
+    const stages: PipelineStage[] = stageOrder.map((stageName) => {
+      const stageItems = rawData.items
+        .filter((a: ApplicantListItemDto) => (a.stage || 'Submitted') === stageName)
+        .map((a: ApplicantListItemDto): PipelineItem => {
+          const nameParts = a.husbandFullName.split(' ');
+          const familyName = nameParts.pop() || a.husbandFullName;
+          const husbandFirstName = nameParts.join(' ') || '';
+          const createdDate = new Date(a.createdDate);
+          const daysInStage = Math.floor((Date.now() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
+
+          return {
+            applicantId: a.id,
+            housingSearchId: a.housingSearchId || '',
+            familyName,
+            husbandFirstName,
+            wifeFirstName: a.wifeMaidenName,
+            childrenCount: 0, // Not available in list view
+            boardDecision: a.boardDecision || 'Pending',
+            stage: a.stage || 'Submitted',
+            daysInStage,
+            budget: undefined, // Not available in list view
+            preferredCities: undefined, // Not available in list view
+          };
+        });
+
+      return {
+        stage: stageName,
+        count: stageItems.length,
+        items: stageItems,
+      };
+    });
+
+    return {
+      stages,
+      totalCount: rawData.totalCount,
+    };
+  }, [rawData]);
 
   const changeStage = useMutation({
     mutationFn: ({ applicantId, newStage }: { applicantId: string; newStage: string }) =>
@@ -49,7 +116,7 @@ const PipelinePage = () => {
     },
   });
 
-  const handleDragStart = (e: React.DragEvent, item: PipelineItemDto) => {
+  const handleDragStart = (e: React.DragEvent, item: PipelineItem) => {
     e.dataTransfer.setData('applicantId', item.applicantId);
     e.dataTransfer.setData('currentStage', item.stage);
     e.dataTransfer.effectAllowed = 'move';
@@ -74,13 +141,9 @@ const PipelinePage = () => {
     navigate(`/applicants/${applicantId}`);
   };
 
-  // Get unique cities from all items for filter
-  const allCities = new Set<string>();
-  data?.stages.forEach((stage) => {
-    stage.items.forEach((item) => {
-      item.preferredCities?.forEach((city) => allCities.add(city));
-    });
-  });
+  // City filter is not available in list view (would need to fetch full applicant details)
+  // For now, show common cities as static options
+  const commonCities = ['Union', 'Roselle Park', 'Elizabeth'];
 
   if (error) {
     return (
@@ -90,11 +153,8 @@ const PipelinePage = () => {
     );
   }
 
-  // Order stages for display
-  const stageOrder = ['Submitted', 'BoardApproved', 'HouseHunting', 'UnderContract', 'Closed'];
-  const orderedStages = stageOrder
-    .map((stageName) => data?.stages.find((s) => s.stage === stageName))
-    .filter((s): s is PipelineStageDto => !!s);
+  // Order stages for display (data is already ordered from useMemo)
+  const orderedStages = data?.stages || [];
 
   return (
     <div className="pipeline-page">
@@ -122,7 +182,7 @@ const PipelinePage = () => {
             style={{ width: 140 }}
             allowClear
           >
-            {Array.from(allCities).map((city) => (
+            {commonCities.map((city) => (
               <Option key={city} value={city}>{city}</Option>
             ))}
           </Select>
@@ -166,9 +226,9 @@ const PipelinePage = () => {
 
 // Kanban Column Component
 interface KanbanColumnProps {
-  stage: PipelineStageDto;
+  stage: PipelineStage;
   config: { color: string; bg: string; label: string };
-  onDragStart: (e: React.DragEvent, item: PipelineItemDto) => void;
+  onDragStart: (e: React.DragEvent, item: PipelineItem) => void;
   onDragOver: (e: React.DragEvent) => void;
   onDrop: (e: React.DragEvent, stage: string) => void;
   onCardClick: (applicantId: string) => void;
@@ -218,9 +278,9 @@ const KanbanColumn = ({
 
 // Kanban Card Component
 interface KanbanCardProps {
-  item: PipelineItemDto;
+  item: PipelineItem;
   borderColor: string;
-  onDragStart: (e: React.DragEvent, item: PipelineItemDto) => void;
+  onDragStart: (e: React.DragEvent, item: PipelineItem) => void;
   onClick: (applicantId: string) => void;
 }
 

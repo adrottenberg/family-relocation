@@ -28,10 +28,6 @@ namespace FamilyRelocation.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("ApplicantId");
 
-                    b.Property<string>("Children")
-                        .IsRequired()
-                        .HasColumnType("jsonb");
-
                     b.Property<Guid>("CreatedBy")
                         .HasColumnType("uuid");
 
@@ -147,13 +143,6 @@ namespace FamilyRelocation.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedDate")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("CurrentContract")
-                        .HasColumnType("jsonb");
-
-                    b.Property<string>("FailedContracts")
-                        .IsRequired()
-                        .HasColumnType("jsonb");
-
                     b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
@@ -174,9 +163,6 @@ namespace FamilyRelocation.Infrastructure.Migrations
                     b.Property<string>("Notes")
                         .HasMaxLength(4000)
                         .HasColumnType("character varying(4000)");
-
-                    b.Property<string>("Preferences")
-                        .HasColumnType("jsonb");
 
                     b.Property<int>("Stage")
                         .HasColumnType("integer");
@@ -267,6 +253,25 @@ namespace FamilyRelocation.Infrastructure.Migrations
                             b1.HasKey("ApplicantId");
 
                             b1.ToTable("Applicants");
+
+                            b1.WithOwner()
+                                .HasForeignKey("ApplicantId");
+                        });
+
+                    b.OwnsMany("FamilyRelocation.Domain.ValueObjects.Child", "Children", b1 =>
+                        {
+                            b1.Property<Guid>("ApplicantId");
+
+                            b1.Property<int>("__synthesizedOrdinal")
+                                .ValueGeneratedOnAdd();
+
+                            b1.HasKey("ApplicantId", "__synthesizedOrdinal");
+
+                            b1.ToTable("Applicants");
+
+                            b1
+                                .ToJson("Children")
+                                .HasColumnType("jsonb");
 
                             b1.WithOwner()
                                 .HasForeignKey("ApplicantId");
@@ -385,6 +390,8 @@ namespace FamilyRelocation.Infrastructure.Migrations
 
                     b.Navigation("BoardReview");
 
+                    b.Navigation("Children");
+
                     b.Navigation("Husband")
                         .IsRequired();
 
@@ -399,7 +406,145 @@ namespace FamilyRelocation.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.OwnsOne("FamilyRelocation.Domain.ValueObjects.Contract", "CurrentContract", b1 =>
+                        {
+                            b1.Property<Guid>("HousingSearchId");
+
+                            b1.Property<DateTime?>("ActualClosingDate");
+
+                            b1.HasKey("HousingSearchId");
+
+                            b1.ToTable("HousingSearches");
+
+                            b1
+                                .ToJson("CurrentContract")
+                                .HasColumnType("jsonb");
+
+                            b1.WithOwner()
+                                .HasForeignKey("HousingSearchId");
+
+                            b1.OwnsOne("FamilyRelocation.Domain.ValueObjects.Money", "Price", b2 =>
+                                {
+                                    b2.Property<Guid>("ContractHousingSearchId");
+
+                                    b2.HasKey("ContractHousingSearchId");
+
+                                    b2.ToTable("HousingSearches");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("ContractHousingSearchId");
+                                });
+
+                            b1.Navigation("Price")
+                                .IsRequired();
+                        });
+
+                    b.OwnsMany("FamilyRelocation.Domain.ValueObjects.FailedContractAttempt", "_failedContracts", b1 =>
+                        {
+                            b1.Property<Guid>("HousingSearchId");
+
+                            b1.Property<int>("__synthesizedOrdinal")
+                                .ValueGeneratedOnAdd();
+
+                            b1.HasKey("HousingSearchId", "__synthesizedOrdinal");
+
+                            b1.ToTable("HousingSearches");
+
+                            b1
+                                .ToJson("FailedContracts")
+                                .HasColumnType("jsonb");
+
+                            b1.WithOwner()
+                                .HasForeignKey("HousingSearchId");
+
+                            b1.OwnsOne("FamilyRelocation.Domain.ValueObjects.Contract", "Contract", b2 =>
+                                {
+                                    b2.Property<Guid>("FailedContractAttemptHousingSearchId");
+
+                                    b2.Property<int>("FailedContractAttempt__synthesizedOrdinal");
+
+                                    b2.Property<DateTime?>("ActualClosingDate");
+
+                                    b2.HasKey("FailedContractAttemptHousingSearchId", "FailedContractAttempt__synthesizedOrdinal");
+
+                                    b2.ToTable("HousingSearches");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("FailedContractAttemptHousingSearchId", "FailedContractAttempt__synthesizedOrdinal");
+
+                                    b2.OwnsOne("FamilyRelocation.Domain.ValueObjects.Money", "Price", b3 =>
+                                        {
+                                            b3.Property<Guid>("ContractFailedContractAttemptHousingSearchId");
+
+                                            b3.Property<int>("ContractFailedContractAttempt__synthesizedOrdinal");
+
+                                            b3.HasKey("ContractFailedContractAttemptHousingSearchId", "ContractFailedContractAttempt__synthesizedOrdinal");
+
+                                            b3.ToTable("HousingSearches");
+
+                                            b3.WithOwner()
+                                                .HasForeignKey("ContractFailedContractAttemptHousingSearchId", "ContractFailedContractAttempt__synthesizedOrdinal");
+                                        });
+
+                                    b2.Navigation("Price")
+                                        .IsRequired();
+                                });
+
+                            b1.Navigation("Contract")
+                                .IsRequired();
+                        });
+
+                    b.OwnsOne("FamilyRelocation.Domain.ValueObjects.HousingPreferences", "Preferences", b1 =>
+                        {
+                            b1.Property<Guid>("HousingSearchId");
+
+                            b1.HasKey("HousingSearchId");
+
+                            b1.ToTable("HousingSearches");
+
+                            b1
+                                .ToJson("Preferences")
+                                .HasColumnType("jsonb");
+
+                            b1.WithOwner()
+                                .HasForeignKey("HousingSearchId");
+
+                            b1.OwnsOne("FamilyRelocation.Domain.ValueObjects.Money", "Budget", b2 =>
+                                {
+                                    b2.Property<Guid>("HousingPreferencesHousingSearchId");
+
+                                    b2.HasKey("HousingPreferencesHousingSearchId");
+
+                                    b2.ToTable("HousingSearches");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("HousingPreferencesHousingSearchId");
+                                });
+
+                            b1.OwnsOne("FamilyRelocation.Domain.ValueObjects.ShulProximityPreference", "ShulProximity", b2 =>
+                                {
+                                    b2.Property<Guid>("HousingPreferencesHousingSearchId");
+
+                                    b2.HasKey("HousingPreferencesHousingSearchId");
+
+                                    b2.ToTable("HousingSearches");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("HousingPreferencesHousingSearchId");
+                                });
+
+                            b1.Navigation("Budget");
+
+                            b1.Navigation("ShulProximity");
+                        });
+
                     b.Navigation("Applicant");
+
+                    b.Navigation("CurrentContract");
+
+                    b.Navigation("Preferences");
+
+                    b.Navigation("_failedContracts");
                 });
 
             modelBuilder.Entity("FamilyRelocation.Domain.Entities.Applicant", b =>

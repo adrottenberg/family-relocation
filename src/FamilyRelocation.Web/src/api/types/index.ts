@@ -29,7 +29,20 @@ export interface RefreshTokenResponse {
   expiresIn: number;
 }
 
-// Applicant types
+// Applicant list item (lightweight for list views)
+export interface ApplicantListItemDto {
+  id: string;
+  husbandFullName: string;
+  wifeMaidenName?: string;
+  husbandEmail?: string;
+  husbandPhone?: string;
+  boardDecision?: string;
+  createdDate: string;
+  stage?: string;
+  housingSearchId?: string;
+}
+
+// Applicant full detail
 export interface ApplicantDto {
   id: string;
   husband: PersonInfoDto;
@@ -112,33 +125,6 @@ export interface ContractDto {
   actualClosingDate?: string;
 }
 
-// Pipeline types
-export interface PipelineResponse {
-  stages: PipelineStageDto[];
-  totalCount: number;
-}
-
-export interface PipelineStageDto {
-  stage: string;
-  count: number;
-  items: PipelineItemDto[];
-}
-
-export interface PipelineItemDto {
-  applicantId: string;
-  housingSearchId: string;
-  familyName: string;
-  husbandFirstName: string;
-  wifeFirstName?: string;
-  childrenCount: number;
-  boardDecision: string;
-  stage: string;
-  daysInStage: number;
-  budget?: number;
-  preferredCities?: string[];
-  currentContractAddress?: string;
-}
-
 // Audit log types
 export interface AuditLogDto {
   id: string;
@@ -155,7 +141,8 @@ export interface AuditLogDto {
 // Paginated list
 export interface PaginatedList<T> {
   items: T[];
-  pageNumber: number;
+  page: number;
+  pageSize: number;
   totalPages: number;
   totalCount: number;
   hasPreviousPage: boolean;

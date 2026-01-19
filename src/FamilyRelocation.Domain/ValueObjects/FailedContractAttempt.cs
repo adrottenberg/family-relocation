@@ -6,9 +6,9 @@ namespace FamilyRelocation.Domain.ValueObjects;
 /// </summary>
 public sealed record FailedContractAttempt
 {
-    public Contract Contract { get; }
-    public DateTime FailedDate { get; }
-    public string? Reason { get; }
+    public Contract Contract { get; init; }
+    public DateTime FailedDate { get; init; }
+    public string? Reason { get; init; }
 
     // Private parameterless constructor for EF Core
     private FailedContractAttempt()

@@ -5,8 +5,8 @@ namespace FamilyRelocation.Domain.ValueObjects;
 /// </summary>
 public sealed record Money
 {
-    public decimal Amount { get; }
-    public string Currency { get; }
+    public decimal Amount { get; init; }
+    public string Currency { get; init; }
 
     // Private parameterless constructor for EF Core
     private Money()

@@ -1,14 +1,14 @@
 import apiClient from '../client';
 import type {
   ApplicantDto,
+  ApplicantListItemDto,
   PaginatedList,
-  PipelineResponse,
   HousingSearchDto,
   AuditLogDto,
 } from '../types';
 
 export interface GetApplicantsParams {
-  pageNumber?: number;
+  page?: number;
   pageSize?: number;
   search?: string;
   boardDecision?: string;
@@ -40,7 +40,7 @@ export interface SetBoardDecisionRequest {
 }
 
 export const applicantsApi = {
-  getAll: async (params?: GetApplicantsParams): Promise<PaginatedList<ApplicantDto>> => {
+  getAll: async (params?: GetApplicantsParams): Promise<PaginatedList<ApplicantListItemDto>> => {
     const response = await apiClient.get('/applicants', { params });
     return response.data;
   },
@@ -62,16 +62,6 @@ export const applicantsApi = {
 
   delete: async (id: string): Promise<void> => {
     await apiClient.delete(`/applicants/${id}`);
-  },
-
-  // Pipeline
-  getPipeline: async (params?: {
-    search?: string;
-    city?: string;
-    boardDecision?: string;
-  }): Promise<PipelineResponse> => {
-    const response = await apiClient.get('/applicants/pipeline', { params });
-    return response.data;
   },
 
   // Housing Search
