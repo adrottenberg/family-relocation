@@ -138,7 +138,9 @@ public static class ApplicantMapper
             HusbandPhone = applicant.Husband.PhoneNumbers.FirstOrDefault(p => p.IsPrimary)?.Formatted
                            ?? applicant.Husband.PhoneNumbers.FirstOrDefault()?.Formatted,
             BoardDecision = applicant.BoardReview?.Decision.ToString(),
-            CreatedDate = applicant.CreatedDate
+            CreatedDate = applicant.CreatedDate,
+            Stage = applicant.HousingSearch?.Stage.ToString(),
+            HousingSearchId = applicant.HousingSearch?.Id
         };
     }
 

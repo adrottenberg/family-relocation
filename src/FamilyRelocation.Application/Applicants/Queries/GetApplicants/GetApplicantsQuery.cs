@@ -45,6 +45,11 @@ public record GetApplicantsQuery : IRequest<PaginatedList<ApplicantListDto>>
     public DateTime? CreatedBefore { get; init; }
 
     /// <summary>
+    /// Filter by housing search stage (Submitted, HouseHunting, UnderContract, Closed, Paused, Rejected).
+    /// </summary>
+    public string? Stage { get; init; }
+
+    /// <summary>
     /// Sort field. Options: familyName, createdDate, boardReviewDate. Default: createdDate
     /// </summary>
     public string SortBy { get; init; } = "createdDate";

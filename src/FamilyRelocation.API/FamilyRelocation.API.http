@@ -212,6 +212,20 @@ Authorization: Bearer {{accessToken}}
 GET {{baseUrl}}/api/applicants?boardDecision=Pending&city=Brooklyn&sortBy=familyName&sortOrder=asc
 Authorization: Bearer {{accessToken}}
 
+### List Applicants by Stage (for Pipeline/Kanban)
+# Filter by housing search stage: Submitted, HouseHunting, UnderContract, Closed, Paused, Rejected
+# The frontend can call this once per stage to build the Kanban board
+GET {{baseUrl}}/api/applicants?stage=Submitted
+Authorization: Bearer {{accessToken}}
+
+### List Applicants by Stage - House Hunting
+GET {{baseUrl}}/api/applicants?stage=HouseHunting
+Authorization: Bearer {{accessToken}}
+
+### List Applicants by Stage - Under Contract
+GET {{baseUrl}}/api/applicants?stage=UnderContract
+Authorization: Bearer {{accessToken}}
+
 ### Get Applicant by ID (Requires Authentication)
 GET {{baseUrl}}/api/applicants/{{applicantId}}
 Authorization: Bearer {{accessToken}}

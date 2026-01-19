@@ -32,8 +32,9 @@ public class GetApplicantsQueryHandler : IRequestHandler<GetApplicantsQuery, Pag
         var page = Math.Max(1, request.Page);
         var pageSize = Math.Clamp(request.PageSize, 1, 100);
 
-        // Start with base query (exclude soft-deleted)
+        // Start with base query (exclude soft-deleted, include HousingSearch)
         var query = _context.Set<Applicant>()
+            .Include(a => a.HousingSearch)
             .Where(a => !a.IsDeleted);
 
         // Apply search filter
@@ -86,6 +87,15 @@ public class GetApplicantsQueryHandler : IRequestHandler<GetApplicantsQuery, Pag
         if (request.CreatedBefore.HasValue)
         {
             query = query.Where(a => a.CreatedDate <= request.CreatedBefore.Value);
+        }
+
+        // Apply stage filter
+        if (!string.IsNullOrWhiteSpace(request.Stage))
+        {
+            if (Enum.TryParse<HousingSearchStage>(request.Stage, ignoreCase: true, out var stage))
+            {
+                query = query.Where(a => a.HousingSearch != null && a.HousingSearch.Stage == stage);
+            }
         }
 
         // Apply sorting
