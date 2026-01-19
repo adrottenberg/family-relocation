@@ -69,4 +69,9 @@ public record ApplicantDto
     /// Board review decision (null if not yet reviewed).
     /// </summary>
     public BoardReviewDto? BoardReview { get; init; }
+
+    /// <summary>
+    /// Housing search details (null if not yet created).
+    /// </summary>
+    public HousingSearchDto? HousingSearch { get; init; }
 }

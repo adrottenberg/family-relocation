@@ -22,7 +22,7 @@ import {
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { applicantsApi } from '../../api';
-import type { ApplicantDto, ChildDto, AuditLogDto } from '../../api/types';
+import type { ApplicantDto, ChildDto, AuditLogDto, HusbandInfoDto, SpouseInfoDto } from '../../api/types';
 import { colors, statusTagStyles, stageTagStyles } from '../../theme/antd-theme';
 import './ApplicantDetailPage.css';
 
@@ -162,6 +162,13 @@ const ApplicantDetailPage = () => {
   );
 };
 
+// Helper to get primary phone
+const getPrimaryPhone = (phoneNumbers?: { number: string; isPrimary: boolean }[]) => {
+  if (!phoneNumbers || phoneNumbers.length === 0) return 'N/A';
+  const primary = phoneNumbers.find(p => p.isPrimary);
+  return primary?.number || phoneNumbers[0]?.number || 'N/A';
+};
+
 // Overview Tab
 const OverviewTab = ({ applicant }: { applicant: ApplicantDto }) => {
   const { husband, wife, address } = applicant;
@@ -179,7 +186,7 @@ const OverviewTab = ({ applicant }: { applicant: ApplicantDto }) => {
               {husband.email || 'N/A'}
             </Descriptions.Item>
             <Descriptions.Item label={<><PhoneOutlined /> Phone</>}>
-              {husband.phone || 'N/A'}
+              {getPrimaryPhone(husband.phoneNumbers)}
             </Descriptions.Item>
             <Descriptions.Item label="Occupation">
               {husband.occupation || 'N/A'}
@@ -192,13 +199,13 @@ const OverviewTab = ({ applicant }: { applicant: ApplicantDto }) => {
           <Card title="Wife" size="small" className="info-card">
             <Descriptions column={1} size="small">
               <Descriptions.Item label={<><UserOutlined /> Name</>}>
-                {wife.firstName} {wife.lastName}
+                {wife.firstName} {wife.maidenName ? `(${wife.maidenName})` : ''}
               </Descriptions.Item>
               <Descriptions.Item label={<><MailOutlined /> Email</>}>
                 {wife.email || 'N/A'}
               </Descriptions.Item>
               <Descriptions.Item label={<><PhoneOutlined /> Phone</>}>
-                {wife.phone || 'N/A'}
+                {getPrimaryPhone(wife.phoneNumbers)}
               </Descriptions.Item>
               <Descriptions.Item label="Occupation">
                 {wife.occupation || 'N/A'}
@@ -208,16 +215,18 @@ const OverviewTab = ({ applicant }: { applicant: ApplicantDto }) => {
         )}
 
         {/* Address */}
-        <Card title="Current Address" size="small" className="info-card">
-          <Descriptions column={1} size="small">
-            <Descriptions.Item label={<><HomeOutlined /> Street</>}>
-              {address.street}
-            </Descriptions.Item>
-            <Descriptions.Item label="City">
-              {address.city}, {address.state} {address.zipCode}
-            </Descriptions.Item>
-          </Descriptions>
-        </Card>
+        {address && (
+          <Card title="Current Address" size="small" className="info-card">
+            <Descriptions column={1} size="small">
+              <Descriptions.Item label={<><HomeOutlined /> Street</>}>
+                {address.street}
+              </Descriptions.Item>
+              <Descriptions.Item label="City">
+                {address.city}, {address.state} {address.zipCode}
+              </Descriptions.Item>
+            </Descriptions>
+          </Card>
+        )}
 
         {/* Community */}
         <Card title="Community" size="small" className="info-card">
@@ -288,8 +297,8 @@ const HousingSearchTab = ({ applicant }: { applicant: ApplicantDto }) => {
           <Card title="Preferences" size="small" className="info-card">
             <Descriptions column={1} size="small">
               <Descriptions.Item label="Budget">
-                {prefs.budget
-                  ? `${prefs.budget.currency} ${prefs.budget.amount.toLocaleString()}`
+                {prefs.budgetAmount
+                  ? `$${prefs.budgetAmount.toLocaleString()}`
                   : 'N/A'}
               </Descriptions.Item>
               <Descriptions.Item label="Bedrooms">
@@ -305,12 +314,12 @@ const HousingSearchTab = ({ applicant }: { applicant: ApplicantDto }) => {
           </Card>
         )}
 
-        {/* Preferred Cities */}
-        {prefs?.preferredCities && prefs.preferredCities.length > 0 && (
-          <Card title="Preferred Cities" size="small" className="info-card">
+        {/* Required Features */}
+        {prefs?.requiredFeatures && prefs.requiredFeatures.length > 0 && (
+          <Card title="Required Features" size="small" className="info-card">
             <Space wrap>
-              {prefs.preferredCities.map((city) => (
-                <Tag key={city}>{city}</Tag>
+              {prefs.requiredFeatures.map((feature) => (
+                <Tag key={feature}>{feature}</Tag>
               ))}
             </Space>
           </Card>
@@ -321,8 +330,7 @@ const HousingSearchTab = ({ applicant }: { applicant: ApplicantDto }) => {
           <Card title="Current Contract" size="small" className="info-card">
             <Descriptions column={1} size="small">
               <Descriptions.Item label="Contract Price">
-                {hs.currentContract.contractPrice.currency}{' '}
-                {hs.currentContract.contractPrice.amount.toLocaleString()}
+                ${hs.currentContract.price.toLocaleString()}
               </Descriptions.Item>
               <Descriptions.Item label="Contract Date">
                 {new Date(hs.currentContract.contractDate).toLocaleDateString()}

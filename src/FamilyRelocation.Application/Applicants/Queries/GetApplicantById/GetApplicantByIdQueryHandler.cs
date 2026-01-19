@@ -25,6 +25,7 @@ public class GetApplicantByIdQueryHandler : IRequestHandler<GetApplicantByIdQuer
     public async Task<ApplicantDto?> Handle(GetApplicantByIdQuery request, CancellationToken cancellationToken)
     {
         var applicant = await _context.Set<Applicant>()
+            .Include(a => a.HousingSearch)
             .FirstOrDefaultAsync(a => a.Id == request.Id, cancellationToken);
 
         return applicant?.ToDto();

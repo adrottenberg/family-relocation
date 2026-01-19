@@ -30,7 +30,8 @@ public static class ApplicantMapper
             IsPendingBoardReview = applicant.IsPendingBoardReview,
             IsSelfSubmitted = applicant.IsSelfSubmitted,
             CreatedDate = applicant.CreatedDate,
-            BoardReview = applicant.BoardReview?.ToDto()
+            BoardReview = applicant.BoardReview?.ToDto(),
+            HousingSearch = applicant.HousingSearch?.ToDto()
         };
     }
 
@@ -153,6 +154,40 @@ public static class ApplicantMapper
             MaxWalkingDistanceMiles = proximity.MaxWalkingDistanceMiles,
             MaxWalkingTimeMinutes = proximity.MaxWalkingTimeMinutes,
             AnyShulAcceptable = proximity.AnyShulAcceptable
+        };
+    }
+
+    /// <summary>
+    /// Maps a HousingSearch entity to a HousingSearchDto.
+    /// </summary>
+    public static HousingSearchDto ToDto(this HousingSearch housingSearch)
+    {
+        return new HousingSearchDto
+        {
+            Id = housingSearch.Id,
+            Stage = housingSearch.Stage.ToString(),
+            StageChangedDate = housingSearch.StageChangedDate,
+            Preferences = housingSearch.Preferences?.ToDto(),
+            CurrentContract = housingSearch.CurrentContract?.ToContractDto(),
+            FailedContractCount = housingSearch.FailedContractCount,
+            BrokerAgreementSigned = housingSearch.BrokerAgreementSigned,
+            CommunityTakanosSigned = housingSearch.CommunityTakanosSigned,
+            Notes = housingSearch.Notes
+        };
+    }
+
+    /// <summary>
+    /// Maps a Contract value object to a ContractDto.
+    /// </summary>
+    public static ContractDto ToContractDto(this Contract contract)
+    {
+        return new ContractDto
+        {
+            PropertyId = contract.PropertyId,
+            Price = contract.Price.Amount,
+            ContractDate = contract.ContractDate,
+            ExpectedClosingDate = contract.ExpectedClosingDate,
+            ActualClosingDate = contract.ActualClosingDate
         };
     }
 

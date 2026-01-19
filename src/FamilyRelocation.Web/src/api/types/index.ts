@@ -45,31 +45,55 @@ export interface ApplicantListItemDto {
 // Applicant full detail
 export interface ApplicantDto {
   id: string;
-  husband: PersonInfoDto;
-  wife?: PersonInfoDto;
-  address: AddressDto;
-  children: ChildDto[];
+  husband: HusbandInfoDto;
+  wife?: SpouseInfoDto;
+  address?: AddressDto;
+  children?: ChildDto[];
   currentKehila?: string;
   shabbosShul?: string;
-  boardReview: BoardReviewDto;
+  familyName: string;
+  numberOfChildren: number;
+  isPendingBoardReview: boolean;
+  isSelfSubmitted: boolean;
+  boardReview?: BoardReviewDto;
   housingSearch?: HousingSearchDto;
   createdDate: string;
-  modifiedDate: string;
 }
 
-export interface PersonInfoDto {
+export interface HusbandInfoDto {
   firstName: string;
   lastName: string;
+  fatherName?: string;
   email?: string;
-  phone?: string;
+  phoneNumbers?: PhoneNumberDto[];
   occupation?: string;
+  employerName?: string;
+}
+
+export interface SpouseInfoDto {
+  firstName: string;
+  maidenName?: string;
+  fatherName?: string;
+  email?: string;
+  phoneNumbers?: PhoneNumberDto[];
+  occupation?: string;
+  employerName?: string;
+  highSchool?: string;
+}
+
+export interface PhoneNumberDto {
+  number: string;
+  type: string;
+  isPrimary: boolean;
 }
 
 export interface AddressDto {
   street: string;
+  street2?: string;
   city: string;
   state: string;
   zipCode: string;
+  fullAddress?: string;
 }
 
 export interface ChildDto {
@@ -83,7 +107,6 @@ export interface BoardReviewDto {
   decision: string;
   reviewDate?: string;
   notes?: string;
-  reviewedBy?: string;
 }
 
 export interface HousingSearchDto {
@@ -95,13 +118,13 @@ export interface HousingSearchDto {
   failedContractCount: number;
   brokerAgreementSigned: boolean;
   communityTakanosSigned: boolean;
+  notes?: string;
 }
 
 export interface HousingPreferencesDto {
-  budget?: MoneyDto;
+  budgetAmount?: number;
   minBedrooms?: number;
   minBathrooms?: number;
-  preferredCities?: string[];
   requiredFeatures?: string[];
   moveTimeline?: string;
   shulProximity?: ShulProximityDto;
@@ -118,8 +141,8 @@ export interface ShulProximityDto {
 }
 
 export interface ContractDto {
-  propertyId: string;
-  contractPrice: MoneyDto;
+  propertyId?: string;
+  price: number;
   contractDate: string;
   expectedClosingDate?: string;
   actualClosingDate?: string;
