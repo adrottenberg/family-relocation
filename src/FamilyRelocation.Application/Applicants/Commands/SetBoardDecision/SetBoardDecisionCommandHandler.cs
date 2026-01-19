@@ -85,7 +85,7 @@ public class SetBoardDecisionCommandHandler : IRequestHandler<SetBoardDecisionCo
             },
             PreviousStage = previousStage.ToString(),
             NewStage = housingSearch.Stage.ToString(),
-            Message = GetNextStepMessage(request.Decision, nextSteps?.ReadyForHouseHunting ?? false),
+            Message = GetNextStepMessage(request.Decision, housingSearch.Stage),
             NextSteps = nextSteps
         };
     }
@@ -103,10 +103,10 @@ public class SetBoardDecisionCommandHandler : IRequestHandler<SetBoardDecisionCo
         };
     }
 
-    private static string GetNextStepMessage(BoardDecision decision, bool readyForHouseHunting) => decision switch
+    private static string GetNextStepMessage(BoardDecision decision, HousingSearchStage finalStage) => decision switch
     {
-        BoardDecision.Approved when readyForHouseHunting =>
-            "Board approved. All agreements signed. Ready to start house hunting.",
+        BoardDecision.Approved when finalStage == HousingSearchStage.HouseHunting =>
+            "Board approved. All agreements were already signed. Now actively house hunting.",
         BoardDecision.Approved =>
             "Board approved. Awaiting signed broker agreement and community takanos before house hunting can begin.",
         BoardDecision.Rejected =>

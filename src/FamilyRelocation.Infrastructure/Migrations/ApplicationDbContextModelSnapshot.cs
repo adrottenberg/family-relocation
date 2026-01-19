@@ -131,22 +131,12 @@ namespace FamilyRelocation.Infrastructure.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
-                    b.Property<bool>("BrokerAgreementSigned")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false);
-
                     b.Property<DateTime?>("BrokerAgreementSignedDate")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("CommunityTakanosDocumentUrl")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
-
-                    b.Property<bool>("CommunityTakanosSigned")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false);
 
                     b.Property<DateTime?>("CommunityTakanosSignedDate")
                         .HasColumnType("timestamp with time zone");

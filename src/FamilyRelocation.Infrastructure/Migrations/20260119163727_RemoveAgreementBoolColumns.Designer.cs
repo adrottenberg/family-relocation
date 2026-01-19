@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FamilyRelocation.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260119140641_AddBoardApprovedStage")]
-    partial class AddBoardApprovedStage
+    [Migration("20260119163727_RemoveAgreementBoolColumns")]
+    partial class RemoveAgreementBoolColumns
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -134,22 +134,12 @@ namespace FamilyRelocation.Infrastructure.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
-                    b.Property<bool>("BrokerAgreementSigned")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false);
-
                     b.Property<DateTime?>("BrokerAgreementSignedDate")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("CommunityTakanosDocumentUrl")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
-
-                    b.Property<bool>("CommunityTakanosSigned")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false);
 
                     b.Property<DateTime?>("CommunityTakanosSignedDate")
                         .HasColumnType("timestamp with time zone");
