@@ -1,17 +1,21 @@
 import { Layout } from 'antd';
 import { Outlet } from 'react-router-dom';
+import Sidebar from './Sidebar';
+import Header from './Header';
+import './AppLayout.css';
 
 const { Content } = Layout;
 
-/**
- * App shell layout - to be implemented in UV-24
- */
 const AppLayout = () => {
   return (
-    <Layout style={{ minHeight: '100vh' }}>
-      <Content style={{ padding: 24 }}>
-        <Outlet />
-      </Content>
+    <Layout className="app-layout">
+      <Sidebar />
+      <Layout className="main-layout">
+        <Header />
+        <Content className="main-content">
+          <Outlet />
+        </Content>
+      </Layout>
     </Layout>
   );
 };
