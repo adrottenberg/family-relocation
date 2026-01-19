@@ -2131,6 +2131,25 @@ FamilyRelocation/
 
 ---
 
+## DEFERRED ARCHITECTURE DECISIONS
+
+### Consider Merging HousingSearch into Applicant Aggregate (Deferred)
+
+**Date:** January 18, 2026
+
+**Context:** Discussed whether having two separate aggregate roots (Applicant and HousingSearch) is the right design. Currently they have a 1:1 relationship.
+
+**Analysis:**
+- Concurrent housing searches are unlikely but not impossible
+- HousingSearch is never needed without Applicant data
+- These answers lean toward merging into a single aggregate
+
+**Decision:** Defer until after Sprint 2. The DTO layer abstracts this from the UI, so the impact of a future change is minimal.
+
+**Recommendation:** Revisit before HousingSearch-heavy feature development (e.g., Phase 2 property matching).
+
+---
+
 **END OF CONVERSATION MEMORY LOG**
 
 This document captures our complete collaboration. Use it to quickly re-establish context in future sessions.
