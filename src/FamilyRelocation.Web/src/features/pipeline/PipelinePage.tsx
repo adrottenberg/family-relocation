@@ -1,15 +1,293 @@
-import { Typography } from 'antd';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Card, Input, Select, Typography, Spin, Empty, message } from 'antd';
+import { SearchOutlined, UserOutlined } from '@ant-design/icons';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { applicantsApi } from '../../api';
+import type { PipelineItemDto, PipelineStageDto } from '../../api/types';
+import { colors } from '../../theme/antd-theme';
+import './PipelinePage.css';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
+const { Option } = Select;
 
-/**
- * Pipeline Kanban page - to be implemented in UV-27
- */
+// Stage configuration
+const stageConfig: Record<string, { color: string; bg: string; label: string }> = {
+  Submitted: { color: '#3b82f6', bg: '#dbeafe', label: 'Submitted' },
+  BoardApproved: { color: '#8b5cf6', bg: '#ede9fe', label: 'Board Approved' },
+  HouseHunting: { color: '#f59e0b', bg: '#fef3c7', label: 'House Hunting' },
+  UnderContract: { color: '#8b5cf6', bg: '#ede9fe', label: 'Under Contract' },
+  Closed: { color: '#10b981', bg: '#d1fae5', label: 'Closed' },
+};
+
 const PipelinePage = () => {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [search, setSearch] = useState('');
+  const [cityFilter, setCityFilter] = useState<string | undefined>();
+  const [boardDecisionFilter, setBoardDecisionFilter] = useState<string | undefined>();
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['pipeline', search, cityFilter, boardDecisionFilter],
+    queryFn: () =>
+      applicantsApi.getPipeline({
+        search: search || undefined,
+        city: cityFilter || undefined,
+        boardDecision: boardDecisionFilter || undefined,
+      }),
+  });
+
+  const changeStage = useMutation({
+    mutationFn: ({ applicantId, newStage }: { applicantId: string; newStage: string }) =>
+      applicantsApi.changeStage(applicantId, { newStage }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pipeline'] });
+      message.success('Stage updated successfully');
+    },
+    onError: () => {
+      message.error('Failed to update stage');
+    },
+  });
+
+  const handleDragStart = (e: React.DragEvent, item: PipelineItemDto) => {
+    e.dataTransfer.setData('applicantId', item.applicantId);
+    e.dataTransfer.setData('currentStage', item.stage);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (e: React.DragEvent, targetStage: string) => {
+    e.preventDefault();
+    const applicantId = e.dataTransfer.getData('applicantId');
+    const currentStage = e.dataTransfer.getData('currentStage');
+
+    if (currentStage !== targetStage) {
+      changeStage.mutate({ applicantId, newStage: targetStage });
+    }
+  };
+
+  const handleCardClick = (applicantId: string) => {
+    navigate(`/applicants/${applicantId}`);
+  };
+
+  // Get unique cities from all items for filter
+  const allCities = new Set<string>();
+  data?.stages.forEach((stage) => {
+    stage.items.forEach((item) => {
+      item.preferredCities?.forEach((city) => allCities.add(city));
+    });
+  });
+
+  if (error) {
+    return (
+      <Card>
+        <Empty description="Failed to load pipeline data" />
+      </Card>
+    );
+  }
+
+  // Order stages for display
+  const stageOrder = ['Submitted', 'BoardApproved', 'HouseHunting', 'UnderContract', 'Closed'];
+  const orderedStages = stageOrder
+    .map((stageName) => data?.stages.find((s) => s.stage === stageName))
+    .filter((s): s is PipelineStageDto => !!s);
+
   return (
-    <div>
-      <Title level={2}>Pipeline</Title>
-      <p>Kanban board - Coming in UV-27</p>
+    <div className="pipeline-page">
+      {/* Header */}
+      <div className="pipeline-header">
+        <div className="header-left">
+          <Title level={3} style={{ margin: 0 }}>Pipeline</Title>
+          {data && (
+            <Text type="secondary">{data.totalCount} families</Text>
+          )}
+        </div>
+        <div className="header-filters">
+          <Input
+            placeholder="Search families..."
+            prefix={<SearchOutlined />}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{ width: 220 }}
+            allowClear
+          />
+          <Select
+            placeholder="City"
+            value={cityFilter}
+            onChange={setCityFilter}
+            style={{ width: 140 }}
+            allowClear
+          >
+            {Array.from(allCities).map((city) => (
+              <Option key={city} value={city}>{city}</Option>
+            ))}
+          </Select>
+          <Select
+            placeholder="Board Status"
+            value={boardDecisionFilter}
+            onChange={setBoardDecisionFilter}
+            style={{ width: 140 }}
+            allowClear
+          >
+            <Option value="Pending">Pending</Option>
+            <Option value="Approved">Approved</Option>
+            <Option value="Deferred">Deferred</Option>
+          </Select>
+        </div>
+      </div>
+
+      {/* Kanban Board */}
+      {isLoading ? (
+        <div className="loading-container">
+          <Spin size="large" />
+        </div>
+      ) : (
+        <div className="kanban-board">
+          {orderedStages.map((stage) => (
+            <KanbanColumn
+              key={stage.stage}
+              stage={stage}
+              config={stageConfig[stage.stage] || stageConfig.Submitted}
+              onDragStart={handleDragStart}
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
+              onCardClick={handleCardClick}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Kanban Column Component
+interface KanbanColumnProps {
+  stage: PipelineStageDto;
+  config: { color: string; bg: string; label: string };
+  onDragStart: (e: React.DragEvent, item: PipelineItemDto) => void;
+  onDragOver: (e: React.DragEvent) => void;
+  onDrop: (e: React.DragEvent, stage: string) => void;
+  onCardClick: (applicantId: string) => void;
+}
+
+const KanbanColumn = ({
+  stage,
+  config,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onCardClick,
+}: KanbanColumnProps) => {
+  return (
+    <div
+      className="kanban-column"
+      onDragOver={onDragOver}
+      onDrop={(e) => onDrop(e, stage.stage)}
+    >
+      <div className="column-header">
+        <div className="column-title">
+          <span className="stage-dot" style={{ backgroundColor: config.color }} />
+          <span>{config.label}</span>
+        </div>
+        <span className="column-count">{stage.count}</span>
+      </div>
+      <div className="column-content">
+        {stage.items.length === 0 ? (
+          <div className="empty-column">
+            <Text type="secondary">No families</Text>
+          </div>
+        ) : (
+          stage.items.map((item) => (
+            <KanbanCard
+              key={item.applicantId}
+              item={item}
+              borderColor={config.color}
+              onDragStart={onDragStart}
+              onClick={onCardClick}
+            />
+          ))
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Kanban Card Component
+interface KanbanCardProps {
+  item: PipelineItemDto;
+  borderColor: string;
+  onDragStart: (e: React.DragEvent, item: PipelineItemDto) => void;
+  onClick: (applicantId: string) => void;
+}
+
+const KanbanCard = ({ item, borderColor, onDragStart, onClick }: KanbanCardProps) => {
+  const getBoardDecisionStyle = (decision: string) => {
+    const styles: Record<string, { bg: string; color: string }> = {
+      Pending: { bg: colors.status.pendingBg, color: '#92400e' },
+      Approved: { bg: colors.status.approvedBg, color: '#065f46' },
+      Rejected: { bg: colors.status.rejectedBg, color: '#991b1b' },
+      Deferred: { bg: colors.status.deferredBg, color: '#3730a3' },
+    };
+    return styles[decision] || styles.Pending;
+  };
+
+  const decisionStyle = getBoardDecisionStyle(item.boardDecision);
+
+  return (
+    <div
+      className="kanban-card"
+      style={{ borderLeftColor: borderColor }}
+      draggable
+      onDragStart={(e) => onDragStart(e, item)}
+      onClick={() => onClick(item.applicantId)}
+    >
+      <div className="card-header">
+        <Text strong className="family-name">{item.familyName}</Text>
+        <span
+          className="board-badge"
+          style={{ backgroundColor: decisionStyle.bg, color: decisionStyle.color }}
+        >
+          {item.boardDecision}
+        </span>
+      </div>
+      <div className="card-subtitle">
+        <UserOutlined style={{ fontSize: 12, color: colors.neutral[400] }} />
+        <Text type="secondary" style={{ fontSize: 13 }}>
+          {item.husbandFirstName}
+          {item.wifeFirstName && ` & ${item.wifeFirstName}`}
+        </Text>
+      </div>
+      <div className="card-details">
+        {item.childrenCount > 0 && (
+          <span className="detail-item">
+            {item.childrenCount} {item.childrenCount === 1 ? 'child' : 'children'}
+          </span>
+        )}
+        {item.budget && (
+          <span className="detail-item">
+            ${(item.budget / 1000).toFixed(0)}k budget
+          </span>
+        )}
+      </div>
+      {item.preferredCities && item.preferredCities.length > 0 && (
+        <div className="card-cities">
+          {item.preferredCities.slice(0, 2).map((city) => (
+            <span key={city} className="city-tag">{city}</span>
+          ))}
+          {item.preferredCities.length > 2 && (
+            <span className="city-tag">+{item.preferredCities.length - 2}</span>
+          )}
+        </div>
+      )}
+      <div className="card-footer">
+        <Text type="secondary" style={{ fontSize: 12 }}>
+          {item.daysInStage} {item.daysInStage === 1 ? 'day' : 'days'} in stage
+        </Text>
+      </div>
     </div>
   );
 };
