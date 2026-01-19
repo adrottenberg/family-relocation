@@ -2107,10 +2107,19 @@ FamilyRelocation/
 
 ### Key Sprint 2 Decisions
 1. **US-010**: Modify existing POST /api/applicants to also create HousingSearch (not new endpoint)
-2. **US-014**: Pipeline at /api/applicants/pipeline (not /housing-searches/pipeline)
-3. **US-015**: Stage change at PUT /api/applicants/{id}/housing-search/stage
+2. **US-014**: Pipeline uses existing GET /api/applicants with ?stage= filter (simpler than separate endpoint)
+3. **US-015/UV-19**: Stage change at PUT /api/applicants/{id}/stage
 4. **US-018**: New audit log feature with EF Core interceptor
 5. **Deferred**: Email notifications (US-011), monthly calculator (US-017)
+
+### Upcoming Infrastructure Work
+1. **S3 Document Storage**: Need to set up S3 bucket for agreement document uploads (broker agreement, community takanos). Frontend will upload directly to S3 and pass URL to API.
+2. **Migration**: Run `dotnet ef migrations add AddAgreementFields` to add agreement columns to HousingSearches table.
+
+### Planned Architectural Refactoring
+1. **Merge Applicant + HousingSearch**: These are not really separate concerns - plan to merge into single aggregate. This simplifies the domain model and eliminates awkward cross-entity validation.
+2. **Domain-Centric Validation**: Once merged, move ALL stage transition validation into the domain entity. Currently validation is split between handler (board approval, contract details, dates) and domain (agreements, state machine). After merge, the entity will have direct access to BoardReview and can validate everything internally. Handler becomes pure orchestration.
+3. **Current State**: Keeping validation in handler for now (handler checks board approval, required fields; domain checks state machine + agreements). Will consolidate when entities merge.
 
 ### Key Technical Patterns Established
 1. Query object pattern (no repositories)

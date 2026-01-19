@@ -60,11 +60,25 @@ public class HousingSearchConfiguration : IEntityTypeConfiguration<HousingSearch
         builder.Property(h => h.Notes)
             .HasMaxLength(4000);
 
+        // Required Agreements
+        builder.Property(h => h.BrokerAgreementSigned)
+            .HasDefaultValue(false);
+        builder.Property(h => h.BrokerAgreementDocumentUrl)
+            .HasMaxLength(500);
+        builder.Property(h => h.BrokerAgreementSignedDate);
+
+        builder.Property(h => h.CommunityTakanosSigned)
+            .HasDefaultValue(false);
+        builder.Property(h => h.CommunityTakanosDocumentUrl)
+            .HasMaxLength(500);
+        builder.Property(h => h.CommunityTakanosSignedDate);
+
         // Ignore computed properties
         builder.Ignore(h => h.IsUnderContract);
         builder.Ignore(h => h.IsComplete);
         builder.Ignore(h => h.IsRejected);
         builder.Ignore(h => h.FailedContractCount);
+        builder.Ignore(h => h.AreAgreementsSigned);
 
         // Audit
         builder.Property(h => h.CreatedBy);
