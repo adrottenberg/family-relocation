@@ -457,3 +457,32 @@ Authorization: Bearer {{accessToken}}
     "budgetAmount": 450000,
     "minBedrooms": 3
 }
+
+###############################################################################
+# AUDIT LOGS (Admin Only)
+# Track all changes to Applicant and HousingSearch entities
+###############################################################################
+
+### Get All Audit Logs
+# Returns paginated list of all audit entries
+GET {{baseUrl}}/api/audit-logs?page=1&pageSize=50
+Authorization: Bearer {{accessToken}}
+
+### Get Audit Logs with Filters
+# Filter by entity type, user, date range
+GET {{baseUrl}}/api/audit-logs?entityType=Applicant&from=2026-01-01&to=2026-12-31
+Authorization: Bearer {{accessToken}}
+
+### Get Audit Logs for Specific Entity
+GET {{baseUrl}}/api/audit-logs?entityType=Applicant&entityId={{applicantId}}
+Authorization: Bearer {{accessToken}}
+
+### Get Audit Logs by Action Type
+# Actions: Added, Modified, Deleted
+GET {{baseUrl}}/api/audit-logs?action=Modified
+Authorization: Bearer {{accessToken}}
+
+### Get Applicant History (Convenience Endpoint)
+# Returns all audit entries for a specific applicant
+GET {{baseUrl}}/api/audit-logs/applicant/{{applicantId}}
+Authorization: Bearer {{accessToken}}
