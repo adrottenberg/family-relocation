@@ -40,4 +40,15 @@ public class ApplicantListDto
     /// Date the applicant record was created.
     /// </summary>
     public DateTime CreatedDate { get; init; }
+
+    /// <summary>
+    /// Housing search stage (Submitted, HouseHunting, UnderContract, Closed, etc).
+    /// Null if no housing search exists.
+    /// </summary>
+    public string? Stage { get; init; }
+
+    /// <summary>
+    /// Housing search ID if one exists.
+    /// </summary>
+    public Guid? HousingSearchId { get; init; }
 }
