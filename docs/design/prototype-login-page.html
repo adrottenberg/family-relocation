@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Page - Interactive Prototype</title>
+    <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;500;600;700&family=Heebo:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --brand-600: #2d7a3a; --brand-500: #3d9a4a; --brand-100: #e8f7ea; --brand-50: #f4fbf5;
+            --primary-700: #1e40af; --primary-600: #1e40af; --primary-200: #bfdbfe;
+            --primary-150: #d0e4fc; --primary-100: #dbeafe; --primary-50: #eff6ff;
+            --neutral-900: #1a1d1a; --neutral-700: #404340; --neutral-600: #5c605c;
+            --neutral-500: #7a7e7a; --neutral-400: #9ca09c; --neutral-300: #c4c7c4;
+            --neutral-200: #e2e4e2; --neutral-100: #f1f2f1; --neutral-50: #f8f9f8;
+            --status-rejected: #ef4444; --status-rejected-bg: #fee2e2;
+            --font-family: 'Assistant', 'Heebo', sans-serif;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: var(--font-family); 
+            background: linear-gradient(135deg, var(--brand-50) 0%, var(--primary-50) 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .login-container {
+            width: 100%;
+            max-width: 420px;
+            padding: 20px;
+        }
+        
+        .login-card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            text-align: center;
+        }
+        
+        .logo-section {
+            margin-bottom: 32px;
+        }
+        
+        .logo-img {
+            height: 64px;
+            margin-bottom: 16px;
+        }
+        
+        .logo-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--brand-600);
+            margin-bottom: 4px;
+        }
+        
+        .logo-subtitle {
+            font-size: 14px;
+            color: var(--neutral-500);
+        }
+        
+        .login-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--neutral-900);
+            margin-bottom: 8px;
+        }
+        
+        .login-subtitle {
+            font-size: 14px;
+            color: var(--neutral-500);
+            margin-bottom: 32px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--neutral-700);
+            margin-bottom: 8px;
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            font-family: var(--font-family);
+            font-size: 15px;
+            border: 1px solid var(--neutral-300);
+            border-radius: 8px;
+            transition: all 0.2s;
+            outline: none;
+        }
+        
+        .form-input:focus {
+            border-color: var(--primary-200);
+            box-shadow: 0 0 0 3px var(--primary-50);
+        }
+        
+        .form-input.error {
+            border-color: var(--status-rejected);
+            box-shadow: 0 0 0 3px var(--status-rejected-bg);
+        }
+        
+        .form-input::placeholder {
+            color: var(--neutral-400);
+        }
+        
+        .password-wrapper {
+            position: relative;
+        }
+        
+        .password-toggle {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--neutral-400);
+            cursor: pointer;
+            padding: 4px;
+            font-size: 18px;
+        }
+        
+        .password-toggle:hover {
+            color: var(--neutral-600);
+        }
+        
+        .form-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+        
+        .remember-me {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: var(--neutral-600);
+            cursor: pointer;
+        }
+        
+        .remember-me input {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--primary-700);
+        }
+        
+        .forgot-link {
+            font-size: 14px;
+            color: var(--primary-700);
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .forgot-link:hover {
+            text-decoration: underline;
+        }
+        
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            padding: 14px 24px;
+            font-family: var(--font-family);
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .btn-primary {
+            background: var(--primary-150);
+            color: var(--primary-700);
+            border: 1px solid var(--primary-200);
+        }
+        
+        .btn-primary:hover {
+            background: var(--primary-100);
+        }
+        
+        .btn-primary:active {
+            transform: translateY(1px);
+        }
+        
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .btn-loading .spinner {
+            width: 18px;
+            height: 18px;
+            border: 2px solid var(--primary-200);
+            border-top-color: var(--primary-700);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .error-message {
+            background: var(--status-rejected-bg);
+            border: 1px solid #fecaca;
+            color: #991b1b;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-bottom: 20px;
+            text-align: left;
+            display: none;
+        }
+        
+        .error-message.show {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .divider {
+            display: flex;
+            align-items: center;
+            margin: 24px 0;
+            color: var(--neutral-400);
+            font-size: 13px;
+        }
+        
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--neutral-200);
+        }
+        
+        .divider::before { margin-right: 16px; }
+        .divider::after { margin-left: 16px; }
+        
+        .help-text {
+            font-size: 14px;
+            color: var(--neutral-500);
+            margin-top: 24px;
+        }
+        
+        .help-link {
+            color: var(--primary-700);
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .help-link:hover {
+            text-decoration: underline;
+        }
+        
+        /* Demo Controls */
+        .demo-controls {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            font-size: 13px;
+            max-width: 280px;
+        }
+        
+        .demo-title {
+            font-weight: 600;
+            color: var(--neutral-700);
+            margin-bottom: 12px;
+        }
+        
+        .demo-btn {
+            display: block;
+            width: 100%;
+            padding: 8px 12px;
+            margin-bottom: 8px;
+            background: var(--neutral-100);
+            border: 1px solid var(--neutral-200);
+            border-radius: 6px;
+            font-family: var(--font-family);
+            font-size: 13px;
+            cursor: pointer;
+            text-align: left;
+        }
+        
+        .demo-btn:hover {
+            background: var(--neutral-200);
+        }
+        
+        .demo-btn:last-child {
+            margin-bottom: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-card">
+            <div class="logo-section">
+                <img src="data:image/webp;base64,UklGRp4HAABXRUJQVlA4WAoAAAAgAAAATgAAdgAASUNDUMgBAAAAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADZWUDggsAUAAPAcAJ0BKk8AdwA+USCORKOiIRM6Bvw4BQS1AGdyL8ML5D8luk65J748YYebrU/S+wD0yeYB+pPTu8wHhAe6v0AP5x/cetw9Av9wPTT/Zn4NP3C/Y72pLxMPnWl/xFFQtWbrrAbSfTRfIl9YcCNrxi8P4Txw1TyY6W8SSbg3uYBmbY/ITtFGjo9+AjNhnDP9UN4YgeQOtNrbmGoC5pxFFFYLcfhTu0M4NWI1fQehe0tW2O3CyeJijqwjg2jDAGNqmp6rKDzdNDxjdLiswg0rcF9I03351iKOmJ0m0SD164YQtSr4ov1sv3LDAZxTrMkxKAD+/t14tA4/8ptyG+KRVduzfc/dTKUwT/+q1IgLmJpLFGzl6zCWbach/Zkf5KiUTP9DFRxpg5TwMzbkS8HiN8wUq3Zy/dGjhIUa/znuTbRBpEUCklreBX47qoBXYdE4+h0Hy+5BrIQ8bj8+FBy/yeGKV77c9HVEiV33aWRLRYRZBfDCA+y0fF3u/NjXDWpbXecEzOHXIn/pb/mRi2fXSE4HBnHGib2ozI7Bj5PmQEFVoat/xrEbDsBtLNSH7wSaF4nfUN3uNtkoxga+lD4tpunpS4KKA/Pv7hW3h731HWKgGkiVwHcZhbeq68g+2M8olc9vhrmqB2vUH5jIJ786I9Xg2irC36q0O3FTZPE5WlTCbrqGEgcTVjHgO8u7gqILy0UfvlXZ5izSn79yifEtRsZPOcL+u8psvyoYMFdHhhHB78TS95pJvpIOEcyKGoO1Swh0TzloZqi20u0mzSrtZRRd6VarDLTkrAAQtampG6XNUdJ3NUXhoWM2ZI4uHyngBGNOIMmKE0dVPunlpFWJQP/Zd9jWNDcY88RB+D4z6fJsJkc6sb9uq1pQA1wOqA0Lc5aDaobtV5817g9eX4d+Raiuoo/J3hCpHll2/4su6+I7eHwMP9M30PmpIL4SA49eI5/6UGkUrmja8fBR++9jEKUi9wnnmsCA/C/ou97YEBeOC2nXhpYmkcHhtD4A2hgITLP0iJXGomCUI4G2mOy75wJHxNDmftUBW1tToM7te1t77HHMF/Yaas3+icEYmmtHCFMWswrAKm2H1Gcy330Xl+bXr2qUY1YsBeyuxpGSZ8Ysu0wpPvHwDi4LaxXB5x0jZdYHae3D5fwH1dWkqzt4+Mtz8syxumNS4owPvjihdHwv7R8vt7wWSus0t4VqY+gYhs1vs31B6EY4RFUAiwn8It3f50y1n+ryNcu5ZmwzfLF0Cei7bL+odGSazOqhc2vij1CVkgje9OqXU3jbuLBJE/keo2G8TvutpSRdDbgFuX5d148rkn0JejpePhYxbvsZzA7CMynu9Urv7BXJKgYTacXDwr2U1kaDDcJN53d8QPG8KK94HMYxFbfesL0nUZ7r+N6hd+GMxoIyia8OiNOXnACkGE+273lEBMtrujP0eSU22Vx6u7zRtw2sbGFicrxxLcXzgyzwDw+lgXfwvQYnyf9X9G1UuBa6EmpbEsN/n1L5m8lrnEs89Kbo9Jl1S4Q1Ok4p66fC9X4NKFk2yRK6P97f4gAQ6tTK5Ja3L+I2GTkDXn+1B6LTsO4kayYJNfAlitgXyixxR+5d8fkKWaiSZ9Hp2NL7301PJU/I7p6BDD84Dt/q82w1ukZqPIO9iES0TccHZ8gXQ8KPUbDJD8GnW4W1CDj6zF6eytn3ASWYsw8bmpVFPK3382UzZQvnx+5HeHNFeKGABfpgbP732c7txHKpu4N+M2Ig5iWmom6u+lvq3xkKN9kBoKNJMIvGvJz4ydsepbfyciBdifF0nGGeyMUDxUxRNqQcDwneiw8HeoKex3+IZY8An/+G2XlePlnw7+CKJ1crK10zP7GeLy7APpS0fThPCydHb9h3luuNRc0Uo62E7jHMp71EFgFh5nd7kE0zneVqQnb52gtWAAAAAAA=" class="logo-img" alt="Logo">
+                <div class="logo-title">וועד הישוב</div>
+                <div class="logo-subtitle">Family Relocation CRM</div>
+            </div>
+            
+            <h1 class="login-title">Welcome back</h1>
+            <p class="login-subtitle">Sign in to continue to your dashboard</p>
+            
+            <div class="error-message" id="errorMessage">
+                <span>⚠️</span>
+                <span id="errorText">Invalid email or password</span>
+            </div>
+            
+            <form id="loginForm">
+                <div class="form-group">
+                    <label class="form-label" for="email">Email</label>
+                    <input 
+                        type="email" 
+                        id="email" 
+                        class="form-input" 
+                        placeholder="you@example.com"
+                        value="coordinator@example.com"
+                    >
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="password">Password</label>
+                    <div class="password-wrapper">
+                        <input 
+                            type="password" 
+                            id="password" 
+                            class="form-input" 
+                            placeholder="Enter your password"
+                            value="password123"
+                        >
+                        <button type="button" class="password-toggle" onclick="togglePassword()">
+                            👁️
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <label class="remember-me">
+                        <input type="checkbox" checked>
+                        Remember me
+                    </label>
+                    <a href="#" class="forgot-link">Forgot password?</a>
+                </div>
+                
+                <button type="submit" class="btn btn-primary" id="submitBtn">
+                    Sign in
+                </button>
+            </form>
+            
+            <p class="help-text">
+                Need help? <a href="#" class="help-link">Contact support</a>
+            </p>
+        </div>
+    </div>
+    
+    <div class="demo-controls">
+        <div class="demo-title">🎮 Demo Controls</div>
+        <button class="demo-btn" onclick="showLoading()">Show Loading State</button>
+        <button class="demo-btn" onclick="showError()">Show Error State</button>
+        <button class="demo-btn" onclick="showSuccess()">Simulate Login Success</button>
+        <button class="demo-btn" onclick="resetForm()">Reset Form</button>
+    </div>
+    
+    <script>
+        const form = document.getElementById('loginForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const errorMessage = document.getElementById('errorMessage');
+        const errorText = document.getElementById('errorText');
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        
+        function togglePassword() {
+            const input = document.getElementById('password');
+            input.type = input.type === 'password' ? 'text' : 'password';
+        }
+        
+        function showLoading() {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<div class="spinner"></div> Signing in...';
+            submitBtn.classList.add('btn-loading');
+            errorMessage.classList.remove('show');
+        }
+        
+        function hideLoading() {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = 'Sign in';
+            submitBtn.classList.remove('btn-loading');
+        }
+        
+        function showError(message = 'Invalid email or password. Please try again.') {
+            hideLoading();
+            errorText.textContent = message;
+            errorMessage.classList.add('show');
+            emailInput.classList.add('error');
+            passwordInput.classList.add('error');
+        }
+        
+        function showSuccess() {
+            showLoading();
+            setTimeout(() => {
+                alert('✅ Login successful! Redirecting to dashboard...\n\n(In the real app, this would redirect to /dashboard)');
+                hideLoading();
+            }, 1500);
+        }
+        
+        function resetForm() {
+            hideLoading();
+            errorMessage.classList.remove('show');
+            emailInput.classList.remove('error');
+            passwordInput.classList.remove('error');
+            emailInput.value = 'coordinator@example.com';
+            passwordInput.value = 'password123';
+        }
+        
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            showLoading();
+            
+            // Simulate API call
+            setTimeout(() => {
+                if (emailInput.value && passwordInput.value) {
+                    showSuccess();
+                } else {
+                    showError('Please enter both email and password.');
+                }
+            }, 1500);
+        });
+    </script>
+</body>
+</html>

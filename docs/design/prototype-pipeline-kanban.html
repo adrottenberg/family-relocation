@@ -1,0 +1,1023 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pipeline Kanban - Interactive Prototype</title>
+    <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;500;600;700&family=Heebo:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --brand-600: #2d7a3a; --brand-500: #3d9a4a; --brand-100: #e8f7ea; --brand-50: #f4fbf5;
+            --primary-700: #1e40af; --primary-600: #1e40af; --primary-200: #bfdbfe;
+            --primary-150: #d0e4fc; --primary-100: #dbeafe; --primary-50: #eff6ff;
+            --neutral-900: #1a1d1a; --neutral-800: #2d302d; --neutral-700: #404340;
+            --neutral-600: #5c605c; --neutral-500: #7a7e7a; --neutral-400: #9ca09c;
+            --neutral-300: #c4c7c4; --neutral-200: #e2e4e2; --neutral-100: #f1f2f1; --neutral-50: #f8f9f8;
+            --stage-submitted: #3b82f6; --stage-submitted-bg: #dbeafe;
+            --stage-hunting: #f59e0b; --stage-hunting-bg: #fef3c7;
+            --stage-contract: #8b5cf6; --stage-contract-bg: #ede9fe;
+            --stage-closed: #10b981; --stage-closed-bg: #d1fae5;
+            --status-pending: #f59e0b; --status-pending-bg: #fef3c7;
+            --status-approved: #10b981; --status-approved-bg: #d1fae5;
+            --font-family: 'Assistant', 'Heebo', sans-serif;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: var(--font-family); background: var(--neutral-50); min-height: 100vh; }
+        
+        /* Layout */
+        .app-container { display: flex; min-height: 100vh; }
+        
+        /* Sidebar */
+        .sidebar {
+            width: 220px;
+            background: white;
+            border-right: 1px solid var(--neutral-200);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+            z-index: 100;
+        }
+        
+        .sidebar-logo {
+            padding: 16px;
+            border-bottom: 1px solid var(--neutral-100);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .sidebar-logo img { height: 40px; }
+        .sidebar-logo-text { font-weight: 700; color: var(--brand-600); font-size: 16px; }
+        
+        .sidebar-nav { padding: 16px; flex: 1; }
+        
+        .sidebar-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 14px;
+            border-radius: 8px;
+            color: var(--neutral-600);
+            font-weight: 500;
+            margin-bottom: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.15s;
+        }
+        
+        .sidebar-item:hover { background: var(--neutral-100); color: var(--neutral-900); }
+        .sidebar-item.active { background: var(--primary-50); color: var(--primary-700); }
+        
+        .sidebar-footer {
+            padding: 16px;
+            border-top: 1px solid var(--neutral-100);
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            background: var(--primary-100);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary-700);
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        .user-name { font-weight: 600; color: var(--neutral-900); font-size: 14px; }
+        .user-role { font-size: 12px; color: var(--neutral-500); }
+        
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            margin-left: 220px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Header */
+        .header {
+            height: 60px;
+            background: white;
+            border-bottom: 1px solid var(--neutral-200);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+        
+        .header-left { display: flex; align-items: center; gap: 24px; }
+        
+        .page-title { font-size: 20px; font-weight: 700; color: var(--neutral-900); }
+        
+        .header-search {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--neutral-100);
+            padding: 8px 16px;
+            border-radius: 8px;
+            color: var(--neutral-400);
+            width: 280px;
+            font-size: 14px;
+            border: 1px solid transparent;
+            transition: all 0.2s;
+        }
+        
+        .header-search:focus-within {
+            background: white;
+            border-color: var(--primary-200);
+            box-shadow: 0 0 0 3px var(--primary-50);
+        }
+        
+        .header-search input {
+            border: none;
+            background: transparent;
+            outline: none;
+            font-family: var(--font-family);
+            font-size: 14px;
+            width: 100%;
+            color: var(--neutral-800);
+        }
+        
+        .header-right { display: flex; align-items: center; gap: 16px; }
+        
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 18px;
+            font-family: var(--font-family);
+            font-size: 14px;
+            font-weight: 600;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        
+        .btn-primary {
+            background: var(--primary-150);
+            color: var(--primary-700);
+            border: 1px solid var(--primary-200);
+        }
+        
+        .btn-primary:hover { background: var(--primary-100); }
+        
+        .btn-secondary {
+            background: white;
+            color: var(--neutral-700);
+            border: 1px solid var(--neutral-300);
+        }
+        
+        .btn-secondary:hover { background: var(--neutral-50); }
+        
+        /* Pipeline Content */
+        .pipeline-content {
+            flex: 1;
+            padding: 24px;
+            overflow-x: auto;
+        }
+        
+        /* Filters */
+        .filters-bar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+            align-items: center;
+        }
+        
+        .filter-select {
+            padding: 8px 12px;
+            border: 1px solid var(--neutral-300);
+            border-radius: 8px;
+            font-family: var(--font-family);
+            font-size: 14px;
+            color: var(--neutral-700);
+            background: white;
+            cursor: pointer;
+        }
+        
+        .filter-select:focus {
+            outline: none;
+            border-color: var(--primary-200);
+            box-shadow: 0 0 0 3px var(--primary-50);
+        }
+        
+        .view-toggle {
+            display: flex;
+            background: var(--neutral-100);
+            border-radius: 8px;
+            padding: 4px;
+            margin-left: auto;
+        }
+        
+        .view-btn {
+            padding: 6px 12px;
+            border: none;
+            background: transparent;
+            border-radius: 6px;
+            font-family: var(--font-family);
+            font-size: 13px;
+            cursor: pointer;
+            color: var(--neutral-600);
+        }
+        
+        .view-btn.active {
+            background: white;
+            color: var(--neutral-900);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        /* Kanban Board */
+        .kanban-board {
+            display: flex;
+            gap: 20px;
+            min-height: calc(100vh - 200px);
+        }
+        
+        .kanban-column {
+            min-width: 300px;
+            width: 300px;
+            background: var(--neutral-100);
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            max-height: calc(100vh - 200px);
+        }
+        
+        .column-header {
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--neutral-200);
+        }
+        
+        .column-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 600;
+            color: var(--neutral-900);
+            font-size: 15px;
+        }
+        
+        .column-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+        
+        .column-dot.submitted { background: var(--stage-submitted); }
+        .column-dot.hunting { background: var(--stage-hunting); }
+        .column-dot.contract { background: var(--stage-contract); }
+        .column-dot.closed { background: var(--stage-closed); }
+        
+        .column-count {
+            background: var(--neutral-300);
+            color: var(--neutral-700);
+            font-size: 12px;
+            font-weight: 600;
+            padding: 2px 10px;
+            border-radius: 12px;
+        }
+        
+        .column-cards {
+            flex: 1;
+            padding: 12px;
+            overflow-y: auto;
+        }
+        
+        .kanban-card {
+            background: white;
+            border-radius: 10px;
+            padding: 16px;
+            margin-bottom: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            cursor: grab;
+            border-left: 4px solid transparent;
+            transition: all 0.2s;
+        }
+        
+        .kanban-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+            transform: translateY(-2px);
+        }
+        
+        .kanban-card.dragging {
+            opacity: 0.5;
+            cursor: grabbing;
+        }
+        
+        .kanban-card.submitted { border-left-color: var(--stage-submitted); }
+        .kanban-card.hunting { border-left-color: var(--stage-hunting); }
+        .kanban-card.contract { border-left-color: var(--stage-contract); }
+        .kanban-card.closed { border-left-color: var(--stage-closed); }
+        
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+        
+        .card-family-name {
+            font-weight: 600;
+            color: var(--neutral-900);
+            font-size: 15px;
+        }
+        
+        .card-status {
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+        
+        .card-status.approved { background: var(--status-approved-bg); color: #065f46; }
+        .card-status.pending { background: var(--status-pending-bg); color: #92400e; }
+        
+        .card-details {
+            font-size: 13px;
+            color: var(--neutral-500);
+            margin-bottom: 12px;
+        }
+        
+        .card-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .card-cities {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        
+        .city-tag {
+            font-size: 11px;
+            padding: 3px 8px;
+            background: var(--neutral-100);
+            border-radius: 4px;
+            color: var(--neutral-600);
+        }
+        
+        .card-days {
+            font-size: 12px;
+            color: var(--neutral-400);
+        }
+        
+        .card-budget {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--neutral-700);
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid var(--neutral-100);
+        }
+        
+        /* Drop zone highlight */
+        .kanban-column.drag-over .column-cards {
+            background: var(--primary-50);
+            border-radius: 8px;
+        }
+        
+        /* Card Detail Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        .modal-overlay.show { display: flex; }
+        
+        .modal {
+            background: white;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--neutral-200);
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+        
+        .modal-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--neutral-900);
+            margin-bottom: 4px;
+        }
+        
+        .modal-subtitle {
+            font-size: 14px;
+            color: var(--neutral-500);
+        }
+        
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: var(--neutral-400);
+            padding: 4px;
+        }
+        
+        .modal-close:hover { color: var(--neutral-600); }
+        
+        .modal-body { padding: 24px; }
+        
+        .modal-section {
+            margin-bottom: 24px;
+        }
+        
+        .modal-section-title {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--neutral-500);
+            margin-bottom: 12px;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+        
+        .info-item { }
+        .info-label { font-size: 12px; color: var(--neutral-500); margin-bottom: 2px; }
+        .info-value { font-size: 14px; font-weight: 500; color: var(--neutral-900); }
+        
+        .stage-selector {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        
+        .stage-btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: 2px solid var(--neutral-200);
+            background: white;
+            font-family: var(--font-family);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        
+        .stage-btn:hover { border-color: var(--neutral-300); }
+        
+        .stage-btn.active {
+            border-color: var(--primary-700);
+            background: var(--primary-50);
+            color: var(--primary-700);
+        }
+        
+        .modal-footer {
+            padding: 16px 24px;
+            border-top: 1px solid var(--neutral-200);
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+        
+        /* Toast notification */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: var(--neutral-900);
+            color: white;
+            padding: 16px 24px;
+            border-radius: 12px;
+            font-size: 14px;
+            display: none;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            z-index: 2000;
+        }
+        
+        .toast.show { display: flex; }
+        .toast.success { background: #065f46; }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-logo">
+                <img src="data:image/webp;base64,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" alt="Logo">
+                <span class="sidebar-logo-text">וועד הישוב</span>
+            </div>
+            <nav class="sidebar-nav">
+                <div class="sidebar-item">📊 Dashboard</div>
+                <div class="sidebar-item">👥 Applicants</div>
+                <div class="sidebar-item active">📋 Pipeline</div>
+                <div class="sidebar-item">🏠 Properties</div>
+                <div class="sidebar-item">📝 Activity</div>
+                <div class="sidebar-item">⚙️ Settings</div>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div class="user-avatar">YK</div>
+                    <div>
+                        <div class="user-name">Yosef Klein</div>
+                        <div class="user-role">Coordinator</div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="header">
+                <div class="header-left">
+                    <h1 class="page-title">Pipeline</h1>
+                    <div class="header-search">
+                        <span>🔍</span>
+                        <input type="text" placeholder="Search families..." id="searchInput">
+                    </div>
+                </div>
+                <div class="header-right">
+                    <button class="btn btn-secondary">📥 Export</button>
+                    <button class="btn btn-primary">➕ Add Family</button>
+                </div>
+            </header>
+            
+            <div class="pipeline-content">
+                <div class="filters-bar">
+                    <select class="filter-select" id="cityFilter">
+                        <option value="">All Cities</option>
+                        <option value="Union">Union</option>
+                        <option value="Roselle Park">Roselle Park</option>
+                        <option value="Elizabeth">Elizabeth</option>
+                    </select>
+                    <select class="filter-select" id="statusFilter">
+                        <option value="">All Statuses</option>
+                        <option value="approved">Approved</option>
+                        <option value="pending">Pending</option>
+                    </select>
+                    <div class="view-toggle">
+                        <button class="view-btn active">📋 Kanban</button>
+                        <button class="view-btn">📊 Table</button>
+                    </div>
+                </div>
+                
+                <div class="kanban-board" id="kanbanBoard">
+                    <!-- Submitted Column -->
+                    <div class="kanban-column" data-stage="submitted">
+                        <div class="column-header">
+                            <div class="column-title">
+                                <span class="column-dot submitted"></span>
+                                Submitted
+                            </div>
+                            <span class="column-count">3</span>
+                        </div>
+                        <div class="column-cards">
+                            <div class="kanban-card submitted" draggable="true" data-id="1" onclick="openModal(this)">
+                                <div class="card-header">
+                                    <span class="card-family-name">Levy Family</span>
+                                    <span class="card-status pending">Pending</span>
+                                </div>
+                                <div class="card-details">David & Rachel • 4 children</div>
+                                <div class="card-meta">
+                                    <div class="card-cities">
+                                        <span class="city-tag">Union</span>
+                                    </div>
+                                    <span class="card-days">6 days</span>
+                                </div>
+                            </div>
+                            <div class="kanban-card submitted" draggable="true" data-id="2" onclick="openModal(this)">
+                                <div class="card-header">
+                                    <span class="card-family-name">Weiss Family</span>
+                                    <span class="card-status pending">Pending</span>
+                                </div>
+                                <div class="card-details">Avi & Miriam • 2 children</div>
+                                <div class="card-meta">
+                                    <div class="card-cities">
+                                        <span class="city-tag">Union</span>
+                                        <span class="city-tag">Roselle Park</span>
+                                    </div>
+                                    <span class="card-days">2 days</span>
+                                </div>
+                            </div>
+                            <div class="kanban-card submitted" draggable="true" data-id="3" onclick="openModal(this)">
+                                <div class="card-header">
+                                    <span class="card-family-name">Katz Family</span>
+                                    <span class="card-status pending">Pending</span>
+                                </div>
+                                <div class="card-details">Shmuel & Rivka • 3 children</div>
+                                <div class="card-meta">
+                                    <div class="card-cities">
+                                        <span class="city-tag">Elizabeth</span>
+                                    </div>
+                                    <span class="card-days">1 day</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- House Hunting Column -->
+                    <div class="kanban-column" data-stage="hunting">
+                        <div class="column-header">
+                            <div class="column-title">
+                                <span class="column-dot hunting"></span>
+                                House Hunting
+                            </div>
+                            <span class="column-count">4</span>
+                        </div>
+                        <div class="column-cards">
+                            <div class="kanban-card hunting" draggable="true" data-id="4" onclick="openModal(this)">
+                                <div class="card-header">
+                                    <span class="card-family-name">Cohen Family</span>
+                                    <span class="card-status approved">Approved</span>
+                                </div>
+                                <div class="card-details">Moshe & Sarah • 4 children</div>
+                                <div class="card-meta">
+                                    <div class="card-cities">
+                                        <span class="city-tag">Union</span>
+                                    </div>
+                                    <span class="card-days">23 days</span>
+                                </div>
+                                <div class="card-budget">💰 $450,000</div>
+                            </div>
+                            <div class="kanban-card hunting" draggable="true" data-id="5" onclick="openModal(this)">
+                                <div class="card-header">
+                                    <span class="card-family-name">Shapiro Family</span>
+                                    <span class="card-status approved">Approved</span>
+                                </div>
+                                <div class="card-details">Eli & Devorah • 5 children</div>
+                                <div class="card-meta">
+                                    <div class="card-cities">
+                                        <span class="city-tag">Roselle Park</span>
+                                    </div>
+                                    <span class="card-days">15 days</span>
+                                </div>
+                                <div class="card-budget">💰 $520,000</div>
+                            </div>
+                            <div class="kanban-card hunting" draggable="true" data-id="6" onclick="openModal(this)">
+                                <div class="card-header">
+                                    <span class="card-family-name">Rosen Family</span>
+                                    <span class="card-status approved">Approved</span>
+                                </div>
+                                <div class="card-details">Yitzchak & Leah • 3 children</div>
+                                <div class="card-meta">
+                                    <div class="card-cities">
+                                        <span class="city-tag">Union</span>
+                                    </div>
+                                    <span class="card-days">8 days</span>
+                                </div>
+                                <div class="card-budget">💰 $380,000</div>
+                            </div>
+                            <div class="kanban-card hunting" draggable="true" data-id="7" onclick="openModal(this)">
+                                <div class="card-header">
+                                    <span class="card-family-name">Stern Family</span>
+                                    <span class="card-status approved">Approved</span>
+                                </div>
+                                <div class="card-details">Chaim & Malka • 6 children</div>
+                                <div class="card-meta">
+                                    <div class="card-cities">
+                                        <span class="city-tag">Union</span>
+                                        <span class="city-tag">Roselle Park</span>
+                                    </div>
+                                    <span class="card-days">3 days</span>
+                                </div>
+                                <div class="card-budget">💰 $600,000</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Under Contract Column -->
+                    <div class="kanban-column" data-stage="contract">
+                        <div class="column-header">
+                            <div class="column-title">
+                                <span class="column-dot contract"></span>
+                                Under Contract
+                            </div>
+                            <span class="column-count">2</span>
+                        </div>
+                        <div class="column-cards">
+                            <div class="kanban-card contract" draggable="true" data-id="8" onclick="openModal(this)">
+                                <div class="card-header">
+                                    <span class="card-family-name">Friedman Family</span>
+                                    <span class="card-status approved">Approved</span>
+                                </div>
+                                <div class="card-details">123 Oak Street, Union</div>
+                                <div class="card-meta">
+                                    <div class="card-cities">
+                                        <span class="city-tag">Union</span>
+                                    </div>
+                                    <span class="card-days">Closing Feb 15</span>
+                                </div>
+                                <div class="card-budget">💰 $485,000</div>
+                            </div>
+                            <div class="kanban-card contract" draggable="true" data-id="9" onclick="openModal(this)">
+                                <div class="card-header">
+                                    <span class="card-family-name">Klein Family</span>
+                                    <span class="card-status approved">Approved</span>
+                                </div>
+                                <div class="card-details">456 Maple Ave, Roselle Park</div>
+                                <div class="card-meta">
+                                    <div class="card-cities">
+                                        <span class="city-tag">Roselle Park</span>
+                                    </div>
+                                    <span class="card-days">Closing Feb 28</span>
+                                </div>
+                                <div class="card-budget">💰 $415,000</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Closed Column -->
+                    <div class="kanban-column" data-stage="closed">
+                        <div class="column-header">
+                            <div class="column-title">
+                                <span class="column-dot closed"></span>
+                                Closed
+                            </div>
+                            <span class="column-count">3</span>
+                        </div>
+                        <div class="column-cards">
+                            <div class="kanban-card closed" draggable="true" data-id="10" onclick="openModal(this)">
+                                <div class="card-header">
+                                    <span class="card-family-name">Goldberg Family</span>
+                                    <span class="card-status approved">Approved</span>
+                                </div>
+                                <div class="card-details">789 Elm Ave • Moved in! 🎉</div>
+                                <div class="card-meta">
+                                    <div class="card-cities">
+                                        <span class="city-tag">Union</span>
+                                    </div>
+                                    <span class="card-days">Jan 5, 2026</span>
+                                </div>
+                            </div>
+                            <div class="kanban-card closed" draggable="true" data-id="11" onclick="openModal(this)">
+                                <div class="card-header">
+                                    <span class="card-family-name">Silver Family</span>
+                                    <span class="card-status approved">Approved</span>
+                                </div>
+                                <div class="card-details">321 Pine St • Moved in! 🎉</div>
+                                <div class="card-meta">
+                                    <div class="card-cities">
+                                        <span class="city-tag">Union</span>
+                                    </div>
+                                    <span class="card-days">Dec 20, 2025</span>
+                                </div>
+                            </div>
+                            <div class="kanban-card closed" draggable="true" data-id="12" onclick="openModal(this)">
+                                <div class="card-header">
+                                    <span class="card-family-name">Diamond Family</span>
+                                    <span class="card-status approved">Approved</span>
+                                </div>
+                                <div class="card-details">555 Cedar Ln • Moved in! 🎉</div>
+                                <div class="card-meta">
+                                    <div class="card-cities">
+                                        <span class="city-tag">Roselle Park</span>
+                                    </div>
+                                    <span class="card-days">Dec 1, 2025</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <!-- Card Detail Modal -->
+    <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+        <div class="modal" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <div>
+                    <div class="modal-title" id="modalTitle">Cohen Family</div>
+                    <div class="modal-subtitle" id="modalSubtitle">Moshe & Sarah Cohen</div>
+                </div>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-section">
+                    <div class="modal-section-title">Contact Information</div>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <div class="info-label">Email</div>
+                            <div class="info-value">moshe.cohen@email.com</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Phone</div>
+                            <div class="info-value">(908) 555-1234</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Children</div>
+                            <div class="info-value">4</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Days in Pipeline</div>
+                            <div class="info-value">23 days</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="modal-section">
+                    <div class="modal-section-title">Housing Preferences</div>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <div class="info-label">Budget</div>
+                            <div class="info-value">$450,000</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Bedrooms</div>
+                            <div class="info-value">4+ bedrooms</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Preferred Cities</div>
+                            <div class="info-value">Union, Roselle Park</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Timeline</div>
+                            <div class="info-value">3-6 months</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="modal-section">
+                    <div class="modal-section-title">Change Stage</div>
+                    <div class="stage-selector">
+                        <button class="stage-btn" data-stage="submitted">Submitted</button>
+                        <button class="stage-btn active" data-stage="hunting">House Hunting</button>
+                        <button class="stage-btn" data-stage="contract">Under Contract</button>
+                        <button class="stage-btn" data-stage="closed">Closed</button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveChanges()">Save Changes</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Toast Notification -->
+    <div class="toast" id="toast">
+        <span>✅</span>
+        <span id="toastMessage">Changes saved successfully</span>
+    </div>
+    
+    <script>
+        // Drag and Drop functionality
+        const cards = document.querySelectorAll('.kanban-card');
+        const columns = document.querySelectorAll('.kanban-column');
+        
+        cards.forEach(card => {
+            card.addEventListener('dragstart', dragStart);
+            card.addEventListener('dragend', dragEnd);
+        });
+        
+        columns.forEach(column => {
+            column.addEventListener('dragover', dragOver);
+            column.addEventListener('dragenter', dragEnter);
+            column.addEventListener('dragleave', dragLeave);
+            column.addEventListener('drop', drop);
+        });
+        
+        let draggedCard = null;
+        
+        function dragStart(e) {
+            draggedCard = this;
+            this.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+        }
+        
+        function dragEnd() {
+            this.classList.remove('dragging');
+            columns.forEach(col => col.classList.remove('drag-over'));
+        }
+        
+        function dragOver(e) {
+            e.preventDefault();
+        }
+        
+        function dragEnter(e) {
+            e.preventDefault();
+            this.classList.add('drag-over');
+        }
+        
+        function dragLeave() {
+            this.classList.remove('drag-over');
+        }
+        
+        function drop(e) {
+            e.preventDefault();
+            this.classList.remove('drag-over');
+            
+            const cardsContainer = this.querySelector('.column-cards');
+            const newStage = this.dataset.stage;
+            
+            // Update card class
+            draggedCard.className = `kanban-card ${newStage}`;
+            draggedCard.setAttribute('draggable', 'true');
+            
+            cardsContainer.appendChild(draggedCard);
+            
+            // Update counts
+            updateColumnCounts();
+            
+            // Show toast
+            showToast(`Family moved to ${formatStage(newStage)}`);
+        }
+        
+        function formatStage(stage) {
+            const stages = {
+                'submitted': 'Submitted',
+                'hunting': 'House Hunting',
+                'contract': 'Under Contract',
+                'closed': 'Closed'
+            };
+            return stages[stage] || stage;
+        }
+        
+        function updateColumnCounts() {
+            columns.forEach(column => {
+                const count = column.querySelectorAll('.kanban-card').length;
+                column.querySelector('.column-count').textContent = count;
+            });
+        }
+        
+        // Modal functionality
+        function openModal(card) {
+            document.getElementById('modalOverlay').classList.add('show');
+            const familyName = card.querySelector('.card-family-name').textContent;
+            document.getElementById('modalTitle').textContent = familyName;
+        }
+        
+        function closeModal(e) {
+            if (!e || e.target === document.getElementById('modalOverlay')) {
+                document.getElementById('modalOverlay').classList.remove('show');
+            }
+        }
+        
+        function saveChanges() {
+            closeModal();
+            showToast('Changes saved successfully');
+        }
+        
+        // Toast notification
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMessage').textContent = message;
+            toast.classList.add('show', 'success');
+            setTimeout(() => {
+                toast.classList.remove('show', 'success');
+            }, 3000);
+        }
+        
+        // Stage selector in modal
+        document.querySelectorAll('.stage-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.stage-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+        
+        // Search functionality
+        document.getElementById('searchInput').addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            cards.forEach(card => {
+                const familyName = card.querySelector('.card-family-name').textContent.toLowerCase();
+                card.style.display = familyName.includes(searchTerm) ? 'block' : 'none';
+            });
+        });
+    </script>
+</body>
+</html>
