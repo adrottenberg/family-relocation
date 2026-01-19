@@ -2,8 +2,14 @@ using FluentValidation;
 
 namespace FamilyRelocation.Application.Applicants.Commands.UpdateApplicant;
 
+/// <summary>
+/// Validates the UpdateApplicantCommand before processing.
+/// </summary>
 public class UpdateApplicantCommandValidator : AbstractValidator<UpdateApplicantCommand>
 {
+    /// <summary>
+    /// Initializes validation rules for updating an applicant.
+    /// </summary>
     public UpdateApplicantCommandValidator()
     {
         RuleFor(x => x.Id)

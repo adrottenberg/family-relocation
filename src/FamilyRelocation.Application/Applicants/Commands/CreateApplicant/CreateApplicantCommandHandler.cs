@@ -9,12 +9,18 @@ using MediatR;
 
 namespace FamilyRelocation.Application.Applicants.Commands.CreateApplicant;
 
+/// <summary>
+/// Handles the CreateApplicantCommand to create a new applicant and their housing search.
+/// </summary>
 public class CreateApplicantCommandHandler : IRequestHandler<CreateApplicantCommand, CreateApplicantResponse>
 {
     private readonly IMediator _mediator;
     private readonly IApplicationDbContext _context;
     private readonly ICurrentUserService _currentUserService;
 
+    /// <summary>
+    /// Initializes a new instance of the handler.
+    /// </summary>
     public CreateApplicantCommandHandler(
         IMediator mediator,
         IApplicationDbContext context,
@@ -25,6 +31,7 @@ public class CreateApplicantCommandHandler : IRequestHandler<CreateApplicantComm
         _currentUserService = currentUserService;
     }
 
+    /// <inheritdoc />
     public async Task<CreateApplicantResponse> Handle(CreateApplicantCommand request, CancellationToken cancellationToken)
     {
         // Check for duplicate emails (husband and wife)

@@ -8,15 +8,22 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FamilyRelocation.Application.Applicants.Queries.GetApplicants;
 
+/// <summary>
+/// Handles the GetApplicantsQuery to retrieve a paginated list of applicants.
+/// </summary>
 public class GetApplicantsQueryHandler : IRequestHandler<GetApplicantsQuery, PaginatedList<ApplicantListDto>>
 {
     private readonly IApplicationDbContext _context;
 
+    /// <summary>
+    /// Initializes a new instance of the handler.
+    /// </summary>
     public GetApplicantsQueryHandler(IApplicationDbContext context)
     {
         _context = context;
     }
 
+    /// <inheritdoc />
     public async Task<PaginatedList<ApplicantListDto>> Handle(
         GetApplicantsQuery request,
         CancellationToken cancellationToken)

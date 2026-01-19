@@ -9,6 +9,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace FamilyRelocation.API.Controllers;
 
+/// <summary>
+/// Controller for managing applicant family records.
+/// </summary>
 [ApiController]
 [Route("api/applicants")]
 [Authorize]
@@ -16,6 +19,10 @@ public class ApplicantsController : ControllerBase
 {
     private readonly IMediator _mediator;
 
+    /// <summary>
+    /// Initializes the controller with required dependencies.
+    /// </summary>
+    /// <param name="mediator">MediatR mediator for CQRS.</param>
     public ApplicantsController(IMediator mediator)
     {
         _mediator = mediator;

@@ -2,8 +2,14 @@ using FluentValidation;
 
 namespace FamilyRelocation.Application.Applicants.Commands.CreateApplicant;
 
+/// <summary>
+/// Validates the CreateApplicantCommand before processing.
+/// </summary>
 public class CreateApplicantCommandValidator : AbstractValidator<CreateApplicantCommand>
 {
+    /// <summary>
+    /// Initializes validation rules for creating an applicant.
+    /// </summary>
     public CreateApplicantCommandValidator()
     {
         RuleFor(x => x.Husband)
