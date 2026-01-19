@@ -2,6 +2,8 @@ using FamilyRelocation.Application.Applicants.Commands.ChangeStage;
 using FamilyRelocation.Application.Applicants.Commands.CreateApplicant;
 using FamilyRelocation.Application.Applicants.Commands.RecordAgreement;
 using FamilyRelocation.Application.Applicants.Commands.UpdateApplicant;
+using FamilyRelocation.Application.Applicants.Commands.UpdatePreferences;
+using FamilyRelocation.Application.Applicants.DTOs;
 using FamilyRelocation.Application.Applicants.Queries.GetApplicantById;
 using FamilyRelocation.Application.Applicants.Queries.GetApplicants;
 using FamilyRelocation.Application.Common.Exceptions;
@@ -182,6 +184,35 @@ public class ApplicantsController : ControllerBase
         catch (ArgumentException ex)
         {
             return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Updates the housing preferences for an applicant's housing search.
+    /// </summary>
+    /// <remarks>
+    /// Updates housing search criteria including:
+    /// - Budget amount
+    /// - Minimum bedrooms/bathrooms
+    /// - Required features (e.g., basement, garage, yard)
+    /// - Shul proximity preferences
+    /// - Move timeline
+    /// </remarks>
+    [HttpPut("{id:guid}/preferences")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdatePreferences(Guid id, [FromBody] HousingPreferencesDto request)
+    {
+        try
+        {
+            var command = new UpdatePreferencesCommand(id, request);
+            var result = await _mediator.Send(command);
+            return Ok(result);
+        }
+        catch (NotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
         }
     }
 }
