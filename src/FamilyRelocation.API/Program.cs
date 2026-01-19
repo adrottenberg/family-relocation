@@ -11,7 +11,27 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new()
+    {
+        Title = "FamilyRelocation API",
+        Version = "v1",
+        Description = "API for managing Orthodox Jewish family relocation to Union County, NJ"
+    });
+
+    // Include XML comments from API project
+    var apiXmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var apiXmlPath = Path.Combine(AppContext.BaseDirectory, apiXmlFile);
+    if (File.Exists(apiXmlPath))
+        options.IncludeXmlComments(apiXmlPath);
+
+    // Include XML comments from Application project
+    var appXmlFile = "FamilyRelocation.Application.xml";
+    var appXmlPath = Path.Combine(AppContext.BaseDirectory, appXmlFile);
+    if (File.Exists(appXmlPath))
+        options.IncludeXmlComments(appXmlPath);
+});
 
 // Add Application services (MediatR, FluentValidation)
 builder.Services.AddApplication();
