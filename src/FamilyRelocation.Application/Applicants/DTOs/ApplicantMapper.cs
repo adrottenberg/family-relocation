@@ -1,4 +1,5 @@
 using FamilyRelocation.Domain.Entities;
+using FamilyRelocation.Domain.Enums;
 using FamilyRelocation.Domain.ValueObjects;
 
 namespace FamilyRelocation.Application.Applicants.DTOs;
@@ -198,6 +199,37 @@ public static class ApplicantMapper
         return Enum.TryParse<PhoneType>(type, ignoreCase: true, out var phoneType)
             ? phoneType
             : PhoneType.Mobile;
+    }
+
+    public static HousingPreferences ToDomain(this HousingPreferencesDto dto)
+    {
+        Money? budget = dto.BudgetAmount.HasValue
+            ? new Money(dto.BudgetAmount.Value)
+            : null;
+
+        MoveTimeline? moveTimeline = null;
+        if (!string.IsNullOrEmpty(dto.MoveTimeline) &&
+            Enum.TryParse<MoveTimeline>(dto.MoveTimeline, ignoreCase: true, out var timeline))
+        {
+            moveTimeline = timeline;
+        }
+
+        return new HousingPreferences(
+            budget: budget,
+            minBedrooms: dto.MinBedrooms,
+            minBathrooms: dto.MinBathrooms,
+            requiredFeatures: dto.RequiredFeatures,
+            shulProximity: dto.ShulProximity?.ToDomain(),
+            moveTimeline: moveTimeline);
+    }
+
+    public static ShulProximityPreference ToDomain(this ShulProximityPreferenceDto dto)
+    {
+        return new ShulProximityPreference(
+            preferredShulIds: dto.PreferredShulIds,
+            maxWalkingDistanceMiles: dto.MaxWalkingDistanceMiles,
+            maxWalkingTimeMinutes: dto.MaxWalkingTimeMinutes,
+            anyShulAcceptable: dto.AnyShulAcceptable);
     }
 
     #endregion

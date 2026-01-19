@@ -33,7 +33,8 @@ public class ApplicantsController : ControllerBase
     }
 
     /// <summary>
-    /// Creates a new applicant (family) - publicly accessible for board approval applications
+    /// Creates a new applicant (family) and their housing search.
+    /// Publicly accessible for board approval applications.
     /// </summary>
     [HttpPost]
     [AllowAnonymous]
@@ -45,7 +46,7 @@ public class ApplicantsController : ControllerBase
         try
         {
             var result = await _mediator.Send(command);
-            return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
+            return CreatedAtAction(nameof(GetById), new { id = result.ApplicantId }, result);
         }
         catch (DuplicateEmailException ex)
         {

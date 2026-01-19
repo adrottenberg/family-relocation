@@ -4,11 +4,12 @@ using FamilyRelocation.Application.Common.Exceptions;
 using FamilyRelocation.Application.Common.Interfaces;
 using FamilyRelocation.Domain.Common;
 using FamilyRelocation.Domain.Entities;
+using FamilyRelocation.Domain.ValueObjects;
 using MediatR;
 
 namespace FamilyRelocation.Application.Applicants.Commands.CreateApplicant;
 
-public class CreateApplicantCommandHandler : IRequestHandler<CreateApplicantCommand, ApplicantDto>
+public class CreateApplicantCommandHandler : IRequestHandler<CreateApplicantCommand, CreateApplicantResponse>
 {
     private readonly IMediator _mediator;
     private readonly IApplicationDbContext _context;
@@ -24,7 +25,7 @@ public class CreateApplicantCommandHandler : IRequestHandler<CreateApplicantComm
         _currentUserService = currentUserService;
     }
 
-    public async Task<ApplicantDto> Handle(CreateApplicantCommand request, CancellationToken cancellationToken)
+    public async Task<CreateApplicantResponse> Handle(CreateApplicantCommand request, CancellationToken cancellationToken)
     {
         // Check for duplicate emails (husband and wife)
         if (!string.IsNullOrEmpty(request.Husband.Email))
@@ -45,12 +46,16 @@ public class CreateApplicantCommandHandler : IRequestHandler<CreateApplicantComm
             }
         }
 
+        // Determine CreatedBy (self-submitted if anonymous)
+        var createdBy = _currentUserService.UserId ?? WellKnownIds.SelfSubmittedUserId;
+
         // Map DTOs to domain objects
         var husband = request.Husband.ToDomain();
         var wife = request.Wife?.ToDomain();
         var address = request.Address?.ToDomain();
         var children = request.Children?.Select(c => c.ToDomain()).ToList();
 
+        // Create Applicant
         var applicant = Applicant.Create(
             husband: husband,
             wife: wife,
@@ -58,11 +63,30 @@ public class CreateApplicantCommandHandler : IRequestHandler<CreateApplicantComm
             children: children,
             currentKehila: request.CurrentKehila,
             shabbosShul: request.ShabbosShul,
-            createdBy: _currentUserService.UserId ?? WellKnownIds.SelfSubmittedUserId);
+            createdBy: createdBy);
 
+        // Create HousingSearch (automatically created with Applicant)
+        var housingSearch = HousingSearch.Create(
+            applicantId: applicant.Id,
+            createdBy: createdBy);
+
+        // Apply housing preferences if provided
+        if (request.HousingPreferences != null)
+        {
+            var preferences = request.HousingPreferences.ToDomain();
+            housingSearch.UpdatePreferences(preferences, createdBy);
+        }
+
+        // Save both in same transaction
         _context.Add(applicant);
+        _context.Add(housingSearch);
         await _context.SaveChangesAsync(cancellationToken);
 
-        return applicant.ToDto();
+        return new CreateApplicantResponse
+        {
+            ApplicantId = applicant.Id,
+            HousingSearchId = housingSearch.Id,
+            Applicant = applicant.ToDto()
+        };
     }
 }
