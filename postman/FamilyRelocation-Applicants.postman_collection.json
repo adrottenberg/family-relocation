@@ -2,330 +2,743 @@
 	"info": {
 		"_postman_id": "family-relocation-applicants-collection",
 		"name": "FamilyRelocation Applicants API",
-		"description": "Collection for testing Applicants CRUD endpoints in the FamilyRelocation API.\n\n## Setup\n1. Import the Auth collection first and login to get an access token\n2. Set the `baseUrl` variable to your API URL (default: https://localhost:7267)\n\n## Endpoints\n- **Create Applicant**: Public endpoint (no auth required) for submitting new applicant families\n- **List Applicants**: Paginated list with search, filter, and sort (requires auth)\n- **Get Applicant by ID**: Protected endpoint (requires authentication)\n- **Update Applicant**: Update applicant details (requires authentication)\n\n## Test Flow\n1. Login via Auth collection to get tokens\n2. Create an applicant (no auth needed)\n3. Copy the returned ID to `applicantId` variable\n4. List, get, or update applicants using the endpoints",
+		"description": "Collection for testing Applicants CRUD endpoints in the FamilyRelocation API.\n\n## Setup\n1. Import the Auth collection first and login to get an access token\n2. Set the `baseUrl` variable to your API URL (default: https://localhost:7267)\n\n## Endpoints\n- **Create Applicant**: Public endpoint (no auth required) for submitting new applicant families\n- **List Applicants**: Paginated list with search, filter, and sort (requires auth)\n- **Get Applicant by ID**: Protected endpoint (requires authentication)\n- **Update Applicant**: Update applicant details (requires authentication)\n- **Change Stage**: Transition housing search stage (requires authentication)\n- **Record Agreement**: Record signed agreements (requires authentication)\n- **Update Preferences**: Update housing preferences (requires authentication)\n\n## Test Flow\n1. Login via Auth collection to get tokens\n2. Create an applicant (no auth needed)\n3. Copy the returned ID to `applicantId` variable\n4. Record agreements, change stage, update preferences as needed",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
 		{
-			"name": "Create Applicant (Full)",
-			"event": [
+			"name": "Applicants",
+			"item": [
 				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"if (pm.response.code === 201) {",
-							"    var jsonData = pm.response.json();",
-							"    pm.collectionVariables.set('applicantId', jsonData.id);",
-							"    pm.test('Applicant created - ID saved', function() {",
-							"        pm.expect(jsonData.id).to.be.a('string');",
-							"        pm.expect(jsonData.familyName).to.be.a('string');",
-							"        pm.expect(jsonData.isPendingBoardReview).to.be.true;",
-							"        pm.expect(jsonData.isSelfSubmitted).to.be.true;",
-							"    });",
-							"    console.log('Created applicant: ' + jsonData.familyName);",
-							"    console.log('Applicant ID saved to variable: ' + jsonData.id);",
-							"}"
+					"name": "Create Applicant (Full)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.collectionVariables.set('applicantId', jsonData.applicantId);",
+									"    pm.collectionVariables.set('housingSearchId', jsonData.housingSearchId);",
+									"    pm.test('Applicant created - IDs saved', function() {",
+									"        pm.expect(jsonData.applicantId).to.be.a('string');",
+									"        pm.expect(jsonData.housingSearchId).to.be.a('string');",
+									"    });",
+									"    console.log('Created applicant ID: ' + jsonData.applicantId);",
+									"    console.log('Housing Search ID: ' + jsonData.housingSearchId);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
 						],
-						"type": "text/javascript"
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"husband\": {\n        \"firstName\": \"Moshe\",\n        \"lastName\": \"Cohen\",\n        \"fatherName\": \"Yaakov\",\n        \"email\": \"moshe@example.com\",\n        \"phoneNumbers\": [\n            {\n                \"number\": \"2015551234\",\n                \"type\": \"Mobile\",\n                \"isPrimary\": true\n            }\n        ],\n        \"occupation\": \"Software Engineer\",\n        \"employerName\": \"Tech Corp\"\n    },\n    \"wife\": {\n        \"firstName\": \"Sarah\",\n        \"maidenName\": \"Goldstein\",\n        \"fatherName\": \"Avraham\",\n        \"email\": \"sarah@example.com\",\n        \"phoneNumbers\": [\n            {\n                \"number\": \"2015555678\",\n                \"type\": \"Mobile\",\n                \"isPrimary\": true\n            }\n        ],\n        \"occupation\": \"Teacher\",\n        \"employerName\": \"Bais Yaakov\",\n        \"highSchool\": \"Bais Yaakov of Brooklyn\"\n    },\n    \"address\": {\n        \"street\": \"123 Main St\",\n        \"street2\": \"Apt 4B\",\n        \"city\": \"Brooklyn\",\n        \"state\": \"NY\",\n        \"zipCode\": \"11230\"\n    },\n    \"children\": [\n        {\n            \"age\": 8,\n            \"gender\": \"Male\",\n            \"name\": \"Yosef\",\n            \"school\": \"Torah Academy\"\n        },\n        {\n            \"age\": 5,\n            \"gender\": \"Female\",\n            \"name\": \"Rivka\",\n            \"school\": \"Bais Yaakov\"\n        }\n    ],\n    \"currentKehila\": \"Flatbush\",\n    \"shabbosShul\": \"Young Israel\",\n    \"housingPreferences\": {\n        \"budgetAmount\": 500000,\n        \"minBedrooms\": 4,\n        \"minBathrooms\": 2.5,\n        \"requiredFeatures\": [\"Basement\", \"Garage\"],\n        \"moveTimeline\": \"ShortTerm\"\n    }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/applicants",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"applicants"
+							]
+						},
+						"description": "Create a new applicant (family) for board approval.\n\n**No authentication required** - This is a public endpoint for families to submit their applications.\n\n**Response includes:**\n- `applicantId`: The created applicant ID\n- `housingSearchId`: The auto-created housing search ID\n- `applicant`: Full applicant details"
+					}
+				},
+				{
+					"name": "Create Applicant (Minimal)",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"husband\": {\n        \"firstName\": \"David\",\n        \"lastName\": \"Levy\"\n    }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/applicants",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"applicants"
+							]
+						},
+						"description": "Create a minimal applicant with only required fields."
+					}
+				},
+				{
+					"name": "List Applicants",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/applicants?page=1&pageSize=20",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"applicants"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "pageSize",
+									"value": "20"
+								},
+								{
+									"key": "search",
+									"value": "",
+									"disabled": true
+								},
+								{
+									"key": "boardDecision",
+									"value": "Pending",
+									"disabled": true
+								},
+								{
+									"key": "city",
+									"value": "",
+									"disabled": true
+								},
+								{
+									"key": "stage",
+									"value": "Submitted",
+									"disabled": true,
+									"description": "Filter by housing search stage: Submitted, HouseHunting, UnderContract, Closed, Paused, Rejected"
+								},
+								{
+									"key": "sortBy",
+									"value": "createdDate",
+									"disabled": true
+								},
+								{
+									"key": "sortOrder",
+									"value": "desc",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Get a paginated list of applicants.\n\n**Query Parameters:**\n- `stage`: Filter by housing search stage (Submitted, HouseHunting, UnderContract, Closed, Paused, Rejected)\n- `boardDecision`: Filter by Pending, Approved, Rejected, Deferred\n- `search`: Search by name, email, or phone\n- `city`: Filter by city"
+					}
+				},
+				{
+					"name": "List Applicants by Stage (Pipeline)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/applicants?stage=HouseHunting",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"applicants"
+							],
+							"query": [
+								{
+									"key": "stage",
+									"value": "HouseHunting"
+								}
+							]
+						},
+						"description": "Get applicants filtered by housing search stage.\n\nUse this to build a Kanban/pipeline view by calling once per stage:\n- Submitted\n- HouseHunting\n- UnderContract\n- Closed\n- Paused\n- Rejected"
+					}
+				},
+				{
+					"name": "Get Applicant by ID",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/applicants/{{applicantId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"applicants",
+								"{{applicantId}}"
+							]
+						},
+						"description": "Get full applicant details by ID."
+					}
+				},
+				{
+					"name": "Update Applicant",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"husband\": {\n        \"firstName\": \"Moshe\",\n        \"lastName\": \"Cohen\",\n        \"fatherName\": \"Yaakov\",\n        \"email\": \"moshe.updated@example.com\",\n        \"phoneNumbers\": [\n            {\n                \"number\": \"2015551234\",\n                \"type\": \"Mobile\",\n                \"isPrimary\": true\n            }\n        ],\n        \"occupation\": \"Senior Software Engineer\",\n        \"employerName\": \"Tech Corp Inc\"\n    },\n    \"currentKehila\": \"Union\",\n    \"shabbosShul\": \"Congregation Israel\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/applicants/{{applicantId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"applicants",
+								"{{applicantId}}"
+							]
+						},
+						"description": "Update an existing applicant's information."
 					}
 				}
-			],
-			"request": {
-				"auth": {
-					"type": "noauth"
-				},
-				"method": "POST",
-				"header": [
-					{
-						"key": "Content-Type",
-						"value": "application/json"
-					}
-				],
-				"body": {
-					"mode": "raw",
-					"raw": "{\n    \"husband\": {\n        \"firstName\": \"Moshe\",\n        \"lastName\": \"Cohen\",\n        \"fatherName\": \"Yaakov\",\n        \"email\": \"moshe@example.com\",\n        \"phoneNumbers\": [\n            {\n                \"number\": \"2015551234\",\n                \"type\": \"Mobile\",\n                \"isPrimary\": true\n            }\n        ],\n        \"occupation\": \"Software Engineer\",\n        \"employerName\": \"Tech Corp\"\n    },\n    \"wife\": {\n        \"firstName\": \"Sarah\",\n        \"maidenName\": \"Goldstein\",\n        \"fatherName\": \"Avraham\",\n        \"email\": \"sarah@example.com\",\n        \"phoneNumbers\": [\n            {\n                \"number\": \"2015555678\",\n                \"type\": \"Mobile\",\n                \"isPrimary\": true\n            }\n        ],\n        \"occupation\": \"Teacher\",\n        \"employerName\": \"Bais Yaakov\",\n        \"highSchool\": \"Bais Yaakov of Brooklyn\"\n    },\n    \"address\": {\n        \"street\": \"123 Main St\",\n        \"street2\": \"Apt 4B\",\n        \"city\": \"Brooklyn\",\n        \"state\": \"NY\",\n        \"zipCode\": \"11230\"\n    },\n    \"children\": [\n        {\n            \"age\": 8,\n            \"gender\": \"Male\",\n            \"name\": \"Yosef\",\n            \"school\": \"Torah Academy\"\n        },\n        {\n            \"age\": 5,\n            \"gender\": \"Female\",\n            \"name\": \"Rivka\",\n            \"school\": \"Bais Yaakov\"\n        }\n    ],\n    \"currentKehila\": \"Flatbush\",\n    \"shabbosShul\": \"Young Israel\"\n}"
-				},
-				"url": {
-					"raw": "{{baseUrl}}/api/applicants",
-					"host": [
-						"{{baseUrl}}"
-					],
-					"path": [
-						"api",
-						"applicants"
-					]
-				},
-				"description": "Create a new applicant (family) for board approval.\n\n**No authentication required** - This is a public endpoint for families to submit their applications.\n\n**Request Body:**\nFull applicant details including husband, wife, address, and children.\n\n**Success Response (201 Created):**\n- Returns the created applicant with generated ID\n- `isPendingBoardReview`: Always `true` for new submissions\n- `isSelfSubmitted`: Always `true` for public submissions\n\n**Error Responses:**\n- 400: Validation errors\n- 409: Duplicate email (husband or wife email already exists)"
-			}
+			]
 		},
 		{
-			"name": "Create Applicant (Minimal)",
-			"event": [
+			"name": "Stage Transitions",
+			"item": [
 				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"if (pm.response.code === 201) {",
-							"    var jsonData = pm.response.json();",
-							"    pm.collectionVariables.set('applicantId', jsonData.id);",
-							"    pm.test('Minimal applicant created', function() {",
-							"        pm.expect(jsonData.id).to.be.a('string');",
-							"        pm.expect(jsonData.husband.firstName).to.equal('David');",
-							"        pm.expect(jsonData.husband.lastName).to.equal('Levy');",
-							"    });",
-							"    console.log('Created minimal applicant: ' + jsonData.familyName);",
-							"}"
+					"name": "Record Broker Agreement",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
 						],
-						"type": "text/javascript"
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"agreementType\": \"BrokerAgreement\",\n    \"documentUrl\": \"https://s3.amazonaws.com/family-relocation/agreements/broker-agreement-12345.pdf\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/applicants/{{applicantId}}/agreements",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"applicants",
+								"{{applicantId}}",
+								"agreements"
+							]
+						},
+						"description": "Record that the broker agreement has been signed.\n\n**Required before starting house hunting.**\n\nUpload the signed document to S3 first, then call this with the URL."
+					}
+				},
+				{
+					"name": "Record Community Takanos",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"agreementType\": \"CommunityTakanos\",\n    \"documentUrl\": \"https://s3.amazonaws.com/family-relocation/agreements/takanos-12345.pdf\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/applicants/{{applicantId}}/agreements",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"applicants",
+								"{{applicantId}}",
+								"agreements"
+							]
+						},
+						"description": "Record that the community takanos agreement has been signed.\n\n**Required before starting house hunting.**"
+					}
+				},
+				{
+					"name": "Change Stage - Start House Hunting",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"newStage\": \"HouseHunting\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/applicants/{{applicantId}}/stage",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"applicants",
+								"{{applicantId}}",
+								"stage"
+							]
+						},
+						"description": "Transition from Submitted to HouseHunting.\n\n**Prerequisites:**\n1. Board approval (BoardReview.Decision = Approved)\n2. Broker agreement signed\n3. Community takanos signed"
+					}
+				},
+				{
+					"name": "Change Stage - Put Under Contract",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"newStage\": \"UnderContract\",\n    \"contract\": {\n        \"propertyId\": \"00000000-0000-0000-0000-000000000000\",\n        \"price\": 475000,\n        \"expectedClosingDate\": \"2026-03-15\"\n    }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/applicants/{{applicantId}}/stage",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"applicants",
+								"{{applicantId}}",
+								"stage"
+							]
+						},
+						"description": "Transition from HouseHunting to UnderContract.\n\n**Required fields:**\n- `contract.price`: Contract price (must be > 0)\n\n**Optional fields:**\n- `contract.propertyId`: Property GUID\n- `contract.expectedClosingDate`: Expected closing date"
+					}
+				},
+				{
+					"name": "Change Stage - Record Closing",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"newStage\": \"Closed\",\n    \"closingDate\": \"2026-03-15\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/applicants/{{applicantId}}/stage",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"applicants",
+								"{{applicantId}}",
+								"stage"
+							]
+						},
+						"description": "Transition from UnderContract to Closed.\n\n**Required fields:**\n- `closingDate`: Actual closing date"
+					}
+				},
+				{
+					"name": "Change Stage - Record Move In",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"newStage\": \"MovedIn\",\n    \"movedInDate\": \"2026-04-01\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/applicants/{{applicantId}}/stage",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"applicants",
+								"{{applicantId}}",
+								"stage"
+							]
+						},
+						"description": "Transition from Closed to MovedIn.\n\n**Required fields:**\n- `movedInDate`: Move-in date"
+					}
+				},
+				{
+					"name": "Change Stage - Pause Search",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"newStage\": \"Paused\",\n    \"reason\": \"Family taking a break for personal reasons\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/applicants/{{applicantId}}/stage",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"applicants",
+								"{{applicantId}}",
+								"stage"
+							]
+						},
+						"description": "Pause house hunting.\n\n**Optional fields:**\n- `reason`: Reason for pausing"
+					}
+				},
+				{
+					"name": "Change Stage - Resume Search",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"newStage\": \"HouseHunting\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/applicants/{{applicantId}}/stage",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"applicants",
+								"{{applicantId}}",
+								"stage"
+							]
+						},
+						"description": "Resume house hunting from Paused state."
+					}
+				},
+				{
+					"name": "Change Stage - Contract Fell Through",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"newStage\": \"HouseHunting\",\n    \"reason\": \"Inspection revealed foundation issues\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/applicants/{{applicantId}}/stage",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"applicants",
+								"{{applicantId}}",
+								"stage"
+							]
+						},
+						"description": "Return to HouseHunting when contract falls through.\n\nValid from: UnderContract, Closed\n\n**Optional fields:**\n- `reason`: Why the contract fell through\n\nThe failed contract is preserved in history."
+					}
+				},
+				{
+					"name": "Change Stage - Reject Application",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"newStage\": \"Rejected\",\n    \"reason\": \"Did not meet community requirements\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/applicants/{{applicantId}}/stage",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"applicants",
+								"{{applicantId}}",
+								"stage"
+							]
+						},
+						"description": "Reject the application.\n\nValid from: Submitted\n\n**Optional fields:**\n- `reason`: Rejection reason\n\nThis is a terminal state - no further transitions allowed."
 					}
 				}
-			],
-			"request": {
-				"auth": {
-					"type": "noauth"
-				},
-				"method": "POST",
-				"header": [
-					{
-						"key": "Content-Type",
-						"value": "application/json"
-					}
-				],
-				"body": {
-					"mode": "raw",
-					"raw": "{\n    \"husband\": {\n        \"firstName\": \"David\",\n        \"lastName\": \"Levy\"\n    }\n}"
-				},
-				"url": {
-					"raw": "{{baseUrl}}/api/applicants",
-					"host": [
-						"{{baseUrl}}"
-					],
-					"path": [
-						"api",
-						"applicants"
-					]
-				},
-				"description": "Create a minimal applicant with only required fields.\n\n**Required fields:**\n- `husband.firstName`\n- `husband.lastName`\n\nAll other fields are optional and can be added later."
-			}
+			]
 		},
 		{
-			"name": "List Applicants",
-			"event": [
+			"name": "Housing Preferences",
+			"item": [
 				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"if (pm.response.code === 200) {",
-							"    var jsonData = pm.response.json();",
-							"    pm.test('Paginated list returned', function() {",
-							"        pm.expect(jsonData.items).to.be.an('array');",
-							"        pm.expect(jsonData.page).to.be.a('number');",
-							"        pm.expect(jsonData.pageSize).to.be.a('number');",
-							"        pm.expect(jsonData.totalCount).to.be.a('number');",
-							"        pm.expect(jsonData.totalPages).to.be.a('number');",
-							"    });",
-							"    console.log('Found ' + jsonData.totalCount + ' applicants');",
-							"} else if (pm.response.code === 401) {",
-							"    pm.test('Authentication required', function() {",
-							"        pm.response.to.have.status(401);",
-							"    });",
-							"    console.log('Not authenticated - login first using Auth collection');",
-							"}"
+					"name": "Update Preferences (Full)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
 						],
-						"type": "text/javascript"
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"budgetAmount\": 550000,\n    \"minBedrooms\": 4,\n    \"minBathrooms\": 2.5,\n    \"requiredFeatures\": [\"Basement\", \"Garage\", \"Yard\"],\n    \"shulProximity\": {\n        \"maxWalkingDistanceMiles\": 0.5,\n        \"anyShulAcceptable\": false\n    },\n    \"moveTimeline\": \"ShortTerm\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/applicants/{{applicantId}}/preferences",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"applicants",
+								"{{applicantId}}",
+								"preferences"
+							]
+						},
+						"description": "Update housing preferences for an applicant.\n\n**Fields:**\n- `budgetAmount`: Maximum budget in USD\n- `minBedrooms`: Minimum bedrooms required\n- `minBathrooms`: Minimum bathrooms required\n- `requiredFeatures`: List of required features (e.g., Basement, Garage, Yard)\n- `shulProximity`: Shul proximity preferences\n- `moveTimeline`: When planning to move (Immediate, ShortTerm, MediumTerm, LongTerm, Extended, Flexible, NotSure)"
+					}
+				},
+				{
+					"name": "Update Preferences (Minimal)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"budgetAmount\": 450000,\n    \"minBedrooms\": 3\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/applicants/{{applicantId}}/preferences",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"applicants",
+								"{{applicantId}}",
+								"preferences"
+							]
+						},
+						"description": "Update housing preferences with only budget and bedrooms."
 					}
 				}
-			],
-			"request": {
-				"auth": {
-					"type": "bearer",
-					"bearer": [
-						{
-							"key": "token",
-							"value": "{{accessToken}}",
-							"type": "string"
-						}
-					]
-				},
-				"method": "GET",
-				"header": [],
-				"url": {
-					"raw": "{{baseUrl}}/api/applicants?page=1&pageSize=20",
-					"host": [
-						"{{baseUrl}}"
-					],
-					"path": [
-						"api",
-						"applicants"
-					],
-					"query": [
-						{
-							"key": "page",
-							"value": "1"
-						},
-						{
-							"key": "pageSize",
-							"value": "20"
-						},
-						{
-							"key": "search",
-							"value": "",
-							"disabled": true
-						},
-						{
-							"key": "boardDecision",
-							"value": "Pending",
-							"disabled": true
-						},
-						{
-							"key": "city",
-							"value": "",
-							"disabled": true
-						},
-						{
-							"key": "sortBy",
-							"value": "createdDate",
-							"disabled": true
-						},
-						{
-							"key": "sortOrder",
-							"value": "desc",
-							"disabled": true
-						}
-					]
-				},
-				"description": "Get a paginated list of applicants with optional search, filter, and sort.\n\n**Authentication required** - Include Bearer token in Authorization header.\n\n**Query Parameters:**\n- `page`: Page number (default: 1)\n- `pageSize`: Items per page (default: 20, max: 100)\n- `search`: Search by name, email, or phone\n- `boardDecision`: Filter by Pending, Approved, Rejected, Deferred\n- `city`: Filter by city\n- `createdAfter`: Filter by created date (ISO 8601)\n- `createdBefore`: Filter by created date (ISO 8601)\n- `sortBy`: Sort field (familyName, createdDate, boardReviewDate)\n- `sortOrder`: asc or desc (default: desc)\n\n**Success Response (200 OK):**\nReturns paginated list with:\n- `items`: Array of applicant summaries\n- `page`: Current page\n- `pageSize`: Items per page\n- `totalCount`: Total matching applicants\n- `totalPages`: Total pages\n- `hasPreviousPage`: Boolean\n- `hasNextPage`: Boolean"
-			}
-		},
-		{
-			"name": "Get Applicant by ID",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"if (pm.response.code === 200) {",
-							"    var jsonData = pm.response.json();",
-							"    pm.test('Applicant retrieved successfully', function() {",
-							"        pm.expect(jsonData.id).to.be.a('string');",
-							"        pm.expect(jsonData.familyName).to.be.a('string');",
-							"        pm.expect(jsonData.husband).to.be.an('object');",
-							"    });",
-							"    console.log('Retrieved applicant: ' + jsonData.familyName);",
-							"} else if (pm.response.code === 404) {",
-							"    pm.test('Applicant not found', function() {",
-							"        pm.response.to.have.status(404);",
-							"    });",
-							"    console.log('Applicant not found - check the applicantId variable');",
-							"} else if (pm.response.code === 401) {",
-							"    pm.test('Authentication required', function() {",
-							"        pm.response.to.have.status(401);",
-							"    });",
-							"    console.log('Not authenticated - login first using Auth collection');",
-							"}"
-						],
-						"type": "text/javascript"
-					}
-				}
-			],
-			"request": {
-				"auth": {
-					"type": "bearer",
-					"bearer": [
-						{
-							"key": "token",
-							"value": "{{accessToken}}",
-							"type": "string"
-						}
-					]
-				},
-				"method": "GET",
-				"header": [],
-				"url": {
-					"raw": "{{baseUrl}}/api/applicants/{{applicantId}}",
-					"host": [
-						"{{baseUrl}}"
-					],
-					"path": [
-						"api",
-						"applicants",
-						"{{applicantId}}"
-					]
-				},
-				"description": "Get an applicant by their ID.\n\n**Authentication required** - Include Bearer token in Authorization header.\n\n**Path Parameters:**\n- `applicantId`: GUID of the applicant\n\n**Success Response (200 OK):**\nReturns full applicant details including:\n- `id`: Applicant GUID\n- `husband`: Husband information\n- `wife`: Wife information (if provided)\n- `address`: Current address (if provided)\n- `children`: List of children (if any)\n- `familyName`: Computed family name (\"FirstName LastName\")\n- `numberOfChildren`: Count of children\n- `currentKehila`: Current community\n- `shabbosShul`: Shabbos shul\n- `isPendingBoardReview`: Board review status\n- `isSelfSubmitted`: Whether submitted by the family\n- `createdDate`: Creation timestamp\n\n**Error Responses:**\n- 401: Not authenticated\n- 404: Applicant not found"
-			}
-		},
-		{
-			"name": "Update Applicant",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"if (pm.response.code === 200) {",
-							"    var jsonData = pm.response.json();",
-							"    pm.test('Applicant updated successfully', function() {",
-							"        pm.expect(jsonData.id).to.be.a('string');",
-							"        pm.expect(jsonData.familyName).to.be.a('string');",
-							"        pm.expect(jsonData.husband).to.be.an('object');",
-							"    });",
-							"    console.log('Updated applicant: ' + jsonData.familyName);",
-							"} else if (pm.response.code === 404) {",
-							"    pm.test('Applicant not found', function() {",
-							"        pm.response.to.have.status(404);",
-							"    });",
-							"    console.log('Applicant not found - check the applicantId variable');",
-							"} else if (pm.response.code === 401) {",
-							"    pm.test('Authentication required', function() {",
-							"        pm.response.to.have.status(401);",
-							"    });",
-							"    console.log('Not authenticated - login first using Auth collection');",
-							"} else if (pm.response.code === 409) {",
-							"    pm.test('Duplicate email conflict', function() {",
-							"        pm.response.to.have.status(409);",
-							"    });",
-							"    console.log('Email already exists for another applicant');",
-							"}"
-						],
-						"type": "text/javascript"
-					}
-				}
-			],
-			"request": {
-				"auth": {
-					"type": "bearer",
-					"bearer": [
-						{
-							"key": "token",
-							"value": "{{accessToken}}",
-							"type": "string"
-						}
-					]
-				},
-				"method": "PUT",
-				"header": [
-					{
-						"key": "Content-Type",
-						"value": "application/json"
-					}
-				],
-				"body": {
-					"mode": "raw",
-					"raw": "{\n    \"husband\": {\n        \"firstName\": \"Moshe\",\n        \"lastName\": \"Cohen\",\n        \"fatherName\": \"Yaakov\",\n        \"email\": \"moshe.updated@example.com\",\n        \"phoneNumbers\": [\n            {\n                \"number\": \"2015551234\",\n                \"type\": \"Mobile\",\n                \"isPrimary\": true\n            },\n            {\n                \"number\": \"2015559999\",\n                \"type\": \"Home\",\n                \"isPrimary\": false\n            }\n        ],\n        \"occupation\": \"Senior Software Engineer\",\n        \"employerName\": \"Tech Corp Inc\"\n    },\n    \"wife\": {\n        \"firstName\": \"Sarah\",\n        \"maidenName\": \"Goldstein\",\n        \"fatherName\": \"Avraham\",\n        \"email\": \"sarah.updated@example.com\",\n        \"phoneNumbers\": [\n            {\n                \"number\": \"2015555678\",\n                \"type\": \"Mobile\",\n                \"isPrimary\": true\n            }\n        ],\n        \"occupation\": \"Principal\",\n        \"employerName\": \"Bais Yaakov\",\n        \"highSchool\": \"Bais Yaakov of Brooklyn\"\n    },\n    \"address\": {\n        \"street\": \"456 Oak Ave\",\n        \"street2\": null,\n        \"city\": \"Union\",\n        \"state\": \"NJ\",\n        \"zipCode\": \"07083\"\n    },\n    \"children\": [\n        {\n            \"age\": 9,\n            \"gender\": \"Male\",\n            \"name\": \"Yosef\",\n            \"school\": \"Torah Academy\"\n        },\n        {\n            \"age\": 6,\n            \"gender\": \"Female\",\n            \"name\": \"Rivka\",\n            \"school\": \"Bais Yaakov\"\n        },\n        {\n            \"age\": 2,\n            \"gender\": \"Male\",\n            \"name\": \"Dovid\",\n            \"school\": null\n        }\n    ],\n    \"currentKehila\": \"Union\",\n    \"shabbosShul\": \"Congregation Israel\"\n}"
-				},
-				"url": {
-					"raw": "{{baseUrl}}/api/applicants/{{applicantId}}",
-					"host": [
-						"{{baseUrl}}"
-					],
-					"path": [
-						"api",
-						"applicants",
-						"{{applicantId}}"
-					]
-				},
-				"description": "Update an existing applicant's information.\n\n**Authentication required** - Include Bearer token in Authorization header.\n\n**Path Parameters:**\n- `applicantId`: GUID of the applicant to update\n\n**Request Body:**\nFull applicant details. All fields will be replaced with the provided values.\n\n**Required fields:**\n- `husband.firstName`\n- `husband.lastName`\n\n**Success Response (200 OK):**\nReturns the updated applicant with all fields.\n\n**Error Responses:**\n- 400: Validation errors\n- 401: Not authenticated\n- 404: Applicant not found\n- 409: Duplicate email (email already used by another applicant)"
-			}
+			]
 		}
 	],
 	"variable": [
@@ -341,6 +754,11 @@
 		},
 		{
 			"key": "applicantId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "housingSearchId",
 			"value": "",
 			"type": "string"
 		}
