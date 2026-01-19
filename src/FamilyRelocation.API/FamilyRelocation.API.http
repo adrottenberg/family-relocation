@@ -288,3 +288,99 @@ Authorization: Bearer {{accessToken}}
     "currentKehila": "Union",
     "shabbosShul": "Congregation Israel"
 }
+
+###############################################################################
+# HOUSING SEARCH STAGE CHANGES
+###############################################################################
+
+### Change Stage - Start House Hunting (requires board approval)
+# Transitions: Submitted → HouseHunting (after board approval)
+PUT {{baseUrl}}/api/applicants/{{applicantId}}/stage
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "newStage": "HouseHunting"
+}
+
+### Change Stage - Put Under Contract
+# Transitions: HouseHunting → UnderContract
+# Required: contract with price
+PUT {{baseUrl}}/api/applicants/{{applicantId}}/stage
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "newStage": "UnderContract",
+    "contract": {
+        "price": 525000,
+        "expectedClosingDate": "2026-04-15"
+    }
+}
+
+### Change Stage - Record Closing
+# Transitions: UnderContract → Closed
+# Required: closingDate
+PUT {{baseUrl}}/api/applicants/{{applicantId}}/stage
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "newStage": "Closed",
+    "closingDate": "2026-04-10"
+}
+
+### Change Stage - Record Move In
+# Transitions: Closed → MovedIn
+# Required: movedInDate
+PUT {{baseUrl}}/api/applicants/{{applicantId}}/stage
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "newStage": "MovedIn",
+    "movedInDate": "2026-04-20"
+}
+
+### Change Stage - Pause Search
+# Transitions: HouseHunting → Paused
+PUT {{baseUrl}}/api/applicants/{{applicantId}}/stage
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "newStage": "Paused",
+    "reason": "Family needs to handle personal matters"
+}
+
+### Change Stage - Resume Search
+# Transitions: Paused → HouseHunting
+PUT {{baseUrl}}/api/applicants/{{applicantId}}/stage
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "newStage": "HouseHunting"
+}
+
+### Change Stage - Contract Fell Through
+# Transitions: UnderContract/Closed → HouseHunting
+PUT {{baseUrl}}/api/applicants/{{applicantId}}/stage
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "newStage": "HouseHunting",
+    "reason": "Financing fell through"
+}
+
+### Change Stage - Reject Application
+# Transitions: Submitted → Rejected
+PUT {{baseUrl}}/api/applicants/{{applicantId}}/stage
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "newStage": "Rejected",
+    "reason": "Did not meet community requirements"
+}

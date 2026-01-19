@@ -1,3 +1,4 @@
+using FamilyRelocation.Application.Applicants.Commands.ChangeStage;
 using FamilyRelocation.Application.Applicants.Commands.CreateApplicant;
 using FamilyRelocation.Application.Applicants.Commands.UpdateApplicant;
 using FamilyRelocation.Application.Applicants.Queries.GetApplicantById;
@@ -101,6 +102,45 @@ public class ApplicantsController : ControllerBase
         catch (DuplicateEmailException ex)
         {
             return Conflict(new { message = ex.Message, email = ex.Email });
+        }
+    }
+
+    /// <summary>
+    /// Changes the housing search stage for an applicant.
+    /// Required fields depend on the target stage.
+    /// </summary>
+    /// <remarks>
+    /// Stage transitions and required fields:
+    /// - HouseHunting: Board approval required (from Submitted), reason optional (from UnderContract/Closed if contract fell through)
+    /// - Rejected: Reason optional
+    /// - Paused: Reason optional
+    /// - UnderContract: Contract details required (price, optional propertyId and expectedClosingDate)
+    /// - Closed: ClosingDate required
+    /// - MovedIn: MovedInDate required
+    /// </remarks>
+    [HttpPut("{id:guid}/stage")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ChangeStage(Guid id, [FromBody] ChangeStageRequest request)
+    {
+        try
+        {
+            var command = new ChangeStageCommand(id, request);
+            var result = await _mediator.Send(command);
+            return Ok(result);
+        }
+        catch (NotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (ValidationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
         }
     }
 }
