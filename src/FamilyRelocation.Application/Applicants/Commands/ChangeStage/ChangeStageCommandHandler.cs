@@ -93,30 +93,28 @@ public class ChangeStageCommandHandler : IRequestHandler<ChangeStageCommand, Cha
         ChangeStageRequest request,
         Guid userId)
     {
-        // From Submitted or Paused: use StartHouseHunting/Resume
-        if (housingSearch.Stage == HousingSearchStage.Submitted)
+        switch (housingSearch.Stage)
         {
-            // Business rule: Board must have approved the applicant
-            if (applicant.BoardReview?.Decision != BoardDecision.Approved)
-                throw new ValidationException(
-                    "Cannot start house hunting until applicant is approved by the board.");
+            case HousingSearchStage.Submitted:
+                // Board approval checked here; agreements checked in domain
+                if (applicant.BoardReview?.Decision != BoardDecision.Approved)
+                    throw new ValidationException(
+                        "Cannot start house hunting until applicant is approved by the board.");
+                housingSearch.StartHouseHunting(userId);
+                break;
 
-            housingSearch.StartHouseHunting(userId);
-        }
-        else if (housingSearch.Stage == HousingSearchStage.Paused)
-        {
-            housingSearch.Resume(userId);
-        }
-        else if (housingSearch.Stage == HousingSearchStage.UnderContract ||
-                 housingSearch.Stage == HousingSearchStage.Closed)
-        {
-            // Contract fell through
-            housingSearch.ContractFellThrough(request.Reason, userId);
-        }
-        else
-        {
-            throw new ValidationException(
-                $"Cannot transition from {housingSearch.Stage} to HouseHunting.");
+            case HousingSearchStage.Paused:
+                housingSearch.Resume(userId);
+                break;
+
+            case HousingSearchStage.UnderContract:
+            case HousingSearchStage.Closed:
+                housingSearch.ContractFellThrough(request.Reason, userId);
+                break;
+
+            default:
+                throw new ValidationException(
+                    $"Cannot transition from {housingSearch.Stage} to HouseHunting.");
         }
     }
 

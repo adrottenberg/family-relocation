@@ -2116,6 +2116,11 @@ FamilyRelocation/
 1. **S3 Document Storage**: Need to set up S3 bucket for agreement document uploads (broker agreement, community takanos). Frontend will upload directly to S3 and pass URL to API.
 2. **Migration**: Run `dotnet ef migrations add AddAgreementFields` to add agreement columns to HousingSearches table.
 
+### Planned Architectural Refactoring
+1. **Merge Applicant + HousingSearch**: These are not really separate concerns - plan to merge into single aggregate. This simplifies the domain model and eliminates awkward cross-entity validation.
+2. **Domain-Centric Validation**: Once merged, move ALL stage transition validation into the domain entity. Currently validation is split between handler (board approval, contract details, dates) and domain (agreements, state machine). After merge, the entity will have direct access to BoardReview and can validate everything internally. Handler becomes pure orchestration.
+3. **Current State**: Keeping validation in handler for now (handler checks board approval, required fields; domain checks state machine + agreements). Will consolidate when entities merge.
+
 ### Key Technical Patterns Established
 1. Query object pattern (no repositories)
 2. All handlers in Application layer

@@ -56,7 +56,7 @@ public class HousingSearchTests
     }
 
     [Fact]
-    public void StartHouseHunting_FromSubmitted_WithSignedAgreements_ShouldMoveToHouseHunting()
+    public void StartHouseHunting_FromSubmitted_WithAgreements_ShouldMoveToHouseHunting()
     {
         // Arrange
         var housingSearch = CreateTestHousingSearch();

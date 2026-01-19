@@ -125,19 +125,18 @@ public class HousingSearch : Entity<Guid>
     }
 
     /// <summary>
-    /// Begin house hunting (called after board approves the Applicant)
+    /// Begin house hunting (from Submitted stage).
+    /// Requires signed agreements. Board approval is checked by the handler.
     /// </summary>
+    /// <param name="modifiedBy">User ID making the change.</param>
     public void StartHouseHunting(Guid modifiedBy)
     {
-        // Business rule: StartHouseHunting is only for initial start or resuming
-        // Use ContractFellThrough to return to house hunting after a failed contract
-        if (Stage != HousingSearchStage.Submitted && Stage != HousingSearchStage.Paused)
+        if (Stage != HousingSearchStage.Submitted)
             throw new InvalidOperationException(
-                $"StartHouseHunting can only be called from Submitted or Paused stage. " +
-                $"Use ContractFellThrough to return to house hunting from {Stage}.");
+                $"StartHouseHunting can only be called from Submitted stage. " +
+                $"Use Resume to restart from Paused, or ContractFellThrough from UnderContract/Closed.");
 
-        // Business rule: Agreements must be signed before starting (only from Submitted)
-        if (Stage == HousingSearchStage.Submitted && !AreAgreementsSigned)
+        if (!AreAgreementsSigned)
             throw new InvalidOperationException(
                 "Both broker agreement and community takanos must be signed with uploaded documents before starting house hunting.");
 
