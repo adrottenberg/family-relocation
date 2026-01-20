@@ -135,7 +135,7 @@ public static class ApplicantMapper
             BudgetAmount = preferences.Budget?.Amount,
             MinBedrooms = preferences.MinBedrooms,
             MinBathrooms = preferences.MinBathrooms,
-            RequiredFeatures = preferences.RequiredFeatures.Count > 0
+            RequiredFeatures = preferences.RequiredFeatures?.Count > 0
                 ? preferences.RequiredFeatures.ToList()
                 : null,
             ShulProximity = preferences.ShulProximity?.ToDto(),

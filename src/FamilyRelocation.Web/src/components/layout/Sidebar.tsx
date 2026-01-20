@@ -93,7 +93,7 @@ const Sidebar = () => {
           <div className="user-avatar">{getInitials(user?.email)}</div>
           <div className="user-details">
             <div className="user-name">{user?.email?.split('@')[0] || 'User'}</div>
-            <div className="user-role">Coordinator</div>
+            <div className="user-role">{user?.roles?.[0] || 'User'}</div>
           </div>
         </div>
         <button className="logout-btn" onClick={() => handleMenuClick({ key: 'logout' } as never)}>

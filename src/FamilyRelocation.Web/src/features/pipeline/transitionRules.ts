@@ -59,11 +59,11 @@ export function validateTransition(
     };
   }
 
-  // Submitted -> BoardApproved: This happens via board decision, not drag-drop
+  // Submitted -> BoardApproved: Needs board approval
   if (fromStage === 'Submitted' && toStage === 'BoardApproved') {
     return {
-      type: 'blocked',
-      message: 'Board approval is set through the Board Review section on the applicant detail page',
+      type: 'needsBoardApproval',
+      message: 'Board approval is required to move this applicant forward',
     };
   }
 
