@@ -259,6 +259,35 @@
 						},
 						"description": "Update an existing applicant's information."
 					}
+				},
+				{
+					"name": "Delete Applicant (Soft Delete)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/applicants/{{applicantId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"applicants",
+								"{{applicantId}}"
+							]
+						},
+						"description": "Soft delete an applicant. The applicant will no longer appear in list or pipeline queries but can be restored if needed."
+					}
 				}
 			]
 		},
@@ -913,6 +942,103 @@
 			"description": "Audit log endpoints for tracking all changes to Applicant and HousingSearch entities.\n\n**Admin Only**: These endpoints require the Admin role.\n\n**Tracked Entities:**\n- Applicant (Created, Modified, Deleted)\n- HousingSearch (Created, Modified, Deleted)\n\n**Response includes:**\n- Entity type and ID\n- Action (Added, Modified, Deleted)\n- Old/new values as JSON\n- User who made the change\n- Timestamp\n- IP address"
 		},
 		{
+			"name": "Documents",
+			"item": [
+				{
+					"name": "Upload Document",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": ""
+								},
+								{
+									"key": "applicantId",
+									"value": "{{applicantId}}",
+									"type": "text"
+								},
+								{
+									"key": "documentType",
+									"value": "BrokerAgreement",
+									"description": "BrokerAgreement, CommunityTakanos, or Other",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/documents/upload",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"documents",
+								"upload"
+							]
+						},
+						"description": "Upload a document to S3.\n\n**Supported file types:** PDF, JPEG, PNG\n**Maximum file size:** 10MB\n\n**Document types:**\n- BrokerAgreement: Signed broker agreement\n- CommunityTakanos: Signed community guidelines\n- Other: Other supporting documents\n\n**Response includes:**\n- `documentKey`: S3 object key for the uploaded file\n- `url`: Pre-signed URL to access the document (valid for 1 hour)"
+					}
+				},
+				{
+					"name": "Get Presigned URL",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/documents/presigned-url?documentKey={{documentKey}}&expiryMinutes=60",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"documents",
+								"presigned-url"
+							],
+							"query": [
+								{
+									"key": "documentKey",
+									"value": "{{documentKey}}",
+									"description": "S3 object key from upload response"
+								},
+								{
+									"key": "expiryMinutes",
+									"value": "60",
+									"description": "URL validity in minutes (default: 60, max: 1440)"
+								}
+							]
+						},
+						"description": "Get a pre-signed URL for temporary access to a document.\n\n**Parameters:**\n- `documentKey`: The S3 object key (from upload response)\n- `expiryMinutes`: URL validity in minutes (default: 60, max: 1440)\n\n**Response includes:**\n- `url`: Pre-signed URL to access the document\n- `expiresAt`: Expiration timestamp"
+					}
+				}
+			],
+			"description": "Document upload and retrieval endpoints.\n\n**Workflow:**\n1. Upload document using POST /api/documents/upload\n2. Record agreement using POST /api/applicants/{id}/agreements with the returned documentKey\n3. View documents using GET /api/documents/presigned-url"
+		},
+		{
 			"name": "Board Review",
 			"item": [
 				{
@@ -1093,6 +1219,11 @@
 		},
 		{
 			"key": "housingSearchId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "documentKey",
 			"value": "",
 			"type": "string"
 		}

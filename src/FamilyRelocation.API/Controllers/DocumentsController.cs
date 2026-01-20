@@ -43,11 +43,12 @@ public class DocumentsController : ControllerBase
     /// </remarks>
     [HttpPost("upload")]
     [RequestSizeLimit(MaxFileSize)]
+    [Consumes("multipart/form-data")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Upload(
-        [FromForm] IFormFile file,
+        IFormFile file,
         [FromForm] Guid applicantId,
         [FromForm] string documentType,
         CancellationToken cancellationToken)

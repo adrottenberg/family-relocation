@@ -74,6 +74,14 @@
             }
           },
           {
+            "name": "Stage",
+            "in": "query",
+            "description": "Filter by housing search stage (Submitted, HouseHunting, UnderContract, Closed, Paused, Rejected).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "SortBy",
             "in": "query",
             "description": "Sort field. Options: familyName, createdDate, boardReviewDate. Default: createdDate",
@@ -310,6 +318,597 @@
             }
           }
         }
+      },
+      "delete": {
+        "tags": [
+          "Applicants"
+        ],
+        "summary": "Soft deletes an applicant.\r\nThe applicant will no longer appear in list or pipeline queries.",
+        "description": "This is a soft delete - the applicant record remains in the database\r\nwith IsDeleted = true. The applicant can be restored if needed.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/applicants/{id}/stage": {
+      "put": {
+        "tags": [
+          "Applicants"
+        ],
+        "summary": "Changes the housing search stage for an applicant.\r\nRequired fields depend on the target stage.",
+        "description": "Stage transitions and required fields:\r\n- HouseHunting: Board approval AND signed agreements required (from Submitted), reason optional (from UnderContract/Closed if contract fell through)\r\n- Rejected: Reason optional\r\n- Paused: Reason optional\r\n- UnderContract: Contract details required (price, optional propertyId and expectedClosingDate)\r\n- Closed: ClosingDate required\r\n- MovedIn: MovedInDate required\r\n            \r\nNote: Both broker agreement and community takanos must be signed before starting house hunting.\r\nUse POST /api/applicants/{id}/agreements to record signed agreements.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeStageRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeStageRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeStageRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/applicants/{id}/agreements": {
+      "post": {
+        "tags": [
+          "Applicants"
+        ],
+        "summary": "Records that an applicant has signed a required agreement.\r\nBoth broker agreement and community takanos must be signed before starting house hunting.",
+        "description": "Agreement types:\r\n- BrokerAgreement: Agreement to work with our broker\r\n- CommunityTakanos: Community guidelines agreement\r\n            \r\nUpload the signed document first, then call this endpoint with the document URL.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordAgreementRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordAgreementRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordAgreementRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/applicants/{id}/preferences": {
+      "put": {
+        "tags": [
+          "Applicants"
+        ],
+        "summary": "Updates the housing preferences for an applicant's housing search.",
+        "description": "Updates housing search criteria including:\r\n- Budget amount\r\n- Minimum bedrooms/bathrooms\r\n- Required features (e.g., basement, garage, yard)\r\n- Shul proximity preferences\r\n- Move timeline",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HousingPreferencesDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HousingPreferencesDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/HousingPreferencesDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/applicants/{id}/board-review": {
+      "put": {
+        "tags": [
+          "Applicants"
+        ],
+        "summary": "Sets the board's decision on an applicant and transitions the stage accordingly.",
+        "description": "Records the board's decision and automatically transitions the housing search stage:\r\n- Approved: Transitions to BoardApproved stage. Applicant can then sign agreements and start house hunting.\r\n- Rejected: Transitions to Rejected stage.\r\n- Deferred: No stage change. Applicant remains in Submitted stage for future review.\r\n- Pending: No stage change. Resets decision to pending.\r\n            \r\nCan only set decision when applicant is in Submitted stage.\r\nThe 'notes' field can be used for approval notes, rejection reason, or deferral reason.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetBoardDecisionRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetBoardDecisionRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetBoardDecisionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/audit-logs": {
+      "get": {
+        "tags": [
+          "AuditLogs"
+        ],
+        "summary": "Gets a paginated list of audit log entries with optional filters.",
+        "parameters": [
+          {
+            "name": "entityType",
+            "in": "query",
+            "description": "Filter by entity type (e.g., \"Applicant\", \"HousingSearch\").",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "entityId",
+            "in": "query",
+            "description": "Filter by specific entity ID.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "userId",
+            "in": "query",
+            "description": "Filter by user who made the change.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "action",
+            "in": "query",
+            "description": "Filter by action type (Added, Modified, Deleted).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "description": "Filter by timestamp (on or after).",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "Filter by timestamp (on or before).",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number (1-based). Default: 1",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "description": "Items per page. Default: 50, Max: 100",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/audit-logs/applicant/{applicantId}": {
+      "get": {
+        "tags": [
+          "AuditLogs"
+        ],
+        "summary": "Gets audit history for a specific applicant.",
+        "parameters": [
+          {
+            "name": "applicantId",
+            "in": "path",
+            "description": "The applicant ID.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number (1-based). Default: 1",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "description": "Items per page. Default: 50, Max: 100",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/auth/login": {
@@ -317,7 +916,9 @@
         "tags": [
           "Auth"
         ],
+        "summary": "Authenticates a user with email and password.",
         "requestBody": {
+          "description": "Login credentials.",
           "content": {
             "application/json": {
               "schema": {
@@ -338,7 +939,64 @@
         },
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChallengeResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChallengeResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChallengeResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         }
       }
@@ -348,7 +1006,9 @@
         "tags": [
           "Auth"
         ],
+        "summary": "Responds to an authentication challenge (e.g., NEW_PASSWORD_REQUIRED, SMS_MFA).",
         "requestBody": {
+          "description": "Challenge response data.",
           "content": {
             "application/json": {
               "schema": {
@@ -369,7 +1029,64 @@
         },
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChallengeResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChallengeResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChallengeResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         }
       }
@@ -379,7 +1096,9 @@
         "tags": [
           "Auth"
         ],
+        "summary": "Refreshes access tokens using a valid refresh token.",
         "requestBody": {
+          "description": "Refresh token request with username and token.",
           "content": {
             "application/json": {
               "schema": {
@@ -400,7 +1119,64 @@
         },
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefreshTokenResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefreshTokenResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefreshTokenResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         }
       }
@@ -410,7 +1186,9 @@
         "tags": [
           "Auth"
         ],
+        "summary": "Initiates a password reset by sending a verification code to the user's email.",
         "requestBody": {
+          "description": "Email address for password reset.",
           "content": {
             "application/json": {
               "schema": {
@@ -432,6 +1210,26 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         }
       }
@@ -441,7 +1239,9 @@
         "tags": [
           "Auth"
         ],
+        "summary": "Completes password reset with the verification code and new password.",
         "requestBody": {
+          "description": "Email, verification code, and new password.",
           "content": {
             "application/json": {
               "schema": {
@@ -463,6 +1263,26 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         }
       }
@@ -472,7 +1292,9 @@
         "tags": [
           "Auth"
         ],
+        "summary": "Resends the email confirmation verification code.",
         "requestBody": {
+          "description": "Email address to resend confirmation to.",
           "content": {
             "application/json": {
               "schema": {
@@ -494,6 +1316,26 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         }
       }
@@ -503,7 +1345,9 @@
         "tags": [
           "Auth"
         ],
+        "summary": "Confirms a user's email address with the verification code.",
         "requestBody": {
+          "description": "Email and verification code.",
           "content": {
             "application/json": {
               "schema": {
@@ -525,6 +1369,26 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         }
       }
@@ -536,6 +1400,7 @@
         ],
         "summary": "Admin-only: Register a new user with a temporary password.\r\nThe user will be required to change their password on first login.",
         "requestBody": {
+          "description": "User registration details with optional temporary password.",
           "content": {
             "application/json": {
               "schema": {
@@ -556,7 +1421,222 @@
         },
         "responses": {
           "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisterUserResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisterUserResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisterUserResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/documents/upload": {
+      "post": {
+        "tags": [
+          "Documents"
+        ],
+        "summary": "Uploads a document to cloud storage.",
+        "description": "Supported file types: PDF, JPEG, PNG\r\nMaximum file size: 10MB\r\n            \r\nDocument types:\r\n- BrokerAgreement: Signed broker agreement\r\n- CommunityTakanos: Signed community guidelines\r\n- Other: Other supporting documents",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "applicantId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "documentType": {
+                    "type": "string"
+                  }
+                }
+              },
+              "encoding": {
+                "file": {
+                  "style": "form"
+                },
+                "applicantId": {
+                  "style": "form"
+                },
+                "documentType": {
+                  "style": "form"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
             "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/documents/presigned-url": {
+      "get": {
+        "tags": [
+          "Documents"
+        ],
+        "summary": "Gets a pre-signed URL for temporary access to a document.",
+        "description": "The URL is valid for 1 hour by default.\r\nUse this to view or download documents stored in S3.",
+        "parameters": [
+          {
+            "name": "documentKey",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "expiryMinutes",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         }
       }
@@ -575,22 +1655,27 @@
         "properties": {
           "street": {
             "type": "string",
+            "description": "Primary street address line.",
             "nullable": true
           },
           "street2": {
             "type": "string",
+            "description": "Secondary address line (apartment, suite, etc.).",
             "nullable": true
           },
           "city": {
             "type": "string",
+            "description": "City name.",
             "nullable": true
           },
           "state": {
             "type": "string",
+            "description": "State abbreviation (e.g., \"NJ\").",
             "nullable": true
           },
           "zipCode": {
             "type": "string",
+            "description": "ZIP or postal code.",
             "nullable": true
           },
           "fullAddress": {
@@ -600,7 +1685,17 @@
             "readOnly": true
           }
         },
-        "additionalProperties": false
+        "additionalProperties": false,
+        "description": "Represents a physical address."
+      },
+      "BoardDecision": {
+        "enum": [
+          "Pending",
+          "Approved",
+          "Rejected",
+          "Deferred"
+        ],
+        "type": "string"
       },
       "ChallengeRequest": {
         "required": [
@@ -612,14 +1707,17 @@
         "properties": {
           "email": {
             "type": "string",
+            "description": "User's email address.",
             "nullable": true
           },
           "challengeName": {
             "type": "string",
+            "description": "Type of challenge being responded to.",
             "nullable": true
           },
           "session": {
             "type": "string",
+            "description": "Session token from the challenge response.",
             "nullable": true
           },
           "responses": {
@@ -631,7 +1729,79 @@
             "nullable": true
           }
         },
-        "additionalProperties": false
+        "additionalProperties": false,
+        "description": "Request to respond to an authentication challenge."
+      },
+      "ChallengeResponse": {
+        "required": [
+          "challengeName",
+          "message",
+          "requiredFields",
+          "session"
+        ],
+        "type": "object",
+        "properties": {
+          "challengeName": {
+            "type": "string",
+            "description": "Type of challenge (e.g., NEW_PASSWORD_REQUIRED, SMS_MFA, SOFTWARE_TOKEN_MFA).",
+            "nullable": true
+          },
+          "session": {
+            "type": "string",
+            "description": "Session token to use when responding to the challenge.",
+            "nullable": true
+          },
+          "message": {
+            "type": "string",
+            "description": "Human-readable message describing the challenge.",
+            "nullable": true
+          },
+          "requiredFields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of field names required to respond to this challenge.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Response indicating an authentication challenge is required."
+      },
+      "ChangeStageRequest": {
+        "required": [
+          "newStage"
+        ],
+        "type": "object",
+        "properties": {
+          "newStage": {
+            "type": "string",
+            "description": "Target stage: HouseHunting, Rejected, Paused, UnderContract, Closed, MovedIn.",
+            "nullable": true
+          },
+          "reason": {
+            "type": "string",
+            "description": "Reason for rejection, pause, or contract falling through.\r\nRequired for: Rejected, Paused. Optional for returning to HouseHunting from UnderContract/Closed.",
+            "nullable": true
+          },
+          "contract": {
+            "$ref": "#/components/schemas/ContractRequest"
+          },
+          "closingDate": {
+            "type": "string",
+            "description": "Closing date. Required when transitioning to Closed.",
+            "format": "date-time",
+            "nullable": true
+          },
+          "movedInDate": {
+            "type": "string",
+            "description": "Move-in date. Required when transitioning to MovedIn.",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Request body for changing housing search stage."
       },
       "ChildDto": {
         "required": [
@@ -642,22 +1812,27 @@
         "properties": {
           "age": {
             "type": "integer",
+            "description": "Age of the child in years.",
             "format": "int32"
           },
           "gender": {
             "type": "string",
+            "description": "Gender of the child (e.g., \"Male\", \"Female\").",
             "nullable": true
           },
           "name": {
             "type": "string",
+            "description": "First name of the child.",
             "nullable": true
           },
           "school": {
             "type": "string",
+            "description": "School the child currently attends.",
             "nullable": true
           }
         },
-        "additionalProperties": false
+        "additionalProperties": false,
+        "description": "Information about a child in the family."
       },
       "ConfirmEmailRequest": {
         "required": [
@@ -668,14 +1843,17 @@
         "properties": {
           "email": {
             "type": "string",
+            "description": "Email address to confirm.",
             "nullable": true
           },
           "code": {
             "type": "string",
+            "description": "Verification code sent to the email.",
             "nullable": true
           }
         },
-        "additionalProperties": false
+        "additionalProperties": false,
+        "description": "Request to confirm a user's email address."
       },
       "ConfirmForgotPasswordRequest": {
         "required": [
@@ -687,18 +1865,49 @@
         "properties": {
           "email": {
             "type": "string",
+            "description": "Email address of the user.",
             "nullable": true
           },
           "code": {
             "type": "string",
+            "description": "Verification code sent to the user's email.",
             "nullable": true
           },
           "newPassword": {
             "type": "string",
+            "description": "The new password to set.",
             "nullable": true
           }
         },
-        "additionalProperties": false
+        "additionalProperties": false,
+        "description": "Request to complete a password reset with verification code."
+      },
+      "ContractRequest": {
+        "required": [
+          "price"
+        ],
+        "type": "object",
+        "properties": {
+          "propertyId": {
+            "type": "string",
+            "description": "Property ID (for future use when Property entity exists).",
+            "format": "uuid",
+            "nullable": true
+          },
+          "price": {
+            "type": "number",
+            "description": "Contract price in dollars.",
+            "format": "double"
+          },
+          "expectedClosingDate": {
+            "type": "string",
+            "description": "Expected closing date.",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Contract details for putting a property under contract."
       },
       "CreateApplicantCommand": {
         "required": [
@@ -720,14 +1929,17 @@
             "items": {
               "$ref": "#/components/schemas/ChildDto"
             },
+            "description": "List of children in the family.",
             "nullable": true
           },
           "currentKehila": {
             "type": "string",
+            "description": "Current kehila/community affiliation.",
             "nullable": true
           },
           "shabbosShul": {
             "type": "string",
+            "description": "Shul attended on Shabbos.",
             "nullable": true
           },
           "housingPreferences": {
@@ -745,10 +1957,12 @@
         "properties": {
           "email": {
             "type": "string",
+            "description": "Email address of the user requesting password reset.",
             "nullable": true
           }
         },
-        "additionalProperties": false
+        "additionalProperties": false,
+        "description": "Request to initiate a password reset."
       },
       "HousingPreferencesDto": {
         "type": "object",
@@ -800,18 +2014,22 @@
         "properties": {
           "firstName": {
             "type": "string",
+            "description": "First name of the husband.",
             "nullable": true
           },
           "lastName": {
             "type": "string",
+            "description": "Last name (family name) of the husband.",
             "nullable": true
           },
           "fatherName": {
             "type": "string",
+            "description": "Father's name (for identification purposes).",
             "nullable": true
           },
           "email": {
             "type": "string",
+            "description": "Email address for contact.",
             "nullable": true
           },
           "phoneNumbers": {
@@ -819,18 +2037,22 @@
             "items": {
               "$ref": "#/components/schemas/PhoneNumberDto"
             },
+            "description": "List of phone numbers with type and primary designation.",
             "nullable": true
           },
           "occupation": {
             "type": "string",
+            "description": "Current occupation or profession.",
             "nullable": true
           },
           "employerName": {
             "type": "string",
+            "description": "Name of the current employer.",
             "nullable": true
           }
         },
-        "additionalProperties": false
+        "additionalProperties": false,
+        "description": "Information about the husband/primary applicant."
       },
       "LoginRequest": {
         "required": [
@@ -841,14 +2063,17 @@
         "properties": {
           "email": {
             "type": "string",
+            "description": "User's email address.",
             "nullable": true
           },
           "password": {
             "type": "string",
+            "description": "User's password.",
             "nullable": true
           }
         },
-        "additionalProperties": false
+        "additionalProperties": false,
+        "description": "Request to authenticate a user with email and password."
       },
       "PhoneNumberDto": {
         "required": [
@@ -858,17 +2083,21 @@
         "properties": {
           "number": {
             "type": "string",
+            "description": "The phone number (e.g., \"908-555-1234\").",
             "nullable": true
           },
           "type": {
             "type": "string",
+            "description": "Type of phone (e.g., \"Mobile\", \"Home\", \"Work\"). Default is \"Mobile\".",
             "nullable": true
           },
           "isPrimary": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "Indicates whether this is the primary contact number."
           }
         },
-        "additionalProperties": false
+        "additionalProperties": false,
+        "description": "Represents a phone number with type and primary designation."
       },
       "ProblemDetails": {
         "type": "object",
@@ -897,6 +2126,27 @@
         },
         "additionalProperties": { }
       },
+      "RecordAgreementRequest": {
+        "required": [
+          "agreementType",
+          "documentUrl"
+        ],
+        "type": "object",
+        "properties": {
+          "agreementType": {
+            "type": "string",
+            "description": "Type of agreement: BrokerAgreement or CommunityTakanos.",
+            "nullable": true
+          },
+          "documentUrl": {
+            "type": "string",
+            "description": "URL to the uploaded signed document (S3 or other storage).",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Request body for recording agreement signing."
+      },
       "RefreshTokenRequest": {
         "required": [
           "refreshToken",
@@ -911,10 +2161,38 @@
           },
           "refreshToken": {
             "type": "string",
+            "description": "The refresh token from the initial login.",
             "nullable": true
           }
         },
-        "additionalProperties": false
+        "additionalProperties": false,
+        "description": "Request to refresh access tokens using a refresh token."
+      },
+      "RefreshTokenResponse": {
+        "required": [
+          "accessToken",
+          "idToken"
+        ],
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string",
+            "description": "New JWT access token for API authorization.",
+            "nullable": true
+          },
+          "idToken": {
+            "type": "string",
+            "description": "New JWT ID token containing user claims.",
+            "nullable": true
+          },
+          "expiresIn": {
+            "type": "integer",
+            "description": "Token expiration time in seconds.",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Response containing refreshed access tokens."
       },
       "RegisterUserRequest": {
         "required": [
@@ -924,6 +2202,7 @@
         "properties": {
           "email": {
             "type": "string",
+            "description": "Email address for the new user.",
             "nullable": true
           },
           "temporaryPassword": {
@@ -932,7 +2211,35 @@
             "nullable": true
           }
         },
-        "additionalProperties": false
+        "additionalProperties": false,
+        "description": "Admin request to register a new user."
+      },
+      "RegisterUserResponse": {
+        "required": [
+          "message",
+          "temporaryPassword",
+          "userId"
+        ],
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "description": "Cognito user ID (sub) of the created user.",
+            "nullable": true
+          },
+          "temporaryPassword": {
+            "type": "string",
+            "description": "Temporary password to share with the new user.",
+            "nullable": true
+          },
+          "message": {
+            "type": "string",
+            "description": "Success message.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Response after successfully registering a new user."
       },
       "ResendConfirmationRequest": {
         "required": [
@@ -942,10 +2249,36 @@
         "properties": {
           "email": {
             "type": "string",
+            "description": "Email address to send the confirmation code to.",
             "nullable": true
           }
         },
-        "additionalProperties": false
+        "additionalProperties": false,
+        "description": "Request to resend an email confirmation code."
+      },
+      "SetBoardDecisionRequest": {
+        "required": [
+          "decision"
+        ],
+        "type": "object",
+        "properties": {
+          "decision": {
+            "$ref": "#/components/schemas/BoardDecision"
+          },
+          "reviewDate": {
+            "type": "string",
+            "description": "Date of the board review. Defaults to today if not specified.",
+            "format": "date-time",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "description": "Optional notes from the board review.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Request body for setting board decision."
       },
       "ShulProximityPreferenceDto": {
         "type": "object",
@@ -987,18 +2320,22 @@
         "properties": {
           "firstName": {
             "type": "string",
+            "description": "First name of the wife.",
             "nullable": true
           },
           "maidenName": {
             "type": "string",
+            "description": "Maiden name (family name before marriage).",
             "nullable": true
           },
           "fatherName": {
             "type": "string",
+            "description": "Father's name (for identification purposes).",
             "nullable": true
           },
           "email": {
             "type": "string",
+            "description": "Email address for contact.",
             "nullable": true
           },
           "phoneNumbers": {
@@ -1006,22 +2343,27 @@
             "items": {
               "$ref": "#/components/schemas/PhoneNumberDto"
             },
+            "description": "List of phone numbers with type and primary designation.",
             "nullable": true
           },
           "occupation": {
             "type": "string",
+            "description": "Current occupation or profession.",
             "nullable": true
           },
           "employerName": {
             "type": "string",
+            "description": "Name of the current employer.",
             "nullable": true
           },
           "highSchool": {
             "type": "string",
+            "description": "High school attended (for community identification).",
             "nullable": true
           }
         },
-        "additionalProperties": false
+        "additionalProperties": false,
+        "description": "Information about the wife/spouse."
       },
       "UpdateApplicantCommand": {
         "required": [
@@ -1032,6 +2374,7 @@
         "properties": {
           "id": {
             "type": "string",
+            "description": "Unique identifier of the applicant to update.",
             "format": "uuid"
           },
           "husband": {
@@ -1048,14 +2391,17 @@
             "items": {
               "$ref": "#/components/schemas/ChildDto"
             },
+            "description": "Updated list of children in the family.",
             "nullable": true
           },
           "currentKehila": {
             "type": "string",
+            "description": "Updated kehila/community affiliation.",
             "nullable": true
           },
           "shabbosShul": {
             "type": "string",
+            "description": "Updated Shabbos shul.",
             "nullable": true
           }
         },
@@ -1069,7 +2415,13 @@
       "name": "Applicants"
     },
     {
+      "name": "AuditLogs"
+    },
+    {
       "name": "Auth"
+    },
+    {
+      "name": "Documents"
     }
   ]
 }
