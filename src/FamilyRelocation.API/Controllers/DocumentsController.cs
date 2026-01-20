@@ -110,14 +110,16 @@ public class DocumentsController : ControllerBase
             return NotFound(new { message = "Applicant not found" });
         }
 
-        // Upload to S3 with naming convention: {DocumentType}_{FamilyName}_{timestamp}.{ext}
+        // Generate storage key: {DocumentType}_{FamilyName}_{yyyyMMdd_HHmmss}.{ext}
+        // Example: BrokerAgreement_Goldstein_20260120_143052.pdf
+        var storageKey = GenerateStorageKey(documentType.Name, applicant.FamilyName, file.FileName);
+
+        // Upload to storage
         await using var stream = file.OpenReadStream();
         var result = await _storageService.UploadAsync(
             stream,
-            file.FileName,
+            storageKey,
             file.ContentType,
-            documentType.Name,
-            applicant.FamilyName,
             cancellationToken);
 
         try
@@ -127,7 +129,7 @@ public class DocumentsController : ControllerBase
                 applicantId,
                 documentTypeId,
                 file.FileName,
-                result.DocumentKey,
+                result.StorageKey,
                 file.ContentType,
                 file.Length);
 
@@ -200,5 +202,32 @@ public class DocumentsController : ControllerBase
         var url = await _storageService.GetPreSignedUrlAsync(documentKey, expiry, cancellationToken);
 
         return Ok(new { url, expiresAt = DateTime.UtcNow.Add(expiry) });
+    }
+
+    /// <summary>
+    /// Generates a storage key using the naming convention: {DocumentType}_{FamilyName}_{yyyyMMdd_HHmmss}.{ext}
+    /// </summary>
+    private static string GenerateStorageKey(string documentType, string familyName, string originalFileName)
+    {
+        var safeDocumentType = SanitizeName(documentType);
+        var safeFamilyName = SanitizeName(familyName);
+        var timestamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss");
+        var extension = Path.GetExtension(originalFileName).TrimStart('.');
+
+        return $"{safeDocumentType}_{safeFamilyName}_{timestamp}.{extension}";
+    }
+
+    /// <summary>
+    /// Sanitizes a name for use in storage keys.
+    /// Removes invalid characters and spaces.
+    /// </summary>
+    private static string SanitizeName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return "Unknown";
+
+        var invalid = Path.GetInvalidFileNameChars();
+        var sanitized = string.Join("", name.Split(invalid, StringSplitOptions.RemoveEmptyEntries));
+        return sanitized.Replace(" ", "");
     }
 }
