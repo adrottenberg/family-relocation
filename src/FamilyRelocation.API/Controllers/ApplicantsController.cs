@@ -1,7 +1,6 @@
 using FamilyRelocation.Application.Applicants.Commands.ChangeStage;
 using FamilyRelocation.Application.Applicants.Commands.CreateApplicant;
 using FamilyRelocation.Application.Applicants.Commands.DeleteApplicant;
-using FamilyRelocation.Application.Applicants.Commands.RecordAgreement;
 using FamilyRelocation.Application.Applicants.Commands.SetBoardDecision;
 using FamilyRelocation.Application.Applicants.Commands.UpdateApplicant;
 using FamilyRelocation.Application.Applicants.Commands.UpdatePreferences;
@@ -147,8 +146,9 @@ public class ApplicantsController : ControllerBase
     /// - Closed: ClosingDate required
     /// - MovedIn: MovedInDate required
     ///
-    /// Note: Both broker agreement and community takanos must be signed before starting house hunting.
-    /// Use POST /api/applicants/{id}/agreements to record signed agreements.
+    /// Note: Required documents must be uploaded before starting house hunting.
+    /// Use POST /api/documents/upload to upload documents.
+    /// Use GET /api/stage-requirements/{fromStage}/{toStage} to check required documents.
     /// </remarks>
     [HttpPut("{id:guid}/stage")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -171,43 +171,6 @@ public class ApplicantsController : ControllerBase
             return BadRequest(new { message = ex.Message });
         }
         catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-    }
-
-    /// <summary>
-    /// Records that an applicant has signed a required agreement.
-    /// Both broker agreement and community takanos must be signed before starting house hunting.
-    /// </summary>
-    /// <remarks>
-    /// Agreement types:
-    /// - BrokerAgreement: Agreement to work with our broker
-    /// - CommunityTakanos: Community guidelines agreement
-    ///
-    /// Upload the signed document first, then call this endpoint with the document URL.
-    /// </remarks>
-    [HttpPost("{id:guid}/agreements")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> RecordAgreement(Guid id, [FromBody] RecordAgreementRequest request)
-    {
-        try
-        {
-            var command = new RecordAgreementCommand(id, request);
-            var result = await _mediator.Send(command);
-            return Ok(result);
-        }
-        catch (NotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (ValidationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (ArgumentException ex)
         {
             return BadRequest(new { message = ex.Message });
         }
