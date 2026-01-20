@@ -7,20 +7,22 @@ public interface IDocumentStorageService
 {
     /// <summary>
     /// Uploads a document to storage.
+    /// Storage key format: {DocumentType}_{FamilyName}_{yyyyMMdd_HHmmss}.{ext}
+    /// Example: BrokerAgreement_Goldstein_20260120_143052.pdf
     /// </summary>
     /// <param name="fileStream">The file content stream.</param>
-    /// <param name="fileName">Original file name.</param>
+    /// <param name="fileName">Original file name (used for extension).</param>
     /// <param name="contentType">MIME type of the file.</param>
-    /// <param name="applicantId">Associated applicant ID.</param>
     /// <param name="documentType">Type of document (e.g., BrokerAgreement, CommunityTakanos).</param>
+    /// <param name="familyName">Family name for the storage key.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Upload result with URL and metadata.</returns>
     Task<DocumentUploadResult> UploadAsync(
         Stream fileStream,
         string fileName,
         string contentType,
-        Guid applicantId,
         string documentType,
+        string familyName,
         CancellationToken cancellationToken = default);
 
     /// <summary>

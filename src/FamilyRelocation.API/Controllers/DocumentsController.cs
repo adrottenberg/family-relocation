@@ -110,14 +110,14 @@ public class DocumentsController : ControllerBase
             return NotFound(new { message = "Applicant not found" });
         }
 
-        // Upload to S3
+        // Upload to S3 with naming convention: {DocumentType}_{FamilyName}_{timestamp}.{ext}
         await using var stream = file.OpenReadStream();
         var result = await _storageService.UploadAsync(
             stream,
             file.FileName,
             file.ContentType,
-            applicantId,
-            documentType.Name, // Use the document type name for the S3 key
+            documentType.Name,
+            applicant.FamilyName,
             cancellationToken);
 
         try
@@ -218,11 +218,11 @@ public class DocumentsController : ControllerBase
         [FromForm] string documentType,
         CancellationToken cancellationToken)
     {
-        // Validate applicant exists
-        var applicantExists = await _context.Set<Applicant>()
-            .AnyAsync(a => a.Id == applicantId, cancellationToken);
+        // Validate applicant exists and get family name
+        var applicant = await _context.Set<Applicant>()
+            .FirstOrDefaultAsync(a => a.Id == applicantId, cancellationToken);
 
-        if (!applicantExists)
+        if (applicant == null)
         {
             return NotFound(new { message = "Applicant not found" });
         }
@@ -255,14 +255,14 @@ public class DocumentsController : ControllerBase
             });
         }
 
-        // Upload to S3
+        // Upload to S3 with naming convention: {DocumentType}_{FamilyName}_{timestamp}.{ext}
         await using var stream = file.OpenReadStream();
         var result = await _storageService.UploadAsync(
             stream,
             file.FileName,
             file.ContentType,
-            applicantId,
             documentType,
+            applicant.FamilyName,
             cancellationToken);
 
         // Record in database

@@ -26,6 +26,7 @@ public class ApplicantDocument : Entity<Guid>
     /// <summary>
     /// S3 storage key (path in bucket).
     /// Format: {DocumentType}_{FamilyName}_{yyyyMMdd_HHmmss}.{ext}
+    /// Example: BrokerAgreement_Goldstein_20260120_143052.pdf
     /// </summary>
     public string StorageKey { get; private set; } = null!;
 

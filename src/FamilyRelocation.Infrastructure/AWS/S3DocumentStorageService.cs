@@ -25,17 +25,17 @@ public class S3DocumentStorageService : IDocumentStorageService
         Stream fileStream,
         string fileName,
         string contentType,
-        Guid applicantId,
         string documentType,
+        string familyName,
         CancellationToken cancellationToken = default)
     {
-        // Sanitize document type for use in path
-        var safeDocumentType = documentType.ToLowerInvariant().Replace(" ", "-");
-
-        // Generate unique key with timestamp to avoid overwrites
-        var timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd-HHmmss");
-        var safeFileName = SanitizeFileName(fileName);
-        var key = $"documents/{applicantId}/{safeDocumentType}/{timestamp}_{safeFileName}";
+        // Generate storage key using naming convention: {DocumentType}_{FamilyName}_{yyyyMMdd_HHmmss}.{ext}
+        // Example: BrokerAgreement_Goldstein_20260120_143052.pdf
+        var safeDocumentType = SanitizeName(documentType);
+        var safeFamilyName = SanitizeName(familyName);
+        var timestamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss");
+        var extension = Path.GetExtension(fileName).TrimStart('.');
+        var key = $"{safeDocumentType}_{safeFamilyName}_{timestamp}.{extension}";
 
         var request = new PutObjectRequest
         {
@@ -75,11 +75,19 @@ public class S3DocumentStorageService : IDocumentStorageService
         return Task.FromResult(url);
     }
 
-    private static string SanitizeFileName(string fileName)
+    /// <summary>
+    /// Sanitizes a name for use in S3 keys.
+    /// Removes invalid characters and replaces spaces with empty string.
+    /// </summary>
+    private static string SanitizeName(string name)
     {
+        if (string.IsNullOrWhiteSpace(name))
+            return "Unknown";
+
         // Remove or replace characters that might cause issues in S3 keys
         var invalid = Path.GetInvalidFileNameChars();
-        var sanitized = string.Join("", fileName.Split(invalid, StringSplitOptions.RemoveEmptyEntries));
-        return sanitized.Replace(" ", "_");
+        var sanitized = string.Join("", name.Split(invalid, StringSplitOptions.RemoveEmptyEntries));
+        // Remove spaces (don't replace with underscore since we use underscore as delimiter)
+        return sanitized.Replace(" ", "");
     }
 }
