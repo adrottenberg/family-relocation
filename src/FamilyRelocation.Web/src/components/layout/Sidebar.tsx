@@ -71,11 +71,7 @@ const Sidebar = () => {
     <Sider className="app-sidebar" width={220} theme="light">
       {/* Logo */}
       <div className="sidebar-logo">
-        <div className="logo-icon">VH</div>
-        <div className="logo-text">
-          <div className="logo-title">וועד הישוב</div>
-          <div className="logo-subtitle">CRM</div>
-        </div>
+        <img src="/logo.png" alt="וועד הישוב דקהילת יוניאן" title="וועד הישוב דקהילת יוניאן" className="sidebar-logo-image" />
       </div>
 
       {/* Navigation */}
@@ -93,7 +89,7 @@ const Sidebar = () => {
           <div className="user-avatar">{getInitials(user?.email)}</div>
           <div className="user-details">
             <div className="user-name">{user?.email?.split('@')[0] || 'User'}</div>
-            <div className="user-role">Coordinator</div>
+            <div className="user-role">{user?.roles?.[0] || 'User'}</div>
           </div>
         </div>
         <button className="logout-btn" onClick={() => handleMenuClick({ key: 'logout' } as never)}>

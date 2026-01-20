@@ -135,7 +135,7 @@ public static class ApplicantMapper
             BudgetAmount = preferences.Budget?.Amount,
             MinBedrooms = preferences.MinBedrooms,
             MinBathrooms = preferences.MinBathrooms,
-            RequiredFeatures = preferences.RequiredFeatures.Count > 0
+            RequiredFeatures = preferences.RequiredFeatures?.Count > 0
                 ? preferences.RequiredFeatures.ToList()
                 : null,
             ShulProximity = preferences.ShulProximity?.ToDto(),
@@ -171,7 +171,11 @@ public static class ApplicantMapper
             CurrentContract = housingSearch.CurrentContract?.ToContractDto(),
             FailedContractCount = housingSearch.FailedContractCount,
             BrokerAgreementSigned = housingSearch.BrokerAgreementSigned,
+            BrokerAgreementDocumentUrl = housingSearch.BrokerAgreementDocumentUrl,
+            BrokerAgreementSignedDate = housingSearch.BrokerAgreementSignedDate,
             CommunityTakanosSigned = housingSearch.CommunityTakanosSigned,
+            CommunityTakanosDocumentUrl = housingSearch.CommunityTakanosDocumentUrl,
+            CommunityTakanosSignedDate = housingSearch.CommunityTakanosSignedDate,
             Notes = housingSearch.Notes
         };
     }

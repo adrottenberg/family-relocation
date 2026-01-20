@@ -21,11 +21,12 @@ interface AuthState {
   setTokens: (tokens: AuthTokens) => void;
   setUser: (user: User) => void;
   logout: () => void;
+  canApproveBoardDecisions: () => boolean;
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       tokens: null,
       user: null,
       isAuthenticated: false,
@@ -47,6 +48,14 @@ export const useAuthStore = create<AuthState>()(
           user: null,
           isAuthenticated: false,
         }),
+
+      canApproveBoardDecisions: () => {
+        const user = get().user;
+        if (!user?.roles) return false;
+        return user.roles.some(role =>
+          role === 'Admin' || role === 'BoardMember'
+        );
+      },
     }),
     {
       name: 'auth-storage',

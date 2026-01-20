@@ -2288,6 +2288,129 @@ All tests pass. Application loads correctly with data:
 
 ---
 
+## SESSION: January 20, 2026 - Sprint 3 Complete & Updated MVP Plan
+
+### Context
+Completed Sprint 3 validation, performed UI touchups, and finalized the updated MVP roadmap.
+
+### Sprint 3 Completed Stories
+
+All 7 user stories fully implemented:
+
+| Ticket | Story | Description |
+|--------|-------|-------------|
+| UV-32 | US-022 | Soft Delete API - DELETE /api/applicants/{id} |
+| UV-33 | US-023 | S3 Document Upload API |
+| UV-34 | US-F07 | Edit Applicant form/drawer |
+| UV-35 | US-F08 | Board Review UI on detail page |
+| UV-36 | US-F09 | Pipeline drag-drop with transition modals |
+| UV-37 | US-F10 | Public Application page (no auth required) |
+| UV-38 | US-F11 | Document signing modal with S3 upload |
+
+**PR Created:** https://github.com/adrottenberg/family-relocation/pull/16
+
+### UI Touchups Completed
+
+1. **Login Page Logo** - Replaced placeholder "VH" circle with actual `logo.png`
+2. **Favicon** - Created square `favicon.png` with transparent padding from tree-logo
+3. **Page Title** - Updated to "וועד הישוב דקהילת יוניאן" everywhere
+4. **Sidebar Logo** - Replaced tree + text with full logo image
+5. **Forgot Password** - Implemented full workflow (email → verification code → new password)
+6. **Support Link** - Added phone link (908) 777-7101 on login page
+7. **Print Feature** - Added Print button on applicant detail page, opens formatted PDF view
+
+### Updated MVP Plan
+
+**Completed (Sprints 1-3):**
+- Foundation: Clean architecture, Cognito auth, PostgreSQL/EF Core
+- Applicant CRUD: Create, Read, Update, List, Delete (soft)
+- Board Review: Set decision, approve/reject workflow
+- Pipeline: Kanban drag-drop with transition modals
+- Public Application: Multi-step form (no auth required)
+- Document Signing: S3 upload for agreements
+- Frontend: Login, applicant list/detail, edit drawer
+
+**Remaining MVP (User requested to include Reminders & Activity Log):**
+
+| Epic | Stories | Est. Points | Sprint |
+|------|---------|-------------|--------|
+| **Property Management** | Create/View/Update, Photos, List/Filter | ~21 | 4 |
+| **Email Notifications** | Application, Board decision, Status emails | ~8 | 4 |
+| **Dashboard** | Key metrics, Recent activity | ~8 | 4 |
+| **Activity Tracking** | Log interactions, Timeline, Filter | ~8 | 4-5 |
+| **Follow-Up Reminders** | Create, Dashboard, Print view | ~10 | 5 |
+
+**Total Remaining: ~55 points (~4-6 weeks)**
+
+**Suggested Sprint Breakdown:**
+
+**Sprint 4 (~30 points):**
+- Property CRUD (backend + frontend)
+- Email notifications (AWS SES setup)
+- Dashboard with metrics
+- Activity tracking API
+
+**Sprint 5 (~25 points):**
+- Activity tracking UI
+- Follow-up reminders (full feature)
+- Property photos upload
+- Polish and bug fixes
+
+### Jira Integration Setup
+
+**MCP Configuration created:** `.mcp.json` in project root
+- Jira instance: `https://adrottenberg.atlassian.net`
+- Project key: `UV` (Union Vaad CRM)
+- Can query/update tickets directly via Jira REST API
+
+**Tickets moved to "In Review":**
+UV-32, UV-33, UV-34, UV-35, UV-36, UV-37, UV-38
+
+### Key Files Changed (Touchups)
+
+- `src/FamilyRelocation.Web/public/logo.png` - Full organization logo
+- `src/FamilyRelocation.Web/public/favicon.png` - Square favicon
+- `src/FamilyRelocation.Web/index.html` - Updated title and favicon
+- `src/FamilyRelocation.Web/src/features/auth/LoginPage.tsx` - Logo, forgot password, support link
+- `src/FamilyRelocation.Web/src/components/layout/Sidebar.tsx` - Full logo image
+- `src/FamilyRelocation.Web/src/features/applicants/ApplicantDetailPage.tsx` - Print button
+
+### Upcoming: 2 Refactorings Before Sprint 4
+
+User mentioned 2 refactorings needed before starting Sprint 4 - will create new branches for those.
+
+---
+
+## FOR NEXT SESSION
+
+### To Quickly Re-Establish Context
+
+**Just say:**
+> "I'm the developer building the Family Relocation CRM for the Jewish community in Union County. Sprint 3 is complete and in review."
+
+**I'll know:**
+- Complete domain model (Applicant, HousingSearch, etc.)
+- Tech stack (.NET 10, React + Ant Design, AWS)
+- **Sprint 3 is complete** - all 7 stories, PR in review
+- **MVP plan includes:** Property Management, Email, Dashboard, Activity Tracking, Follow-Up Reminders
+- **Jira project:** UV at adrottenberg.atlassian.net
+- Query object pattern, all handlers in Application layer
+- EF Core ToJson() for JSON columns
+- ApplicantMapper extension methods
+
+### Key Sprint 4 Focus Areas
+1. Property CRUD (backend + frontend)
+2. Email notifications (AWS SES)
+3. Dashboard with metrics
+4. Activity tracking API
+
+### Refactorings Pending
+User mentioned 2 refactorings needed before Sprint 4 - details TBD.
+
+**And we can pick up exactly where we left off.**
+
+---
+
 **END OF CONVERSATION MEMORY LOG**
 
 This document captures our complete collaboration. Use it to quickly re-establish context in future sessions.

@@ -103,10 +103,10 @@ export const applicantsApi = {
   recordBrokerAgreement: async (
     applicantId: string,
     documentUrl: string
-  ): Promise<HousingSearchDto> => {
+  ): Promise<{ brokerAgreementSigned: boolean; communityTakanosSigned: boolean; allAgreementsSigned: boolean }> => {
     const response = await apiClient.post(
-      `/applicants/${applicantId}/housing-search/broker-agreement`,
-      { documentUrl }
+      `/applicants/${applicantId}/agreements`,
+      { agreementType: 'BrokerAgreement', documentUrl }
     );
     return response.data;
   },
@@ -114,17 +114,18 @@ export const applicantsApi = {
   recordCommunityTakanos: async (
     applicantId: string,
     documentUrl: string
-  ): Promise<HousingSearchDto> => {
+  ): Promise<{ brokerAgreementSigned: boolean; communityTakanosSigned: boolean; allAgreementsSigned: boolean }> => {
     const response = await apiClient.post(
-      `/applicants/${applicantId}/housing-search/community-takanos`,
-      { documentUrl }
+      `/applicants/${applicantId}/agreements`,
+      { agreementType: 'CommunityTakanos', documentUrl }
     );
     return response.data;
   },
 
   startHouseHunting: async (applicantId: string): Promise<HousingSearchDto> => {
-    const response = await apiClient.post(
-      `/applicants/${applicantId}/housing-search/start-hunting`
+    const response = await apiClient.put(
+      `/applicants/${applicantId}/stage`,
+      { newStage: 'HouseHunting' }
     );
     return response.data;
   },

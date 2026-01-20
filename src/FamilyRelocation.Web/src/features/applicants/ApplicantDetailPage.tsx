@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   Card,
@@ -19,11 +20,17 @@ import {
   MailOutlined,
   HomeOutlined,
   UserOutlined,
+  PrinterOutlined,
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { applicantsApi } from '../../api';
-import type { ApplicantDto, ChildDto, AuditLogDto, HusbandInfoDto, SpouseInfoDto } from '../../api/types';
+import type { ApplicantDto, ChildDto, AuditLogDto } from '../../api/types';
 import { colors, statusTagStyles, stageTagStyles } from '../../theme/antd-theme';
+import { useAuthStore } from '../../store/authStore';
+import BoardReviewSection from './BoardReviewSection';
+import SetBoardDecisionModal from './SetBoardDecisionModal';
+import EditApplicantDrawer from './EditApplicantDrawer';
+import DocumentUploadModal from './DocumentUploadModal';
 import './ApplicantDetailPage.css';
 
 const { Title, Text } = Typography;
@@ -31,6 +38,10 @@ const { Title, Text } = Typography;
 const ApplicantDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const canApproveBoardDecisions = useAuthStore((state) => state.canApproveBoardDecisions);
+  const [boardDecisionModalOpen, setBoardDecisionModalOpen] = useState(false);
+  const [editDrawerOpen, setEditDrawerOpen] = useState(false);
+  const [documentUploadModalOpen, setDocumentUploadModalOpen] = useState(false);
 
   const { data: applicant, isLoading, error } = useQuery({
     queryKey: ['applicant', id],
@@ -97,11 +108,147 @@ const ApplicantDetailPage = () => {
   const boardDecision = applicant.boardReview?.decision || 'Pending';
   const stage = hs?.stage || 'N/A';
 
+  const handlePrint = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const { husband, wife, address, children } = applicant;
+    const prefs = hs?.preferences;
+
+    const childrenHtml = children && children.length > 0
+      ? `
+        <h3>Children</h3>
+        <table>
+          <thead>
+            <tr><th>Name</th><th>Age</th><th>Gender</th><th>School</th></tr>
+          </thead>
+          <tbody>
+            ${children.map(c => `
+              <tr>
+                <td>${c.name || 'N/A'}</td>
+                <td>${c.age}</td>
+                <td>${c.gender}</td>
+                <td>${c.school || 'N/A'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `
+      : '';
+
+    const preferencesHtml = prefs
+      ? `
+        <h3>Housing Preferences</h3>
+        <table>
+          <tr><td><strong>Budget</strong></td><td>${prefs.budgetAmount ? `$${prefs.budgetAmount.toLocaleString()}` : 'N/A'}</td></tr>
+          <tr><td><strong>Min Bedrooms</strong></td><td>${prefs.minBedrooms || 'N/A'}</td></tr>
+          <tr><td><strong>Min Bathrooms</strong></td><td>${prefs.minBathrooms || 'N/A'}</td></tr>
+          <tr><td><strong>Move Timeline</strong></td><td>${prefs.moveTimeline || 'N/A'}</td></tr>
+          ${prefs.requiredFeatures && prefs.requiredFeatures.length > 0
+            ? `<tr><td><strong>Required Features</strong></td><td>${prefs.requiredFeatures.join(', ')}</td></tr>`
+            : ''}
+        </table>
+      `
+      : '';
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>${husband.lastName} Family - Application Details</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
+          h1 { color: #2d7a3a; border-bottom: 2px solid #2d7a3a; padding-bottom: 10px; }
+          h2 { color: #333; margin-top: 24px; }
+          h3 { color: #555; margin-top: 20px; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
+          table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+          td, th { padding: 8px; text-align: left; border-bottom: 1px solid #eee; }
+          th { background: #f5f5f5; }
+          .status-row { display: flex; gap: 20px; margin: 15px 0; }
+          .status-item { padding: 8px 16px; border-radius: 4px; font-weight: 500; }
+          .status-pending { background: #fff7e6; color: #d48806; }
+          .status-approved { background: #f6ffed; color: #389e0d; }
+          .status-rejected { background: #fff1f0; color: #cf1322; }
+          .two-column { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+          .print-date { color: #888; font-size: 12px; margin-top: 30px; }
+          @media print { body { padding: 0; } }
+        </style>
+      </head>
+      <body>
+        <h1>${husband.lastName} Family</h1>
+        <div class="status-row">
+          <span class="status-item status-${boardDecision.toLowerCase()}">${boardDecision}</span>
+          <span class="status-item" style="background:#e6f7ff;color:#1890ff;">${formatStageName(stage)}</span>
+        </div>
+
+        <div class="two-column">
+          <div>
+            <h3>Husband</h3>
+            <table>
+              <tr><td><strong>Name</strong></td><td>${husband.firstName} ${husband.lastName}</td></tr>
+              <tr><td><strong>Father's Name</strong></td><td>${husband.fatherName || 'N/A'}</td></tr>
+              <tr><td><strong>Email</strong></td><td>${husband.email || 'N/A'}</td></tr>
+              <tr><td><strong>Phone</strong></td><td>${getPrimaryPhone(husband.phoneNumbers)}</td></tr>
+              <tr><td><strong>Occupation</strong></td><td>${husband.occupation || 'N/A'}</td></tr>
+              <tr><td><strong>Employer</strong></td><td>${husband.employerName || 'N/A'}</td></tr>
+            </table>
+          </div>
+          ${wife ? `
+          <div>
+            <h3>Wife</h3>
+            <table>
+              <tr><td><strong>Name</strong></td><td>${wife.firstName} ${wife.maidenName ? `(${wife.maidenName})` : ''}</td></tr>
+              <tr><td><strong>Father's Name</strong></td><td>${wife.fatherName || 'N/A'}</td></tr>
+              <tr><td><strong>Email</strong></td><td>${wife.email || 'N/A'}</td></tr>
+              <tr><td><strong>Phone</strong></td><td>${getPrimaryPhone(wife.phoneNumbers)}</td></tr>
+              <tr><td><strong>Occupation</strong></td><td>${wife.occupation || 'N/A'}</td></tr>
+              <tr><td><strong>High School</strong></td><td>${wife.highSchool || 'N/A'}</td></tr>
+            </table>
+          </div>
+          ` : ''}
+        </div>
+
+        ${address ? `
+        <h3>Current Address</h3>
+        <table>
+          <tr><td><strong>Street</strong></td><td>${address.street}${address.street2 ? `, ${address.street2}` : ''}</td></tr>
+          <tr><td><strong>City</strong></td><td>${address.city}, ${address.state} ${address.zipCode}</td></tr>
+        </table>
+        ` : ''}
+
+        <h3>Community</h3>
+        <table>
+          <tr><td><strong>Current Kehila</strong></td><td>${applicant.currentKehila || 'N/A'}</td></tr>
+          <tr><td><strong>Shabbos Shul</strong></td><td>${applicant.shabbosShul || 'N/A'}</td></tr>
+        </table>
+
+        ${childrenHtml}
+        ${preferencesHtml}
+
+        <p class="print-date">Printed on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</p>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.onload = () => {
+      printWindow.print();
+    };
+  };
+
   const tabItems = [
     {
       key: 'overview',
       label: 'Overview',
-      children: <OverviewTab applicant={applicant} />,
+      children: (
+        <OverviewTab
+          applicant={applicant}
+          onRecordBoardDecision={() => setBoardDecisionModalOpen(true)}
+          onUploadDocuments={() => setDocumentUploadModalOpen(true)}
+          canApprove={canApproveBoardDecisions()}
+        />
+      ),
     },
     {
       key: 'housing',
@@ -149,7 +296,12 @@ const ApplicantDetailPage = () => {
             </div>
           </div>
           <div className="header-actions">
-            <Button icon={<EditOutlined />}>Edit</Button>
+            <Button icon={<PrinterOutlined />} onClick={handlePrint}>
+              Print
+            </Button>
+            <Button icon={<EditOutlined />} onClick={() => setEditDrawerOpen(true)}>
+              Edit
+            </Button>
           </div>
         </div>
       </Card>
@@ -158,6 +310,27 @@ const ApplicantDetailPage = () => {
       <Card className="tabs-card">
         <Tabs items={tabItems} />
       </Card>
+
+      {/* Board Decision Modal */}
+      <SetBoardDecisionModal
+        open={boardDecisionModalOpen}
+        onClose={() => setBoardDecisionModalOpen(false)}
+        applicant={applicant}
+      />
+
+      {/* Edit Applicant Drawer */}
+      <EditApplicantDrawer
+        open={editDrawerOpen}
+        onClose={() => setEditDrawerOpen(false)}
+        applicant={applicant}
+      />
+
+      {/* Document Upload Modal */}
+      <DocumentUploadModal
+        open={documentUploadModalOpen}
+        onClose={() => setDocumentUploadModalOpen(false)}
+        applicant={applicant}
+      />
     </div>
   );
 };
@@ -170,12 +343,27 @@ const getPrimaryPhone = (phoneNumbers?: { number: string; isPrimary: boolean }[]
 };
 
 // Overview Tab
-const OverviewTab = ({ applicant }: { applicant: ApplicantDto }) => {
+interface OverviewTabProps {
+  applicant: ApplicantDto;
+  onRecordBoardDecision: () => void;
+  onUploadDocuments: () => void;
+  canApprove: boolean;
+}
+
+const OverviewTab = ({ applicant, onRecordBoardDecision, onUploadDocuments, canApprove }: OverviewTabProps) => {
   const { husband, wife, address } = applicant;
 
   return (
     <div className="tab-content">
       <div className="info-grid">
+        {/* Board Review - First card for visibility */}
+        <BoardReviewSection
+          applicant={applicant}
+          onRecordDecision={onRecordBoardDecision}
+          onUploadDocuments={onUploadDocuments}
+          canApprove={canApprove}
+        />
+
         {/* Husband Info */}
         <Card title="Husband" size="small" className="info-card">
           <Descriptions column={1} size="small">

@@ -1,5 +1,6 @@
 using FamilyRelocation.Application.Applicants.Commands.ChangeStage;
 using FamilyRelocation.Application.Applicants.Commands.CreateApplicant;
+using FamilyRelocation.Application.Applicants.Commands.DeleteApplicant;
 using FamilyRelocation.Application.Applicants.Commands.RecordAgreement;
 using FamilyRelocation.Application.Applicants.Commands.SetBoardDecision;
 using FamilyRelocation.Application.Applicants.Commands.UpdateApplicant;
@@ -106,6 +107,30 @@ public class ApplicantsController : ControllerBase
         catch (DuplicateEmailException ex)
         {
             return Conflict(new { message = ex.Message, email = ex.Email });
+        }
+    }
+
+    /// <summary>
+    /// Soft deletes an applicant.
+    /// The applicant will no longer appear in list or pipeline queries.
+    /// </summary>
+    /// <remarks>
+    /// This is a soft delete - the applicant record remains in the database
+    /// with IsDeleted = true. The applicant can be restored if needed.
+    /// </remarks>
+    [HttpDelete("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        try
+        {
+            await _mediator.Send(new DeleteApplicantCommand(id));
+            return NoContent();
+        }
+        catch (NotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
         }
     }
 

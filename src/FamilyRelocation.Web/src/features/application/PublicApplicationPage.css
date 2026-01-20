@@ -1,0 +1,227 @@
+.public-application-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f4fbf5 0%, #e8f7ea 100%);
+  padding: 40px 20px;
+}
+
+.application-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.application-header h1 {
+  font-size: 28px;
+  color: #2d7a3a;
+  margin: 0 0 8px 0;
+}
+
+.application-header p {
+  color: #5c605c;
+  margin: 0;
+  font-size: 16px;
+}
+
+.application-card {
+  max-width: 700px;
+  margin: 0 auto;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.step-content {
+  margin-top: 32px;
+  min-height: 350px;
+}
+
+.step-buttons {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid #e2e4e2;
+}
+
+.step-buttons-right {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid #e2e4e2;
+}
+
+.application-footer {
+  text-align: center;
+  margin-top: 24px;
+  color: #7a7e7a;
+}
+
+/* Success Page Styles */
+.success-card {
+  max-width: 600px;
+  margin: 0 auto;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  padding: 40px;
+}
+
+.success-content {
+  text-align: left;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.success-content h3 {
+  color: #2d7a3a;
+  margin-bottom: 16px;
+}
+
+.success-content ol {
+  padding-left: 20px;
+  margin-bottom: 24px;
+}
+
+.success-content ol li {
+  margin-bottom: 8px;
+  color: #5c605c;
+}
+
+.success-content .contact-info {
+  background: #f6ffed;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+/* Children Step Styles */
+.child-card {
+  margin-bottom: 16px;
+  background: #fafafa;
+}
+
+.child-card .ant-card-body {
+  padding: 16px;
+}
+
+.child-form-row {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.child-form-row .ant-form-item {
+  margin-bottom: 0;
+  flex: 1;
+  min-width: 120px;
+}
+
+.child-form-row .remove-btn {
+  flex: 0 0 auto;
+  margin-top: 30px;
+}
+
+/* Review Step Styles */
+.review-section {
+  margin-bottom: 24px;
+  padding: 16px;
+  background: #fafafa;
+  border-radius: 8px;
+}
+
+.review-section h4 {
+  color: #2d7a3a;
+  margin: 0 0 12px 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e2e4e2;
+}
+
+.review-field {
+  display: flex;
+  margin-bottom: 8px;
+}
+
+.review-label {
+  color: #7a7e7a;
+  width: 140px;
+  flex-shrink: 0;
+}
+
+.review-value {
+  color: #333;
+}
+
+.review-children-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.review-children-list li {
+  padding: 4px 0;
+}
+
+/* Phone Input Styles */
+.phone-input-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.phone-input-row .ant-input {
+  flex: 1;
+}
+
+.phone-input-row .ant-select {
+  width: 100px;
+}
+
+/* Mobile Responsive */
+@media (max-width: 600px) {
+  .public-application-page {
+    padding: 20px 12px;
+  }
+
+  .application-card {
+    margin: 0;
+    border-radius: 8px;
+  }
+
+  .application-header h1 {
+    font-size: 22px;
+  }
+
+  .child-form-row {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .child-form-row .ant-form-item {
+    width: 100%;
+    margin-bottom: 12px;
+  }
+
+  .child-form-row .remove-btn {
+    margin-top: 0;
+    margin-bottom: 8px;
+  }
+
+  .review-field {
+    flex-direction: column;
+  }
+
+  .review-label {
+    width: auto;
+    margin-bottom: 4px;
+  }
+
+  .step-buttons {
+    flex-direction: column-reverse;
+    gap: 12px;
+  }
+
+  .step-buttons button {
+    width: 100%;
+  }
+}
