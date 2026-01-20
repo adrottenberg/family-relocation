@@ -13,6 +13,7 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     // IApplicationDbContext implementation
     IQueryable<TEntity> IApplicationDbContext.Set<TEntity>() => base.Set<TEntity>();
     void IApplicationDbContext.Add<TEntity>(TEntity entity) => base.Add(entity);
+    void IApplicationDbContext.Remove<TEntity>(TEntity entity) => base.Remove(entity);
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

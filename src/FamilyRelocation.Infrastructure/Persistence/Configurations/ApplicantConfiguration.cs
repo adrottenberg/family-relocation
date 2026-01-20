@@ -135,6 +135,11 @@ public class ApplicantConfiguration : IEntityTypeConfiguration<Applicant>
             .HasForeignKey<HousingSearch>(hs => hs.ApplicantId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        // Relationship - documents collection (configured via ApplicantDocumentConfiguration)
+        // The backing field _documents is used automatically by EF Core
+        builder.Navigation(a => a.Documents)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+
         // Query filter for soft delete
         builder.HasQueryFilter(a => !a.IsDeleted);
 

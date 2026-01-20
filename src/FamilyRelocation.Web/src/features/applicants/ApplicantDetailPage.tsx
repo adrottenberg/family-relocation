@@ -23,8 +23,8 @@ import {
   PrinterOutlined,
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
-import { applicantsApi } from '../../api';
-import type { ApplicantDto, ChildDto, AuditLogDto } from '../../api/types';
+import { applicantsApi, documentsApi } from '../../api';
+import type { ApplicantDto, ChildDto, AuditLogDto, ApplicantDocumentDto } from '../../api/types';
 import { colors, statusTagStyles, stageTagStyles } from '../../theme/antd-theme';
 import { useAuthStore } from '../../store/authStore';
 import BoardReviewSection from './BoardReviewSection';
@@ -436,6 +436,12 @@ const OverviewTab = ({ applicant, onRecordBoardDecision, onUploadDocuments, canA
 const HousingSearchTab = ({ applicant }: { applicant: ApplicantDto }) => {
   const hs = applicant.housingSearch;
 
+  // Fetch applicant's documents
+  const { data: documents } = useQuery({
+    queryKey: ['applicantDocuments', applicant.id],
+    queryFn: () => documentsApi.getApplicantDocuments(applicant.id),
+  });
+
   if (!hs) {
     return <Empty description="No housing search data" />;
   }
@@ -460,24 +466,22 @@ const HousingSearchTab = ({ applicant }: { applicant: ApplicantDto }) => {
           </Descriptions>
         </Card>
 
-        {/* Agreements */}
-        <Card title="Agreements" size="small" className="info-card">
-          <Descriptions column={1} size="small">
-            <Descriptions.Item label="Broker Agreement">
-              {hs.brokerAgreementSigned ? (
-                <Tag color="success">Signed</Tag>
-              ) : (
-                <Tag color="warning">Not Signed</Tag>
-              )}
-            </Descriptions.Item>
-            <Descriptions.Item label="Community Takanos">
-              {hs.communityTakanosSigned ? (
-                <Tag color="success">Signed</Tag>
-              ) : (
-                <Tag color="warning">Not Signed</Tag>
-              )}
-            </Descriptions.Item>
-          </Descriptions>
+        {/* Documents */}
+        <Card title="Documents" size="small" className="info-card">
+          {documents && documents.length > 0 ? (
+            <Descriptions column={1} size="small">
+              {documents.map((doc: ApplicantDocumentDto) => (
+                <Descriptions.Item key={doc.id} label={doc.documentTypeName}>
+                  <Tag color="success">Uploaded</Tag>
+                  <span style={{ marginLeft: 8, fontSize: 12, color: '#888' }}>
+                    {new Date(doc.uploadedAt).toLocaleDateString()}
+                  </span>
+                </Descriptions.Item>
+              ))}
+            </Descriptions>
+          ) : (
+            <Empty description="No documents uploaded" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+          )}
         </Card>
 
         {/* Preferences */}

@@ -12,4 +12,30 @@ public static class WellKnownIds
     /// Pattern: All A's - structurally invalid as UUID v4, guaranteed unique.
     /// </summary>
     public static readonly Guid SelfSubmittedUserId = new("AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA");
+
+    // Document Type IDs (system types - cannot be deleted)
+    // Pattern: All B's prefix for document types
+
+    /// <summary>
+    /// Broker Agreement document type - required for house hunting.
+    /// </summary>
+    public static readonly Guid BrokerAgreementDocumentTypeId = new("BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBB01");
+
+    /// <summary>
+    /// Community Takanos document type - required for house hunting.
+    /// </summary>
+    public static readonly Guid CommunityTakanosDocumentTypeId = new("BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBB02");
+
+    // Stage Transition Requirement IDs
+    // Pattern: All C's prefix for stage requirements
+
+    /// <summary>
+    /// Requirement: BoardApproved -> HouseHunting needs Broker Agreement
+    /// </summary>
+    public static readonly Guid BoardToHuntingBrokerRequirementId = new("CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCC01");
+
+    /// <summary>
+    /// Requirement: BoardApproved -> HouseHunting needs Community Takanos
+    /// </summary>
+    public static readonly Guid BoardToHuntingTakanosRequirementId = new("CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCC02");
 }

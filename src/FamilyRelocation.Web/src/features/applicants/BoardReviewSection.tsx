@@ -1,4 +1,4 @@
-import { Card, Button, Descriptions, Tag, Space, Alert } from 'antd';
+import { Card, Button, Descriptions, Tag, Space, Alert, Spin } from 'antd';
 import {
   CheckCircleOutlined,
   CloseCircleOutlined,
@@ -6,6 +6,8 @@ import {
   EditOutlined,
   UploadOutlined,
 } from '@ant-design/icons';
+import { useQuery } from '@tanstack/react-query';
+import { documentsApi, getDocumentTypes } from '../../api';
 import type { ApplicantDto } from '../../api/types';
 
 interface BoardReviewSectionProps {
@@ -55,12 +57,31 @@ const BoardReviewSection = ({ applicant, onRecordDecision, onUploadDocuments, ca
 
   const isPending = decision === 'Pending';
   const isApproved = decision === 'Approved';
-  const housingSearch = applicant.housingSearch;
 
-  // Check if agreements are signed (for approved applicants)
-  const brokerSigned = housingSearch?.brokerAgreementSigned || false;
-  const takanosSigned = housingSearch?.communityTakanosSigned || false;
-  const bothSigned = brokerSigned && takanosSigned;
+  // Fetch document types and applicant documents
+  const { data: documentTypes, isLoading: typesLoading } = useQuery({
+    queryKey: ['documentTypes'],
+    queryFn: () => getDocumentTypes(true),
+    enabled: isApproved,
+  });
+
+  const { data: applicantDocuments, isLoading: docsLoading } = useQuery({
+    queryKey: ['applicantDocuments', applicant.id],
+    queryFn: () => documentsApi.getApplicantDocuments(applicant.id),
+    enabled: isApproved,
+  });
+
+  // Check which documents are missing
+  const getMissingDocuments = () => {
+    if (!documentTypes || !applicantDocuments) return [];
+    return documentTypes.filter(
+      (dt) => !applicantDocuments.some((doc) => doc.documentTypeId === dt.id)
+    );
+  };
+
+  const missingDocuments = getMissingDocuments();
+  const allDocumentsUploaded = documentTypes && applicantDocuments && missingDocuments.length === 0;
+  const isLoading = typesLoading || docsLoading;
 
   return (
     <Card
@@ -118,7 +139,13 @@ const BoardReviewSection = ({ applicant, onRecordDecision, onUploadDocuments, ca
         )}
 
         {/* Next Steps Alert for Approved */}
-        {isApproved && !bothSigned && (
+        {isApproved && isLoading && (
+          <div style={{ textAlign: 'center', padding: 16 }}>
+            <Spin size="small" />
+          </div>
+        )}
+
+        {isApproved && !isLoading && missingDocuments.length > 0 && (
           <Alert
             type="info"
             showIcon
@@ -126,8 +153,9 @@ const BoardReviewSection = ({ applicant, onRecordDecision, onUploadDocuments, ca
             description={
               <div>
                 <ul style={{ margin: '8px 0 12px', paddingLeft: 20 }}>
-                  {!brokerSigned && <li>Broker Agreement needs to be signed</li>}
-                  {!takanosSigned && <li>Community Takanos needs to be signed</li>}
+                  {missingDocuments.map((doc) => (
+                    <li key={doc.id}>{doc.displayName} needs to be uploaded</li>
+                  ))}
                 </ul>
                 <Button
                   type="primary"
@@ -141,7 +169,7 @@ const BoardReviewSection = ({ applicant, onRecordDecision, onUploadDocuments, ca
           />
         )}
 
-        {isApproved && bothSigned && (
+        {isApproved && !isLoading && allDocumentsUploaded && (
           <Alert
             type="success"
             showIcon

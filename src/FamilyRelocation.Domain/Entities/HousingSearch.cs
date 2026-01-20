@@ -56,15 +56,6 @@ public class HousingSearch : Entity<Guid>
     // Notes
     public string? Notes { get; private set; }
 
-    // Required Agreements (must be signed before starting house hunting)
-    public string? BrokerAgreementDocumentUrl { get; private set; }
-    public DateTime? BrokerAgreementSignedDate { get; private set; }
-    public bool BrokerAgreementSigned => BrokerAgreementSignedDate.HasValue;
-
-    public string? CommunityTakanosDocumentUrl { get; private set; }
-    public DateTime? CommunityTakanosSignedDate { get; private set; }
-    public bool CommunityTakanosSigned => CommunityTakanosSignedDate.HasValue;
-
     // Audit
     public Guid CreatedBy { get; private set; }
     public DateTime CreatedDate { get; private set; }
@@ -127,10 +118,10 @@ public class HousingSearch : Entity<Guid>
 
     /// <summary>
     /// Transition to BoardApproved stage after board approval.
-    /// If agreements are already signed, automatically continues to HouseHunting.
     /// </summary>
     /// <param name="modifiedBy">User ID making the change.</param>
-    public void ApproveBoardReview(Guid modifiedBy)
+    /// <param name="hasRequiredDocuments">True if all required documents are uploaded for the next transition.</param>
+    public void ApproveBoardReview(Guid modifiedBy, bool hasRequiredDocuments = false)
     {
         if (Stage != HousingSearchStage.Submitted)
             throw new InvalidOperationException(
@@ -138,8 +129,8 @@ public class HousingSearch : Entity<Guid>
 
         TransitionTo(HousingSearchStage.BoardApproved, modifiedBy);
 
-        // If agreements are already signed, automatically start house hunting
-        if (AreAgreementsSigned)
+        // If all required documents are uploaded, automatically start house hunting
+        if (hasRequiredDocuments)
         {
             TransitionTo(HousingSearchStage.HouseHunting, modifiedBy);
         }
@@ -147,7 +138,7 @@ public class HousingSearch : Entity<Guid>
 
     /// <summary>
     /// Begin house hunting (from BoardApproved stage).
-    /// Requires signed agreements.
+    /// Caller must verify that all required documents are uploaded before calling this.
     /// </summary>
     /// <param name="modifiedBy">User ID making the change.</param>
     public void StartHouseHunting(Guid modifiedBy)
@@ -158,47 +149,8 @@ public class HousingSearch : Entity<Guid>
                 $"Use Resume to restart from Paused, or ContractFellThrough from UnderContract/Closed. " +
                 $"Current stage: {Stage}");
 
-        if (!AreAgreementsSigned)
-            throw new InvalidOperationException(
-                "Both broker agreement and community takanos must be signed with uploaded documents before starting house hunting.");
-
         TransitionTo(HousingSearchStage.HouseHunting, modifiedBy);
     }
-
-    /// <summary>
-    /// Record that the broker agreement has been signed and document uploaded.
-    /// </summary>
-    public void RecordBrokerAgreementSigned(string documentUrl, Guid modifiedBy)
-    {
-        if (string.IsNullOrWhiteSpace(documentUrl))
-            throw new ArgumentException("Document URL is required", nameof(documentUrl));
-
-        BrokerAgreementDocumentUrl = documentUrl;
-        BrokerAgreementSignedDate = DateTime.UtcNow;
-        ModifiedBy = modifiedBy;
-        ModifiedDate = DateTime.UtcNow;
-    }
-
-    /// <summary>
-    /// Record that the community takanos agreement has been signed and document uploaded.
-    /// </summary>
-    public void RecordCommunityTakanosSigned(string documentUrl, Guid modifiedBy)
-    {
-        if (string.IsNullOrWhiteSpace(documentUrl))
-            throw new ArgumentException("Document URL is required", nameof(documentUrl));
-
-        CommunityTakanosDocumentUrl = documentUrl;
-        CommunityTakanosSignedDate = DateTime.UtcNow;
-        ModifiedBy = modifiedBy;
-        ModifiedDate = DateTime.UtcNow;
-    }
-
-    /// <summary>
-    /// Check if all required agreements are signed with uploaded documents.
-    /// </summary>
-    public bool AreAgreementsSigned =>
-        BrokerAgreementSigned && !string.IsNullOrEmpty(BrokerAgreementDocumentUrl) &&
-        CommunityTakanosSigned && !string.IsNullOrEmpty(CommunityTakanosDocumentUrl);
 
     /// <summary>
     /// Reject the housing search (board rejection).

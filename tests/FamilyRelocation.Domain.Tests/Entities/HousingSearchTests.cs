@@ -56,12 +56,10 @@ public class HousingSearchTests
     }
 
     [Fact]
-    public void StartHouseHunting_FromBoardApproved_WithAgreements_ShouldMoveToHouseHunting()
+    public void StartHouseHunting_FromBoardApproved_ShouldMoveToHouseHunting()
     {
         // Arrange
         var housingSearch = CreateBoardApprovedSearch();
-        housingSearch.RecordBrokerAgreementSigned("https://s3.example.com/broker.pdf", _userId);
-        housingSearch.RecordCommunityTakanosSigned("https://s3.example.com/takanos.pdf", _userId);
         housingSearch.ClearDomainEvents();
 
         // Act
@@ -92,6 +90,21 @@ public class HousingSearchTests
     }
 
     [Fact]
+    public void ApproveBoardReview_WithRequiredDocuments_ShouldAutoTransitionToHouseHunting()
+    {
+        // Arrange
+        var housingSearch = CreateTestHousingSearch();
+        housingSearch.ClearDomainEvents();
+
+        // Act - Approve with required documents already uploaded
+        housingSearch.ApproveBoardReview(_userId, hasRequiredDocuments: true);
+
+        // Assert - Should auto-transition to HouseHunting
+        housingSearch.Stage.Should().Be(HousingSearchStage.HouseHunting);
+        housingSearch.DomainEvents.Should().HaveCount(2);
+    }
+
+    [Fact]
     public void ApproveBoardReview_FromNonSubmitted_ShouldThrow()
     {
         // Arrange
@@ -117,34 +130,6 @@ public class HousingSearchTests
         // Assert
         act.Should().Throw<InvalidOperationException>()
             .WithMessage("*BoardApproved*");
-    }
-
-    [Fact]
-    public void StartHouseHunting_FromBoardApproved_WithoutAgreements_ShouldThrow()
-    {
-        // Arrange
-        var housingSearch = CreateBoardApprovedSearch();
-
-        // Act
-        var act = () => housingSearch.StartHouseHunting(_userId);
-
-        // Assert
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*broker agreement*community takanos*");
-    }
-
-    [Fact]
-    public void StartHouseHunting_FromBoardApproved_WithOnlyBrokerAgreement_ShouldThrow()
-    {
-        // Arrange
-        var housingSearch = CreateBoardApprovedSearch();
-        housingSearch.RecordBrokerAgreementSigned("https://s3.example.com/broker.pdf", _userId);
-
-        // Act
-        var act = () => housingSearch.StartHouseHunting(_userId);
-
-        // Assert
-        act.Should().Throw<InvalidOperationException>();
     }
 
     [Fact]
@@ -491,15 +476,8 @@ public class HousingSearchTests
         // Act - Progress through entire workflow
         housingSearch.Stage.Should().Be(HousingSearchStage.Submitted);
 
-        // Board approval
-        housingSearch.ApproveBoardReview(_userId);
-        housingSearch.Stage.Should().Be(HousingSearchStage.BoardApproved);
-
-        // Sign required agreements
-        housingSearch.RecordBrokerAgreementSigned("https://s3.example.com/broker.pdf", _userId);
-        housingSearch.RecordCommunityTakanosSigned("https://s3.example.com/takanos.pdf", _userId);
-
-        housingSearch.StartHouseHunting(_userId);
+        // Board approval (with documents already uploaded)
+        housingSearch.ApproveBoardReview(_userId, hasRequiredDocuments: true);
         housingSearch.Stage.Should().Be(HousingSearchStage.HouseHunting);
 
         housingSearch.PutUnderContract(propertyId, new Money(500000), DateTime.UtcNow.AddDays(60), _userId);
@@ -516,6 +494,39 @@ public class HousingSearchTests
         // Assert final state
         housingSearch.IsComplete.Should().BeTrue();
         housingSearch.MovedInStatus.Should().Be(MovedInStatus.MovedIn);
+        housingSearch.CurrentContract.Should().NotBeNull();
+        housingSearch.CurrentContract!.PropertyId.Should().Be(propertyId);
+    }
+
+    [Fact]
+    public void FullWorkflow_WithManualHouseHuntingStart_ShouldProgressThroughAllStages()
+    {
+        // Arrange
+        var housingSearch = CreateTestHousingSearch();
+        var propertyId = Guid.NewGuid();
+
+        // Act - Progress through entire workflow (documents uploaded after board approval)
+        housingSearch.Stage.Should().Be(HousingSearchStage.Submitted);
+
+        // Board approval without documents
+        housingSearch.ApproveBoardReview(_userId, hasRequiredDocuments: false);
+        housingSearch.Stage.Should().Be(HousingSearchStage.BoardApproved);
+
+        // Manually start house hunting (caller verifies documents are uploaded)
+        housingSearch.StartHouseHunting(_userId);
+        housingSearch.Stage.Should().Be(HousingSearchStage.HouseHunting);
+
+        housingSearch.PutUnderContract(propertyId, new Money(500000), DateTime.UtcNow.AddDays(60), _userId);
+        housingSearch.Stage.Should().Be(HousingSearchStage.UnderContract);
+
+        housingSearch.RecordClosing(DateTime.UtcNow, _userId);
+        housingSearch.Stage.Should().Be(HousingSearchStage.Closed);
+
+        housingSearch.RecordMovedIn(DateTime.UtcNow, _userId);
+        housingSearch.Stage.Should().Be(HousingSearchStage.MovedIn);
+
+        // Assert final state
+        housingSearch.IsComplete.Should().BeTrue();
         housingSearch.CurrentContract.Should().NotBeNull();
         housingSearch.CurrentContract!.PropertyId.Should().Be(propertyId);
     }
@@ -621,19 +632,15 @@ public class HousingSearchTests
     private HousingSearch CreateHouseHuntingSearch()
     {
         var housingSearch = CreateTestHousingSearch();
-        // Board approval first
-        housingSearch.ApproveBoardReview(_userId);
-        // Sign required agreements before starting house hunting
-        housingSearch.RecordBrokerAgreementSigned("https://s3.example.com/broker-agreement.pdf", _userId);
-        housingSearch.RecordCommunityTakanosSigned("https://s3.example.com/takanos.pdf", _userId);
-        housingSearch.StartHouseHunting(_userId);
+        // Board approval with required documents (auto-transitions to HouseHunting)
+        housingSearch.ApproveBoardReview(_userId, hasRequiredDocuments: true);
         return housingSearch;
     }
 
     private HousingSearch CreateBoardApprovedSearch()
     {
         var housingSearch = CreateTestHousingSearch();
-        housingSearch.ApproveBoardReview(_userId);
+        housingSearch.ApproveBoardReview(_userId, hasRequiredDocuments: false);
         return housingSearch;
     }
 }

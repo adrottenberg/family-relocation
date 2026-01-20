@@ -17,6 +17,11 @@ public interface IApplicationDbContext
     void Add<TEntity>(TEntity entity) where TEntity : class;
 
     /// <summary>
+    /// Marks an entity for removal on SaveChanges
+    /// </summary>
+    void Remove<TEntity>(TEntity entity) where TEntity : class;
+
+    /// <summary>
     /// Saves all changes made to the context.
     /// </summary>
     /// <param name="cancellationToken">Cancellation token.</param>
