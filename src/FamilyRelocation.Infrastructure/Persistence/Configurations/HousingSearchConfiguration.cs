@@ -5,6 +5,12 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace FamilyRelocation.Infrastructure.Persistence.Configurations;
 
+/// <summary>
+/// EF Core 10 configuration for HousingSearch entity.
+/// Uses Npgsql 10 JSON mapping best practices:
+/// - OwnsOne + ToJson() for optional complex types
+/// - OwnsMany + ToJson() for collections
+/// </summary>
 public class HousingSearchConfiguration : IEntityTypeConfiguration<HousingSearch>
 {
     public void Configure(EntityTypeBuilder<HousingSearch> builder)
@@ -31,30 +37,40 @@ public class HousingSearchConfiguration : IEntityTypeConfiguration<HousingSearch
         builder.Property(h => h.StageChangedDate)
             .IsRequired();
 
-        // Current Contract (JSON column - contains nested Money)
-        builder.Property(h => h.CurrentContract)
-            .HasColumnType("jsonb")
-            .HasConversion(
-                v => v == null ? null : System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
-                v => string.IsNullOrEmpty(v) ? null : System.Text.Json.JsonSerializer.Deserialize<Contract>(v, (System.Text.Json.JsonSerializerOptions?)null));
+        // Current Contract - OPTIONAL complex type stored as JSONB
+        // Using OwnsOne + ToJson() for nullable types
+        builder.OwnsOne(h => h.CurrentContract, contract =>
+        {
+            contract.ToJson();
+            // Price is a nested value object (Money)
+            contract.OwnsOne(c => c.Price);
+        });
 
-        // Failed Contracts (JSON column - contains nested Contract with Money)
-        builder.Property(h => h.FailedContracts)
-            .HasColumnType("jsonb")
-            .HasConversion(
-                v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
-                v => System.Text.Json.JsonSerializer.Deserialize<List<FailedContractAttempt>>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? new List<FailedContractAttempt>());
+        // Failed Contracts - collection stored as JSONB (uses backing field)
+        // Using OwnsMany + ToJson() for collections
+        builder.OwnsMany<FailedContractAttempt>("_failedContracts", failed =>
+        {
+            failed.ToJson("FailedContracts");
+            // Each FailedContractAttempt has a nested Contract with Price
+            failed.OwnsOne(f => f.Contract, c => c.OwnsOne(x => x.Price));
+        });
+
+        // Ignore the computed property (it uses the backing field)
+        builder.Ignore(h => h.FailedContracts);
 
         // Move In
         builder.Property(h => h.MovedInStatus);
         builder.Property(h => h.MovedInDate);
 
-        // Housing Preferences (JSON column - contains nested Money and ShulProximityPreference)
-        builder.Property(h => h.Preferences)
-            .HasColumnType("jsonb")
-            .HasConversion(
-                v => v == null ? null : System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
-                v => string.IsNullOrEmpty(v) ? null : System.Text.Json.JsonSerializer.Deserialize<HousingPreferences>(v, (System.Text.Json.JsonSerializerOptions?)null));
+        // Housing Preferences - OPTIONAL complex type stored as JSONB
+        // Using OwnsOne + ToJson() for nullable types
+        builder.OwnsOne(h => h.Preferences, prefs =>
+        {
+            prefs.ToJson();
+            // Nested value objects
+            prefs.OwnsOne(p => p.Budget);
+            prefs.OwnsOne(p => p.ShulProximity);
+        });
 
         // Notes
         builder.Property(h => h.Notes)

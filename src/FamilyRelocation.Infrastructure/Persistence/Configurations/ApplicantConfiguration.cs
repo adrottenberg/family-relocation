@@ -5,6 +5,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace FamilyRelocation.Infrastructure.Persistence.Configurations;
 
+/// <summary>
+/// EF Core 10 configuration for Applicant entity.
+/// Uses Npgsql 10 JSON mapping best practices:
+/// - OwnsOne + ToJson() for complex types (both required and optional)
+/// - OwnsMany + ToJson() for collections
+/// Note: ComplexProperty doesn't handle nested collections well, so OwnsOne is preferred.
+/// </summary>
 public class ApplicantConfiguration : IEntityTypeConfiguration<Applicant>
 {
     public void Configure(EntityTypeBuilder<Applicant> builder)
@@ -20,16 +27,15 @@ public class ApplicantConfiguration : IEntityTypeConfiguration<Applicant>
         // Ignore the ApplicantId alias property
         builder.Ignore(a => a.ApplicantId);
 
-        // Husband Info (JSON column with EF Core native JSON support for LINQ queries)
-        // Email is stored as a plain string for simpler deserialization
+        // Husband Info - stored as JSONB
+        // Using OwnsOne + ToJson() (handles nested collections like PhoneNumbers better)
         builder.OwnsOne(a => a.Husband, husband =>
         {
             husband.ToJson();
             husband.OwnsMany(h => h.PhoneNumbers);
         });
 
-        // Wife Info (JSON column with EF Core native JSON support for LINQ queries)
-        // Email is stored as a plain string for simpler deserialization
+        // Wife Info - OPTIONAL complex type stored as JSONB
         builder.OwnsOne(a => a.Wife, wife =>
         {
             wife.ToJson();
@@ -39,7 +45,8 @@ public class ApplicantConfiguration : IEntityTypeConfiguration<Applicant>
         // Ignore computed properties
         builder.Ignore(a => a.FamilyName);
 
-        // Address Value Object (owned - flattened to columns)
+        // Address Value Object - flattened to columns (not JSON)
+        // Simple value objects with no collections work better as columns
         builder.OwnsOne(a => a.Address, address =>
         {
             address.Property(addr => addr.Street)
@@ -66,12 +73,12 @@ public class ApplicantConfiguration : IEntityTypeConfiguration<Applicant>
             address.Ignore(addr => addr.FullAddress);
         });
 
-        // Children (JSON column)
-        builder.Property(a => a.Children)
-            .HasColumnType("jsonb")
-            .HasConversion(
-                v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
-                v => System.Text.Json.JsonSerializer.Deserialize<List<Child>>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? new List<Child>());
+        // Children - collection stored as JSONB
+        // Using OwnsMany + ToJson() for collections
+        builder.OwnsMany(a => a.Children, child =>
+        {
+            child.ToJson();
+        });
 
         // Ignore computed property
         builder.Ignore(a => a.NumberOfChildren);
@@ -83,7 +90,8 @@ public class ApplicantConfiguration : IEntityTypeConfiguration<Applicant>
         builder.Property(a => a.ShabbosShul)
             .HasMaxLength(200);
 
-        // Board Review (owned value object)
+        // Board Review - flattened to columns (not JSON)
+        // Simple value objects work better as columns for querying/indexing
         builder.OwnsOne(a => a.BoardReview, review =>
         {
             review.Property(r => r.Decision)

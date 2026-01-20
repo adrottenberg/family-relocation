@@ -195,21 +195,16 @@ export const theme: ThemeConfig = {
 
   components: {
     // ==========================================================================
-    // BUTTON - Light style (Option B)
+    // BUTTON - Solid primary style
     // ==========================================================================
     Button: {
-      // Primary button - light background with dark text
-      colorPrimary: colors.primary[700],
-      colorPrimaryHover: colors.primary[700],
+      // Primary button - solid background with white text
+      colorPrimary: colors.primary[600],
+      colorPrimaryHover: colors.primary[500],
       colorPrimaryActive: colors.primary[700],
-      primaryColor: colors.primary[700], // Text color
-      colorPrimaryBg: colors.primary[150], // Background
       defaultBg: '#ffffff',
       defaultBorderColor: colors.neutral[300],
-      
-      // Override primary button styles
-      algorithm: true,
-      
+
       // Border radius
       borderRadius: 6,
       borderRadiusLG: 8,
@@ -217,7 +212,7 @@ export const theme: ThemeConfig = {
 
       // Font
       fontWeight: 600,
-      
+
       // Padding
       paddingInline: 18,
       paddingInlineLG: 24,

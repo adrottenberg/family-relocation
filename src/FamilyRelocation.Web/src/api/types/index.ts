@@ -1,0 +1,173 @@
+// Auth types
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface LoginResponse {
+  accessToken: string;
+  idToken: string;
+  refreshToken: string;
+  expiresIn: number;
+}
+
+export interface ChallengeResponse {
+  challengeName: string;
+  session: string;
+  message: string;
+  requiredFields: string[];
+}
+
+export interface RefreshTokenRequest {
+  username: string;
+  refreshToken: string;
+}
+
+export interface RefreshTokenResponse {
+  accessToken: string;
+  idToken: string;
+  expiresIn: number;
+}
+
+// Applicant list item (lightweight for list views)
+export interface ApplicantListItemDto {
+  id: string;
+  husbandFullName: string;
+  wifeMaidenName?: string;
+  husbandEmail?: string;
+  husbandPhone?: string;
+  boardDecision?: string;
+  createdDate: string;
+  stage?: string;
+  housingSearchId?: string;
+}
+
+// Applicant full detail
+export interface ApplicantDto {
+  id: string;
+  husband: HusbandInfoDto;
+  wife?: SpouseInfoDto;
+  address?: AddressDto;
+  children?: ChildDto[];
+  currentKehila?: string;
+  shabbosShul?: string;
+  familyName: string;
+  numberOfChildren: number;
+  isPendingBoardReview: boolean;
+  isSelfSubmitted: boolean;
+  boardReview?: BoardReviewDto;
+  housingSearch?: HousingSearchDto;
+  createdDate: string;
+}
+
+export interface HusbandInfoDto {
+  firstName: string;
+  lastName: string;
+  fatherName?: string;
+  email?: string;
+  phoneNumbers?: PhoneNumberDto[];
+  occupation?: string;
+  employerName?: string;
+}
+
+export interface SpouseInfoDto {
+  firstName: string;
+  maidenName?: string;
+  fatherName?: string;
+  email?: string;
+  phoneNumbers?: PhoneNumberDto[];
+  occupation?: string;
+  employerName?: string;
+  highSchool?: string;
+}
+
+export interface PhoneNumberDto {
+  number: string;
+  type: string;
+  isPrimary: boolean;
+}
+
+export interface AddressDto {
+  street: string;
+  street2?: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  fullAddress?: string;
+}
+
+export interface ChildDto {
+  name: string;
+  age: number;
+  gender: string;
+  school?: string;
+}
+
+export interface BoardReviewDto {
+  decision: string;
+  reviewDate?: string;
+  notes?: string;
+}
+
+export interface HousingSearchDto {
+  id: string;
+  stage: string;
+  stageChangedDate: string;
+  preferences?: HousingPreferencesDto;
+  currentContract?: ContractDto;
+  failedContractCount: number;
+  brokerAgreementSigned: boolean;
+  communityTakanosSigned: boolean;
+  notes?: string;
+}
+
+export interface HousingPreferencesDto {
+  budgetAmount?: number;
+  minBedrooms?: number;
+  minBathrooms?: number;
+  requiredFeatures?: string[];
+  moveTimeline?: string;
+  shulProximity?: ShulProximityDto;
+}
+
+export interface MoneyDto {
+  amount: number;
+  currency: string;
+}
+
+export interface ShulProximityDto {
+  maxWalkingMinutes?: number;
+  preferredShuls?: string[];
+}
+
+export interface ContractDto {
+  propertyId?: string;
+  price: number;
+  contractDate: string;
+  expectedClosingDate?: string;
+  actualClosingDate?: string;
+}
+
+// Audit log types
+export interface AuditLogDto {
+  id: string;
+  entityType: string;
+  entityId: string;
+  action: string;
+  oldValues?: Record<string, unknown>;
+  newValues?: Record<string, unknown>;
+  userId?: string;
+  userName?: string;
+  timestamp: string;
+}
+
+// Paginated list
+export interface PaginatedList<T> {
+  items: T[];
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  totalCount: number;
+  hasPreviousPage: boolean;
+  hasNextPage: boolean;
+}

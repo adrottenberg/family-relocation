@@ -6,10 +6,10 @@ namespace FamilyRelocation.Domain.ValueObjects;
 /// </summary>
 public sealed record ShulProximityPreference
 {
-    public List<Guid> PreferredShulIds { get; }
-    public double? MaxWalkingDistanceMiles { get; }
-    public int? MaxWalkingTimeMinutes { get; }
-    public bool AnyShulAcceptable { get; }
+    public List<Guid> PreferredShulIds { get; init; }
+    public double? MaxWalkingDistanceMiles { get; init; }
+    public int? MaxWalkingTimeMinutes { get; init; }
+    public bool AnyShulAcceptable { get; init; }
 
     // Private parameterless constructor for EF Core
     private ShulProximityPreference()

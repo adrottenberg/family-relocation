@@ -7,12 +7,12 @@ namespace FamilyRelocation.Domain.ValueObjects;
 /// </summary>
 public sealed record HousingPreferences
 {
-    public Money? Budget { get; }
-    public int? MinBedrooms { get; }
-    public decimal? MinBathrooms { get; }
-    public List<string> RequiredFeatures { get; }
-    public ShulProximityPreference? ShulProximity { get; }
-    public MoveTimeline? MoveTimeline { get; }
+    public Money? Budget { get; init; }
+    public int? MinBedrooms { get; init; }
+    public decimal? MinBathrooms { get; init; }
+    public List<string> RequiredFeatures { get; init; }
+    public ShulProximityPreference? ShulProximity { get; init; }
+    public MoveTimeline? MoveTimeline { get; init; }
 
     // Private parameterless constructor for EF Core
     private HousingPreferences()

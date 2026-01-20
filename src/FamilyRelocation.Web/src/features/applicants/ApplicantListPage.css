@@ -1,0 +1,64 @@
+.applicant-list-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Page Header */
+.applicant-list-page .page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header-title-section {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+/* Filters Card */
+.filters-card {
+  padding: 4px 0;
+}
+
+.filters-card .ant-card-body {
+  padding: 16px;
+}
+
+/* Table Card */
+.table-card .ant-card-body {
+  padding: 0;
+}
+
+/* Table styling */
+.table-card .ant-table-thead > tr > th {
+  background: var(--neutral-50);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--neutral-500);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.table-card .ant-table-tbody > tr:hover > td {
+  background: var(--primary-50) !important;
+}
+
+.table-card .ant-table-tbody > tr > td {
+  padding: 16px;
+}
+
+/* Tags */
+.table-card .ant-tag {
+  border: none;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: 4px;
+}
+
+/* Pagination */
+.table-card .ant-pagination {
+  padding: 16px;
+  margin: 0;
+}

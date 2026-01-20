@@ -12,10 +12,10 @@ public enum Gender
 /// </summary>
 public sealed record Child
 {
-    public int Age { get; }
-    public Gender Gender { get; }
-    public string? Name { get; }
-    public string? School { get; }
+    public int Age { get; init; }
+    public Gender Gender { get; init; }
+    public string? Name { get; init; }
+    public string? School { get; init; }
 
     // Private parameterless constructor for EF Core/JSON deserialization
     private Child()
