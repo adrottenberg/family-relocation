@@ -1,4 +1,5 @@
 using Amazon.CognitoIdentityProvider;
+using Amazon.S3;
 using FamilyRelocation.Application.Auth;
 using FamilyRelocation.Application.Common.Interfaces;
 using FamilyRelocation.Infrastructure.AWS;
@@ -41,9 +42,13 @@ public static class DependencyInjection
         // AWS Services
         services.AddDefaultAWSOptions(configuration.GetAWSOptions());
         services.AddAWSService<IAmazonCognitoIdentityProvider>();
+        services.AddAWSService<IAmazonS3>();
 
         // Authentication
         services.AddScoped<IAuthenticationService, CognitoAuthenticationService>();
+
+        // Document Storage
+        services.AddScoped<IDocumentStorageService, S3DocumentStorageService>();
 
         return services;
     }
