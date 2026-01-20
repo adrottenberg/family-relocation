@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   Card,
@@ -22,8 +23,11 @@ import {
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { applicantsApi } from '../../api';
-import type { ApplicantDto, ChildDto, AuditLogDto, HusbandInfoDto, SpouseInfoDto } from '../../api/types';
+import type { ApplicantDto, ChildDto, AuditLogDto } from '../../api/types';
 import { colors, statusTagStyles, stageTagStyles } from '../../theme/antd-theme';
+import BoardReviewSection from './BoardReviewSection';
+import SetBoardDecisionModal from './SetBoardDecisionModal';
+import EditApplicantDrawer from './EditApplicantDrawer';
 import './ApplicantDetailPage.css';
 
 const { Title, Text } = Typography;
@@ -31,6 +35,8 @@ const { Title, Text } = Typography;
 const ApplicantDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [boardDecisionModalOpen, setBoardDecisionModalOpen] = useState(false);
+  const [editDrawerOpen, setEditDrawerOpen] = useState(false);
 
   const { data: applicant, isLoading, error } = useQuery({
     queryKey: ['applicant', id],
@@ -101,7 +107,12 @@ const ApplicantDetailPage = () => {
     {
       key: 'overview',
       label: 'Overview',
-      children: <OverviewTab applicant={applicant} />,
+      children: (
+        <OverviewTab
+          applicant={applicant}
+          onRecordBoardDecision={() => setBoardDecisionModalOpen(true)}
+        />
+      ),
     },
     {
       key: 'housing',
@@ -149,7 +160,9 @@ const ApplicantDetailPage = () => {
             </div>
           </div>
           <div className="header-actions">
-            <Button icon={<EditOutlined />}>Edit</Button>
+            <Button icon={<EditOutlined />} onClick={() => setEditDrawerOpen(true)}>
+              Edit
+            </Button>
           </div>
         </div>
       </Card>
@@ -158,6 +171,20 @@ const ApplicantDetailPage = () => {
       <Card className="tabs-card">
         <Tabs items={tabItems} />
       </Card>
+
+      {/* Board Decision Modal */}
+      <SetBoardDecisionModal
+        open={boardDecisionModalOpen}
+        onClose={() => setBoardDecisionModalOpen(false)}
+        applicant={applicant}
+      />
+
+      {/* Edit Applicant Drawer */}
+      <EditApplicantDrawer
+        open={editDrawerOpen}
+        onClose={() => setEditDrawerOpen(false)}
+        applicant={applicant}
+      />
     </div>
   );
 };
@@ -170,12 +197,23 @@ const getPrimaryPhone = (phoneNumbers?: { number: string; isPrimary: boolean }[]
 };
 
 // Overview Tab
-const OverviewTab = ({ applicant }: { applicant: ApplicantDto }) => {
+interface OverviewTabProps {
+  applicant: ApplicantDto;
+  onRecordBoardDecision: () => void;
+}
+
+const OverviewTab = ({ applicant, onRecordBoardDecision }: OverviewTabProps) => {
   const { husband, wife, address } = applicant;
 
   return (
     <div className="tab-content">
       <div className="info-grid">
+        {/* Board Review - First card for visibility */}
+        <BoardReviewSection
+          applicant={applicant}
+          onRecordDecision={onRecordBoardDecision}
+        />
+
         {/* Husband Info */}
         <Card title="Husband" size="small" className="info-card">
           <Descriptions column={1} size="small">

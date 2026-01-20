@@ -6,6 +6,15 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { applicantsApi } from '../../api';
 import type { ApplicantListItemDto } from '../../api/types';
 import { colors } from '../../theme/antd-theme';
+import { validateTransition, type Stage, type TransitionType } from './transitionRules';
+import {
+  TransitionBlockedModal,
+  BoardApprovalRequiredModal,
+  ContractInfoModal,
+  ClosingConfirmModal,
+  ContractFailedModal,
+  AgreementsRequiredModal,
+} from './modals';
 import './PipelinePage.css';
 
 const { Title, Text } = Typography;
@@ -42,12 +51,34 @@ interface PipelineStage {
   items: PipelineItem[];
 }
 
+// Modal state type
+interface ModalState {
+  type: TransitionType | null;
+  applicantId: string;
+  familyName: string;
+  fromStage: string;
+  toStage: string;
+  message: string;
+  brokerAgreementSigned?: boolean;
+  communityTakanosSigned?: boolean;
+}
+
+const initialModalState: ModalState = {
+  type: null,
+  applicantId: '',
+  familyName: '',
+  fromStage: '',
+  toStage: '',
+  message: '',
+};
+
 const PipelinePage = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [cityFilter, setCityFilter] = useState<string | undefined>();
   const [boardDecisionFilter, setBoardDecisionFilter] = useState<string | undefined>();
+  const [modalState, setModalState] = useState<ModalState>(initialModalState);
 
   // Fetch all applicants with a large page size for the pipeline view
   const { data: rawData, isLoading, error } = useQuery({
@@ -119,6 +150,8 @@ const PipelinePage = () => {
   const handleDragStart = (e: React.DragEvent, item: PipelineItem) => {
     e.dataTransfer.setData('applicantId', item.applicantId);
     e.dataTransfer.setData('currentStage', item.stage);
+    e.dataTransfer.setData('familyName', item.familyName);
+    e.dataTransfer.setData('boardDecision', item.boardDecision);
     e.dataTransfer.effectAllowed = 'move';
   };
 
@@ -131,10 +164,44 @@ const PipelinePage = () => {
     e.preventDefault();
     const applicantId = e.dataTransfer.getData('applicantId');
     const currentStage = e.dataTransfer.getData('currentStage');
+    const familyName = e.dataTransfer.getData('familyName');
+    const boardDecision = e.dataTransfer.getData('boardDecision');
 
-    if (currentStage !== targetStage) {
+    if (currentStage === targetStage) return;
+
+    // Validate the transition
+    const result = validateTransition(
+      currentStage as Stage,
+      targetStage as Stage,
+      {
+        boardDecision,
+        // We don't have agreement status in the list view, so assume false for now
+        // In a real app, we'd fetch this or include it in the list data
+        brokerAgreementSigned: false,
+        communityTakanosSigned: false,
+      }
+    );
+
+    if (result.type === 'direct') {
+      // Direct transition allowed
       changeStage.mutate({ applicantId, newStage: targetStage });
+    } else {
+      // Show appropriate modal
+      setModalState({
+        type: result.type,
+        applicantId,
+        familyName,
+        fromStage: currentStage,
+        toStage: targetStage,
+        message: result.message || '',
+        brokerAgreementSigned: false,
+        communityTakanosSigned: false,
+      });
     }
+  };
+
+  const closeModal = () => {
+    setModalState(initialModalState);
   };
 
   const handleCardClick = (applicantId: string) => {
@@ -220,6 +287,51 @@ const PipelinePage = () => {
           ))}
         </div>
       )}
+
+      {/* Transition Modals */}
+      <TransitionBlockedModal
+        open={modalState.type === 'blocked'}
+        onClose={closeModal}
+        message={modalState.message}
+        familyName={modalState.familyName}
+      />
+
+      <BoardApprovalRequiredModal
+        open={modalState.type === 'needsBoardApproval'}
+        onClose={closeModal}
+        applicantId={modalState.applicantId}
+        familyName={modalState.familyName}
+      />
+
+      <AgreementsRequiredModal
+        open={modalState.type === 'needsAgreements'}
+        onClose={closeModal}
+        applicantId={modalState.applicantId}
+        familyName={modalState.familyName}
+        brokerAgreementSigned={modalState.brokerAgreementSigned || false}
+        communityTakanosSigned={modalState.communityTakanosSigned || false}
+      />
+
+      <ContractInfoModal
+        open={modalState.type === 'needsContractInfo'}
+        onClose={closeModal}
+        applicantId={modalState.applicantId}
+        familyName={modalState.familyName}
+      />
+
+      <ClosingConfirmModal
+        open={modalState.type === 'needsClosingInfo'}
+        onClose={closeModal}
+        applicantId={modalState.applicantId}
+        familyName={modalState.familyName}
+      />
+
+      <ContractFailedModal
+        open={modalState.type === 'contractFailed'}
+        onClose={closeModal}
+        applicantId={modalState.applicantId}
+        familyName={modalState.familyName}
+      />
     </div>
   );
 };
