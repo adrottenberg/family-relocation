@@ -55,6 +55,12 @@
   font-weight: 700;
 }
 
+.sidebar-logo .logo-image {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+}
+
 .sidebar-logo .logo-text {
   display: flex;
   flex-direction: column;

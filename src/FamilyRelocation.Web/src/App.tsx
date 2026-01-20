@@ -6,6 +6,7 @@ import { lazy, Suspense } from 'react';
 import { Spin } from 'antd';
 
 const LoginPage = lazy(() => import('./features/auth/LoginPage'));
+const PublicApplicationPage = lazy(() => import('./features/application/PublicApplicationPage'));
 const AppLayout = lazy(() => import('./components/layout/AppLayout'));
 const DashboardPage = lazy(() => import('./features/dashboard/DashboardPage'));
 const ApplicantListPage = lazy(() => import('./features/applicants/ApplicantListPage'));
@@ -35,6 +36,7 @@ function App() {
       <Routes>
         {/* Public routes */}
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/apply" element={<PublicApplicationPage />} />
 
         {/* Protected routes */}
         <Route

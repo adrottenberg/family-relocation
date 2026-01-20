@@ -71,7 +71,7 @@ const Sidebar = () => {
     <Sider className="app-sidebar" width={220} theme="light">
       {/* Logo */}
       <div className="sidebar-logo">
-        <div className="logo-icon">VH</div>
+        <img src="/tree-logo.png" alt="Logo" className="logo-image" />
         <div className="logo-text">
           <div className="logo-title">וועד הישוב</div>
           <div className="logo-subtitle">CRM</div>
