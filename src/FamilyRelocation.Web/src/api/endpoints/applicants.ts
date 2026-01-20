@@ -99,29 +99,6 @@ export const applicantsApi = {
     return response.data;
   },
 
-  // Agreements
-  recordBrokerAgreement: async (
-    applicantId: string,
-    documentUrl: string
-  ): Promise<{ brokerAgreementSigned: boolean; communityTakanosSigned: boolean; allAgreementsSigned: boolean }> => {
-    const response = await apiClient.post(
-      `/applicants/${applicantId}/agreements`,
-      { agreementType: 'BrokerAgreement', documentUrl }
-    );
-    return response.data;
-  },
-
-  recordCommunityTakanos: async (
-    applicantId: string,
-    documentUrl: string
-  ): Promise<{ brokerAgreementSigned: boolean; communityTakanosSigned: boolean; allAgreementsSigned: boolean }> => {
-    const response = await apiClient.post(
-      `/applicants/${applicantId}/agreements`,
-      { agreementType: 'CommunityTakanos', documentUrl }
-    );
-    return response.data;
-  },
-
   startHouseHunting: async (applicantId: string): Promise<HousingSearchDto> => {
     const response = await apiClient.put(
       `/applicants/${applicantId}/stage`,

@@ -51,27 +51,6 @@ export const documentsApi = {
   },
 
   /**
-   * Legacy upload using document type name (for backward compatibility)
-   */
-  uploadLegacy: async (
-    file: File,
-    applicantId: string,
-    documentType: 'BrokerAgreement' | 'CommunityTakanos' | 'Other'
-  ): Promise<DocumentUploadResponse> => {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('applicantId', applicantId);
-    formData.append('documentType', documentType);
-
-    const response = await apiClient.post('/documents/upload-legacy', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-    return response.data;
-  },
-
-  /**
    * Delete a document
    */
   delete: async (documentId: string): Promise<void> => {
