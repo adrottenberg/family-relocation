@@ -4,6 +4,7 @@
     <Project Path="src/FamilyRelocation.Application/FamilyRelocation.Application.csproj" />
     <Project Path="src/FamilyRelocation.Domain/FamilyRelocation.Domain.csproj" />
     <Project Path="src/FamilyRelocation.Infrastructure/FamilyRelocation.Infrastructure.csproj" />
+    <Project Path="src/FamilyRelocation.Web/FamilyRelocation.Web.esproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/FamilyRelocation.API.Tests/FamilyRelocation.API.Tests.csproj" />
