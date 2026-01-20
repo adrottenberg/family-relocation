@@ -2,8 +2,8 @@
 ## Family Relocation System - Board Review Workflow, Public Application & CRUD Completion
 
 **Sprint Duration:** 2 weeks
-**Sprint Goal:** Public application form, pipeline drag-drop UX, edit applicant UI, and soft delete
-**Total Points:** ~25 points (4 Backend + 21 Frontend)
+**Sprint Goal:** Public application form, pipeline drag-drop UX with document signing, S3 uploads, and edit applicant UI
+**Total Points:** ~34 points (10 Backend + 24 Frontend)
 **Prerequisites:** Sprint 2 complete (React app, Pipeline UI, Audit logs)
 
 ---
@@ -12,7 +12,7 @@
 
 ### Stories in This Sprint
 
-#### Backend Stories (4 points)
+#### Backend Stories (10 points)
 
 | ID | Story | Points | Status |
 |----|-------|--------|--------|
@@ -21,11 +21,12 @@
 | US-019 | Set board decision | - | ✅ **ALREADY EXISTS** (`PUT /api/applicants/{id}/board-review`) |
 | US-020 | Reject applicant | - | ✅ **HANDLED BY** board-review (auto-transitions) |
 | US-021 | Approve applicant | - | ✅ **HANDLED BY** board-review (auto-transitions) |
-| US-022 | Delete applicant (soft delete) | 2 | 🆕 **NEW** |
 | - | Sign agreements API | - | ✅ **ALREADY EXISTS** (`POST /api/applicants/{id}/agreements`) |
-| - | Minor API fixes/validation | 2 | 🔧 Buffer for any issues |
+| US-022 | Delete applicant (soft delete) | 2 | 🆕 **NEW** |
+| US-023 | S3 bucket setup + document upload API | 5 | 🆕 **NEW** |
+| - | Minor API fixes/validation | 3 | 🔧 Buffer for any issues |
 
-#### Frontend Stories (21 points)
+#### Frontend Stories (24 points)
 
 | ID | Story | Points | Epic |
 |----|-------|--------|------|
@@ -33,8 +34,9 @@
 | US-F08 | Board review UI on detail page | 3 | Board Review |
 | US-F09 | Pipeline drag-drop with transition modals | 5 | Application Management |
 | US-F10 | Public application page (no auth) | 8 | Public Application |
+| US-F11 | Document signing modal with S3 upload | 3 | Agreements |
 
-**Total: 25 points (4 Backend + 21 Frontend)**
+**Total: 34 points (10 Backend + 24 Frontend)**
 
 ### 🎉 Backend Already Complete!
 
@@ -532,6 +534,249 @@ builder.HasQueryFilter(a => !a.IsDeleted);
 
 ---
 
+## US-023: S3 Bucket Setup + Document Upload API
+
+### Story
+
+**As a** coordinator
+**I want to** upload signed agreements to cloud storage
+**So that** documents are securely stored and accessible
+
+**Priority:** P0
+**Effort:** 5 points
+**Sprint:** 3
+
+### Background
+
+The agreements API (`POST /api/applicants/{id}/agreements`) expects a document URL. We need S3 infrastructure to store uploaded documents and an API endpoint to handle uploads.
+
+### Acceptance Criteria
+
+1. S3 bucket created for document storage
+2. Bucket configured with proper security (private, signed URLs for access)
+3. `POST /api/documents/upload` endpoint accepts file uploads
+4. Returns S3 URL for the uploaded document
+5. Supports PDF and image files (jpg, png)
+6. File size limit: 10MB
+7. Files organized by applicant ID: `documents/{applicantId}/{type}/{filename}`
+8. Requires authentication
+
+### AWS S3 Configuration
+
+**Bucket Name:** `family-relocation-documents-{environment}`
+
+**Bucket Structure:**
+```
+family-relocation-documents-dev/
+├── documents/
+│   └── {applicantId}/
+│       ├── broker-agreement/
+│       │   └── broker-agreement-2026-01-18.pdf
+│       └── community-takanos/
+│           └── takanos-signed-2026-01-18.pdf
+```
+
+**Bucket Policy:**
+- Private bucket (no public access)
+- IAM role for API server with PutObject, GetObject permissions
+- Pre-signed URLs for temporary access (1 hour expiry)
+
+### API Specification
+
+**Endpoint:** `POST /api/documents/upload`
+
+**Request:** `multipart/form-data`
+```
+file: <binary>
+applicantId: guid
+documentType: "BrokerAgreement" | "CommunityTakanos" | "Other"
+```
+
+**Response (200 OK):**
+```json
+{
+  "documentUrl": "https://family-relocation-documents-dev.s3.amazonaws.com/documents/abc123/broker-agreement/file.pdf",
+  "fileName": "broker-agreement-2026-01-18.pdf",
+  "fileSize": 245678,
+  "contentType": "application/pdf",
+  "uploadedAt": "2026-01-18T14:30:00Z"
+}
+```
+
+**Error Responses:**
+- `400 Bad Request` - Invalid file type or size exceeded
+- `401 Unauthorized` - Not authenticated
+- `404 Not Found` - Applicant doesn't exist
+
+### Technical Implementation
+
+**Infrastructure Setup (Terraform/CloudFormation or Manual):**
+```hcl
+resource "aws_s3_bucket" "documents" {
+  bucket = "family-relocation-documents-${var.environment}"
+}
+
+resource "aws_s3_bucket_public_access_block" "documents" {
+  bucket = aws_s3_bucket.documents.id
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+```
+
+**appsettings.json:**
+```json
+{
+  "AWS": {
+    "S3": {
+      "BucketName": "family-relocation-documents-dev",
+      "Region": "us-east-1"
+    }
+  }
+}
+```
+
+**Service Interface:**
+```csharp
+// Application/Common/Interfaces/IDocumentStorageService.cs
+public interface IDocumentStorageService
+{
+    Task<DocumentUploadResult> UploadAsync(
+        Stream fileStream,
+        string fileName,
+        string contentType,
+        Guid applicantId,
+        string documentType,
+        CancellationToken cancellationToken = default);
+
+    Task<string> GetPreSignedUrlAsync(
+        string documentUrl,
+        TimeSpan expiry,
+        CancellationToken cancellationToken = default);
+}
+
+public record DocumentUploadResult(
+    string DocumentUrl,
+    string FileName,
+    long FileSize,
+    string ContentType,
+    DateTime UploadedAt);
+```
+
+**Infrastructure Implementation:**
+```csharp
+// Infrastructure/AWS/S3DocumentStorageService.cs
+public class S3DocumentStorageService : IDocumentStorageService
+{
+    private readonly IAmazonS3 _s3Client;
+    private readonly string _bucketName;
+
+    public async Task<DocumentUploadResult> UploadAsync(
+        Stream fileStream,
+        string fileName,
+        string contentType,
+        Guid applicantId,
+        string documentType,
+        CancellationToken cancellationToken = default)
+    {
+        var key = $"documents/{applicantId}/{documentType.ToLower()}/{fileName}";
+
+        var request = new PutObjectRequest
+        {
+            BucketName = _bucketName,
+            Key = key,
+            InputStream = fileStream,
+            ContentType = contentType,
+        };
+
+        await _s3Client.PutObjectAsync(request, cancellationToken);
+
+        var url = $"https://{_bucketName}.s3.amazonaws.com/{key}";
+
+        return new DocumentUploadResult(
+            url, fileName, fileStream.Length, contentType, DateTime.UtcNow);
+    }
+
+    public async Task<string> GetPreSignedUrlAsync(
+        string documentUrl,
+        TimeSpan expiry,
+        CancellationToken cancellationToken = default)
+    {
+        var key = ExtractKeyFromUrl(documentUrl);
+
+        var request = new GetPreSignedUrlRequest
+        {
+            BucketName = _bucketName,
+            Key = key,
+            Expires = DateTime.UtcNow.Add(expiry),
+        };
+
+        return _s3Client.GetPreSignedURL(request);
+    }
+}
+```
+
+**Controller:**
+```csharp
+// API/Controllers/DocumentsController.cs
+[ApiController]
+[Route("api/documents")]
+[Authorize]
+public class DocumentsController : ControllerBase
+{
+    private readonly IDocumentStorageService _storageService;
+    private readonly IApplicationDbContext _context;
+    private static readonly string[] AllowedContentTypes =
+        ["application/pdf", "image/jpeg", "image/png"];
+    private const long MaxFileSize = 10 * 1024 * 1024; // 10MB
+
+    [HttpPost("upload")]
+    [RequestSizeLimit(MaxFileSize)]
+    public async Task<IActionResult> Upload(
+        [FromForm] IFormFile file,
+        [FromForm] Guid applicantId,
+        [FromForm] string documentType)
+    {
+        // Validate applicant exists
+        var applicantExists = await _context.Set<Applicant>()
+            .AnyAsync(a => a.Id == applicantId);
+        if (!applicantExists)
+            return NotFound(new { message = "Applicant not found" });
+
+        // Validate file
+        if (file.Length == 0)
+            return BadRequest(new { message = "File is empty" });
+        if (file.Length > MaxFileSize)
+            return BadRequest(new { message = "File exceeds 10MB limit" });
+        if (!AllowedContentTypes.Contains(file.ContentType))
+            return BadRequest(new { message = "Only PDF and image files allowed" });
+
+        // Upload to S3
+        await using var stream = file.OpenReadStream();
+        var result = await _storageService.UploadAsync(
+            stream,
+            file.FileName,
+            file.ContentType,
+            applicantId,
+            documentType);
+
+        return Ok(result);
+    }
+}
+```
+
+### Tests Required
+
+- `Upload_ValidPdf_ReturnsUrl`
+- `Upload_ValidImage_ReturnsUrl`
+- `Upload_TooLarge_Returns400`
+- `Upload_InvalidType_Returns400`
+- `Upload_ApplicantNotFound_Returns404`
+- `Upload_NotAuthenticated_Returns401`
+
+---
+
 # PART 2: FRONTEND STORIES
 
 ---
@@ -797,6 +1042,61 @@ Instead of just showing error toasts, we show contextual modals that help users 
 ```
 - This increments `failedContractCount` and adds to `failedContracts` list
 
+**Scenario 6: BoardApproved → HouseHunting (Documents Not Signed)**
+```
+┌─────────────────────────────────────────────────────────────┐
+│  📄 Agreements Required                                     │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  Before house hunting can begin, the following agreements   │
+│  must be signed:                                            │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │ Broker Agreement                           ❌ Missing │   │
+│  │ Agreement to work with community broker              │   │
+│  │                                                      │   │
+│  │ [ 📤 Upload Signed Document ]                        │   │
+│  └─────────────────────────────────────────────────────┘   │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │ Community Takanos                          ❌ Missing │   │
+│  │ Community guidelines and expectations                │   │
+│  │                                                      │   │
+│  │ [ 📤 Upload Signed Document ]                        │   │
+│  └─────────────────────────────────────────────────────┘   │
+│                                                             │
+│  [ Cancel ]                    [ Continue Without ] (admin) │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**After uploading:**
+```
+┌─────────────────────────────────────────────────────────────┐
+│  📄 Agreements Required                                     │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │ Broker Agreement                           ✅ Signed  │   │
+│  │ Signed: January 18, 2026                             │   │
+│  │ [ 👁️ View ] [ 🔄 Replace ]                            │   │
+│  └─────────────────────────────────────────────────────┘   │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │ Community Takanos                          ✅ Signed  │   │
+│  │ Signed: January 18, 2026                             │   │
+│  │ [ 👁️ View ] [ 🔄 Replace ]                            │   │
+│  └─────────────────────────────────────────────────────┘   │
+│                                                             │
+│  [ Cancel ]                         [ Move to House Hunting ]│
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+- Upload goes to S3, returns URL
+- URL is saved via `POST /api/applicants/{id}/agreements`
+- Both agreements required before "Move to House Hunting" is enabled
+
 ### Technical Implementation
 
 **Component Structure:**
@@ -809,6 +1109,7 @@ src/features/pipeline/
     ├── ContractInfoModal.tsx
     ├── ClosingConfirmModal.tsx
     ├── ContractFailedModal.tsx
+    ├── AgreementsRequiredModal.tsx    (NEW - document signing)
     └── TransitionBlockedModal.tsx  (generic fallback)
 ```
 
@@ -818,7 +1119,7 @@ src/features/pipeline/
 
 type TransitionCheck = {
   allowed: boolean;
-  modal?: 'boardRequired' | 'contractInfo' | 'closing' | 'contractFailed' | 'blocked';
+  modal?: 'boardRequired' | 'agreementsRequired' | 'contractInfo' | 'closing' | 'contractFailed' | 'blocked';
   message?: string;
 };
 
@@ -1387,33 +1688,269 @@ const ChildrenStep = ({ data, onNext, onBack }) => {
 
 ---
 
+## US-F11: Document Signing Modal with S3 Upload
+
+### Story
+
+**As a** coordinator
+**I want to** upload signed agreements when moving applicants to House Hunting
+**So that** document requirements are enforced and stored securely
+
+**Priority:** P0
+**Effort:** 3 points
+**Sprint:** 3
+
+### Background
+
+When an applicant is board-approved and the coordinator tries to move them to House Hunting, they must upload signed copies of the Broker Agreement and Community Takanos. This modal integrates with the S3 upload API and agreements API.
+
+### Acceptance Criteria
+
+1. Modal appears when dragging from BoardApproved to HouseHunting (if agreements not signed)
+2. Shows status of each agreement (Missing/Signed)
+3. Upload button for each agreement type
+4. Supports PDF and image files up to 10MB
+5. Shows upload progress indicator
+6. After upload, calls `POST /api/applicants/{id}/agreements` to record
+7. View button opens document in new tab (pre-signed URL)
+8. Replace button allows re-uploading
+9. "Move to House Hunting" enabled only when both signed
+10. Optional "Continue Without" for admin override
+
+### Technical Implementation
+
+```tsx
+// features/pipeline/modals/AgreementsRequiredModal.tsx
+import { useState } from 'react';
+import { Modal, Upload, Button, message, Spin } from 'antd';
+import { UploadOutlined, CheckCircleFilled, CloseCircleFilled, EyeOutlined } from '@ant-design/icons';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { documentsApi, applicantsApi } from '../../../api';
+
+interface AgreementsRequiredModalProps {
+  open: boolean;
+  applicant: PipelineApplicant | null;
+  onSuccess: () => void;
+  onCancel: () => void;
+}
+
+const AgreementsRequiredModal = ({ open, applicant, onSuccess, onCancel }: AgreementsRequiredModalProps) => {
+  const queryClient = useQueryClient();
+  const [brokerUploading, setBrokerUploading] = useState(false);
+  const [takanosUploading, setTakanosUploading] = useState(false);
+
+  const brokerSigned = applicant?.brokerAgreementSigned;
+  const takanosSigned = applicant?.communityTakanosSigned;
+  const bothSigned = brokerSigned && takanosSigned;
+
+  const uploadMutation = useMutation({
+    mutationFn: async ({ file, type }: { file: File; type: 'BrokerAgreement' | 'CommunityTakanos' }) => {
+      // 1. Upload to S3
+      const uploadResult = await documentsApi.upload(file, applicant!.id, type);
+
+      // 2. Record agreement with URL
+      await applicantsApi.recordAgreement(applicant!.id, {
+        agreementType: type,
+        documentUrl: uploadResult.documentUrl,
+        signedDate: new Date().toISOString(),
+      });
+
+      return uploadResult;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pipeline'] });
+      message.success('Document uploaded successfully');
+    },
+    onError: () => {
+      message.error('Failed to upload document');
+    },
+  });
+
+  const handleBrokerUpload = async (file: File) => {
+    setBrokerUploading(true);
+    try {
+      await uploadMutation.mutateAsync({ file, type: 'BrokerAgreement' });
+    } finally {
+      setBrokerUploading(false);
+    }
+    return false; // Prevent default upload behavior
+  };
+
+  const handleTakanosUpload = async (file: File) => {
+    setTakanosUploading(true);
+    try {
+      await uploadMutation.mutateAsync({ file, type: 'CommunityTakanos' });
+    } finally {
+      setTakanosUploading(false);
+    }
+    return false;
+  };
+
+  const handleMoveToHouseHunting = async () => {
+    try {
+      await applicantsApi.changeStage(applicant!.id, { newStage: 'HouseHunting' });
+      message.success(`${applicant?.familyName} moved to House Hunting`);
+      onSuccess();
+    } catch (err) {
+      message.error('Failed to move applicant');
+    }
+  };
+
+  const viewDocument = async (documentUrl: string) => {
+    // Get pre-signed URL and open in new tab
+    const presignedUrl = await documentsApi.getPresignedUrl(documentUrl);
+    window.open(presignedUrl, '_blank');
+  };
+
+  return (
+    <Modal
+      title="📄 Agreements Required"
+      open={open}
+      onCancel={onCancel}
+      width={500}
+      footer={[
+        <Button key="cancel" onClick={onCancel}>
+          Cancel
+        </Button>,
+        <Button
+          key="move"
+          type="primary"
+          disabled={!bothSigned}
+          onClick={handleMoveToHouseHunting}
+        >
+          Move to House Hunting
+        </Button>,
+      ]}
+    >
+      <p style={{ marginBottom: 16 }}>
+        Before house hunting can begin, the following agreements must be signed:
+      </p>
+
+      {/* Broker Agreement */}
+      <div className="agreement-card" style={{ marginBottom: 16, padding: 16, border: '1px solid #d9d9d9', borderRadius: 8 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+          <strong>Broker Agreement</strong>
+          {brokerSigned ? (
+            <span style={{ color: '#52c41a' }}><CheckCircleFilled /> Signed</span>
+          ) : (
+            <span style={{ color: '#ff4d4f' }}><CloseCircleFilled /> Missing</span>
+          )}
+        </div>
+        <p style={{ color: '#666', fontSize: 13, marginBottom: 12 }}>
+          Agreement to work with community broker
+        </p>
+        {brokerSigned ? (
+          <Button.Group>
+            <Button icon={<EyeOutlined />} onClick={() => viewDocument(applicant?.brokerAgreementUrl!)}>
+              View
+            </Button>
+            <Upload beforeUpload={handleBrokerUpload} showUploadList={false} accept=".pdf,.jpg,.jpeg,.png">
+              <Button loading={brokerUploading}>Replace</Button>
+            </Upload>
+          </Button.Group>
+        ) : (
+          <Upload beforeUpload={handleBrokerUpload} showUploadList={false} accept=".pdf,.jpg,.jpeg,.png">
+            <Button icon={<UploadOutlined />} loading={brokerUploading}>
+              Upload Signed Document
+            </Button>
+          </Upload>
+        )}
+      </div>
+
+      {/* Community Takanos */}
+      <div className="agreement-card" style={{ padding: 16, border: '1px solid #d9d9d9', borderRadius: 8 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+          <strong>Community Takanos</strong>
+          {takanosSigned ? (
+            <span style={{ color: '#52c41a' }}><CheckCircleFilled /> Signed</span>
+          ) : (
+            <span style={{ color: '#ff4d4f' }}><CloseCircleFilled /> Missing</span>
+          )}
+        </div>
+        <p style={{ color: '#666', fontSize: 13, marginBottom: 12 }}>
+          Community guidelines and expectations
+        </p>
+        {takanosSigned ? (
+          <Button.Group>
+            <Button icon={<EyeOutlined />} onClick={() => viewDocument(applicant?.communityTakanosUrl!)}>
+              View
+            </Button>
+            <Upload beforeUpload={handleTakanosUpload} showUploadList={false} accept=".pdf,.jpg,.jpeg,.png">
+              <Button loading={takanosUploading}>Replace</Button>
+            </Upload>
+          </Button.Group>
+        ) : (
+          <Upload beforeUpload={handleTakanosUpload} showUploadList={false} accept=".pdf,.jpg,.jpeg,.png">
+            <Button icon={<UploadOutlined />} loading={takanosUploading}>
+              Upload Signed Document
+            </Button>
+          </Upload>
+        )}
+      </div>
+    </Modal>
+  );
+};
+
+export default AgreementsRequiredModal;
+```
+
+**API Client Functions:**
+```tsx
+// api/endpoints/documents.ts
+export const documentsApi = {
+  upload: async (file: File, applicantId: string, documentType: string) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('applicantId', applicantId);
+    formData.append('documentType', documentType);
+
+    const response = await apiClient.post('/documents/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+
+  getPresignedUrl: async (documentUrl: string) => {
+    const response = await apiClient.get('/documents/presigned-url', {
+      params: { documentUrl },
+    });
+    return response.data.url;
+  },
+};
+```
+
+### Tests Required
+
+- Upload PDF file successfully
+- Upload image file successfully
+- Reject file over 10MB
+- Reject invalid file type
+- View document opens pre-signed URL
+- Move button disabled until both signed
+- Replace document works correctly
+
+---
+
 # PART 3: FILE STRUCTURE
 
 ```
 src/FamilyRelocation.Application/
+├── Common/
+│   └── Interfaces/
+│       └── IDocumentStorageService.cs    (NEW - S3 abstraction)
 ├── Applicants/
-│   ├── Commands/
-│   │   ├── ChangeStage/
-│   │   │   ├── ChangeStageCommand.cs
-│   │   │   ├── ChangeStageCommandHandler.cs
-│   │   │   └── ChangeStageCommandValidator.cs
-│   │   ├── UpdatePreferences/
-│   │   │   ├── UpdatePreferencesCommand.cs
-│   │   │   ├── UpdatePreferencesCommandHandler.cs
-│   │   │   └── UpdatePreferencesCommandValidator.cs
-│   │   ├── SetBoardDecision/
-│   │   │   ├── SetBoardDecisionCommand.cs
-│   │   │   ├── SetBoardDecisionCommandHandler.cs
-│   │   │   └── SetBoardDecisionCommandValidator.cs
-│   │   ├── ApproveApplicant/
-│   │   │   ├── ApproveApplicantCommand.cs
-│   │   │   └── ApproveApplicantCommandHandler.cs
-│   │   ├── RejectApplicant/
-│   │   │   ├── RejectApplicantCommand.cs
-│   │   │   └── RejectApplicantCommandHandler.cs
-│   │   └── DeleteApplicant/
-│   │       ├── DeleteApplicantCommand.cs
-│   │       └── DeleteApplicantCommandHandler.cs
+│   └── Commands/
+│       └── DeleteApplicant/              (NEW)
+│           ├── DeleteApplicantCommand.cs
+│           └── DeleteApplicantCommandHandler.cs
+
+src/FamilyRelocation.Infrastructure/
+├── AWS/
+│   └── S3DocumentStorageService.cs       (NEW - S3 implementation)
+
+src/FamilyRelocation.API/
+├── Controllers/
+│   └── DocumentsController.cs            (NEW - upload endpoint)
 
 src/FamilyRelocation.Web/src/
 ├── features/
@@ -1425,6 +1962,7 @@ src/FamilyRelocation.Web/src/
 │       ├── PipelinePage.tsx             (modify - wire drag-drop)
 │       ├── transitionRules.ts           (new - transition validation)
 │       └── modals/                       (new - transition modals)
+│           ├── AgreementsRequiredModal.tsx  (NEW - document upload)
 │           ├── BoardApprovalRequiredModal.tsx
 │           ├── ContractInfoModal.tsx
 │           ├── ClosingConfirmModal.tsx
@@ -1443,7 +1981,8 @@ src/FamilyRelocation.Web/src/
 │           └── ReviewStep.tsx
 ├── api/
 │   └── endpoints/
-│       └── applicants.ts                (add new endpoints)
+│       ├── applicants.ts                (add new endpoints)
+│       └── documents.ts                 (NEW - S3 upload)
 ```
 
 ---
