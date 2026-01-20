@@ -147,6 +147,15 @@ export interface StageTransitionRequirementsDto {
   requirements: DocumentRequirementDto[];
 }
 
+export interface StageTransitionRequirementDto {
+  id: string;
+  fromStage: string;
+  toStage: string;
+  documentTypeId: string;
+  documentTypeName: string;
+  isRequired: boolean;
+}
+
 export interface DocumentRequirementDto {
   documentTypeId: string;
   documentTypeName: string;

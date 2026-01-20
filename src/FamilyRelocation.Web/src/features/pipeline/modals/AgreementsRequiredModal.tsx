@@ -200,6 +200,7 @@ const AgreementsRequiredModal = ({
           <div style={{ marginLeft: 26 }}>
             <Space direction="vertical" style={{ width: '100%' }} size="small">
               <Upload
+                accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
                 beforeUpload={(file) => {
                   const result = beforeUploadValidation(file);
                   if (result !== Upload.LIST_IGNORE) {
@@ -214,7 +215,7 @@ const AgreementsRequiredModal = ({
                 maxCount={1}
               >
                 <Button icon={<UploadOutlined />} size="small">
-                  Select File
+                  Select File (PDF, JPEG, PNG)
                 </Button>
               </Upload>
 

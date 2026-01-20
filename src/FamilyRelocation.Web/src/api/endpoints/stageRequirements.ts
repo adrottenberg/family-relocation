@@ -1,5 +1,13 @@
 import apiClient from '../client';
-import type { StageTransitionRequirementsDto } from '../types';
+import type { StageTransitionRequirementsDto, StageTransitionRequirementDto } from '../types';
+
+/**
+ * Get all stage transition requirements.
+ */
+export async function getAllStageRequirements(): Promise<StageTransitionRequirementDto[]> {
+  const response = await apiClient.get<StageTransitionRequirementDto[]>('/stage-requirements');
+  return response.data;
+}
 
 /**
  * Get document requirements for a specific stage transition.
@@ -17,4 +25,23 @@ export async function getStageRequirements(
     { params: applicantId ? { applicantId } : {} }
   );
   return response.data;
+}
+
+/**
+ * Create a new stage transition requirement.
+ */
+export async function createStageRequirement(data: {
+  fromStage: string;
+  toStage: string;
+  documentTypeId: string;
+  isRequired: boolean;
+}): Promise<void> {
+  await apiClient.post('/stage-requirements', data);
+}
+
+/**
+ * Delete a stage transition requirement.
+ */
+export async function deleteStageRequirement(id: string): Promise<void> {
+  await apiClient.delete(`/stage-requirements/${id}`);
 }

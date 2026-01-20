@@ -11,3 +11,31 @@ export async function getDocumentTypes(activeOnly: boolean = true): Promise<Docu
   });
   return response.data;
 }
+
+/**
+ * Create a new document type.
+ */
+export async function createDocumentType(data: {
+  name: string;
+  displayName: string;
+  description?: string;
+}): Promise<void> {
+  await apiClient.post('/document-types', data);
+}
+
+/**
+ * Update an existing document type.
+ */
+export async function updateDocumentType(
+  id: string,
+  data: { displayName: string; description?: string }
+): Promise<void> {
+  await apiClient.put(`/document-types/${id}`, data);
+}
+
+/**
+ * Delete (deactivate) a document type.
+ */
+export async function deleteDocumentType(id: string): Promise<void> {
+  await apiClient.delete(`/document-types/${id}`);
+}

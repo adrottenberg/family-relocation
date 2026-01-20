@@ -240,6 +240,7 @@ const DocumentUploadModal = ({ open, onClose, applicant }: DocumentUploadModalPr
               </div>
             )}
             <Upload
+              accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
               beforeUpload={(file) => {
                 const result = beforeUploadValidation(file);
                 if (result !== Upload.LIST_IGNORE) {
@@ -251,7 +252,7 @@ const DocumentUploadModal = ({ open, onClose, applicant }: DocumentUploadModalPr
               onRemove={() => setUploadState(docType.id, { file: null })}
               maxCount={1}
             >
-              <Button icon={<UploadOutlined />}>Select File</Button>
+              <Button icon={<UploadOutlined />}>Select File (PDF, JPEG, PNG)</Button>
             </Upload>
 
             {state.uploading && <Progress percent={state.progress} size="small" />}

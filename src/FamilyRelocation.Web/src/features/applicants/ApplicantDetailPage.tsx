@@ -256,9 +256,9 @@ const ApplicantDetailPage = () => {
       children: <HousingSearchTab applicant={applicant} />,
     },
     {
-      key: 'children',
-      label: `Children (${applicant.children?.length || 0})`,
-      children: <ChildrenTab children={applicant.children} />,
+      key: 'documents',
+      label: 'Documents',
+      children: <DocumentsTab applicantId={applicant.id} onUploadDocuments={() => setDocumentUploadModalOpen(true)} />,
     },
     {
       key: 'activity',
@@ -427,20 +427,38 @@ const OverviewTab = ({ applicant, onRecordBoardDecision, onUploadDocuments, canA
             </Descriptions.Item>
           </Descriptions>
         </Card>
+
+        {/* Children */}
+        <Card title={`Children (${applicant.children?.length || 0})`} size="small" className="info-card">
+          {applicant.children && applicant.children.length > 0 ? (
+            <Table
+              dataSource={applicant.children}
+              columns={[
+                { title: 'Name', dataIndex: 'name', key: 'name' },
+                { title: 'Age', dataIndex: 'age', key: 'age', width: 60 },
+                { title: 'Gender', dataIndex: 'gender', key: 'gender', width: 80 },
+                { title: 'School', dataIndex: 'school', key: 'school', render: (v: string) => v || '-' },
+              ]}
+              rowKey="name"
+              pagination={false}
+              size="small"
+            />
+          ) : (
+            <Empty description="No children listed" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+          )}
+        </Card>
       </div>
     </div>
   );
 };
 
 // Housing Search Tab
-const HousingSearchTab = ({ applicant }: { applicant: ApplicantDto }) => {
-  const hs = applicant.housingSearch;
+interface HousingSearchTabProps {
+  applicant: ApplicantDto;
+}
 
-  // Fetch applicant's documents
-  const { data: documents } = useQuery({
-    queryKey: ['applicantDocuments', applicant.id],
-    queryFn: () => documentsApi.getApplicantDocuments(applicant.id),
-  });
+const HousingSearchTab = ({ applicant }: HousingSearchTabProps) => {
+  const hs = applicant.housingSearch;
 
   if (!hs) {
     return <Empty description="No housing search data" />;
@@ -464,24 +482,6 @@ const HousingSearchTab = ({ applicant }: { applicant: ApplicantDto }) => {
               {hs.failedContractCount}
             </Descriptions.Item>
           </Descriptions>
-        </Card>
-
-        {/* Documents */}
-        <Card title="Documents" size="small" className="info-card">
-          {documents && documents.length > 0 ? (
-            <Descriptions column={1} size="small">
-              {documents.map((doc: ApplicantDocumentDto) => (
-                <Descriptions.Item key={doc.id} label={doc.documentTypeName}>
-                  <Tag color="success">Uploaded</Tag>
-                  <span style={{ marginLeft: 8, fontSize: 12, color: '#888' }}>
-                    {new Date(doc.uploadedAt).toLocaleDateString()}
-                  </span>
-                </Descriptions.Item>
-              ))}
-            </Descriptions>
-          ) : (
-            <Empty description="No documents uploaded" image={Empty.PRESENTED_IMAGE_SIMPLE} />
-          )}
         </Card>
 
         {/* Preferences */}
@@ -540,28 +540,69 @@ const HousingSearchTab = ({ applicant }: { applicant: ApplicantDto }) => {
   );
 };
 
-// Children Tab
-const ChildrenTab = ({ children }: { children?: ChildDto[] }) => {
-  if (!children || children.length === 0) {
-    return <Empty description="No children listed" />;
-  }
+// Documents Tab
+interface DocumentsTabProps {
+  applicantId: string;
+  onUploadDocuments: () => void;
+}
+
+const DocumentsTab = ({ applicantId, onUploadDocuments }: DocumentsTabProps) => {
+  const { data: documents, isLoading } = useQuery({
+    queryKey: ['applicantDocuments', applicantId],
+    queryFn: () => documentsApi.getApplicantDocuments(applicantId),
+  });
 
   const columns = [
-    { title: 'Name', dataIndex: 'name', key: 'name' },
-    { title: 'Age', dataIndex: 'age', key: 'age', width: 80 },
-    { title: 'Gender', dataIndex: 'gender', key: 'gender', width: 100 },
-    { title: 'School', dataIndex: 'school', key: 'school', render: (v: string) => v || 'N/A' },
+    {
+      title: 'Document Type',
+      dataIndex: 'documentTypeName',
+      key: 'documentTypeName',
+      render: (text: string) => <Text strong>{text}</Text>,
+    },
+    {
+      title: 'File Name',
+      dataIndex: 'fileName',
+      key: 'fileName',
+    },
+    {
+      title: 'Uploaded',
+      dataIndex: 'uploadedAt',
+      key: 'uploadedAt',
+      render: (date: string) => new Date(date).toLocaleDateString(),
+    },
+    {
+      title: 'Status',
+      key: 'status',
+      render: () => <Tag color="success">Uploaded</Tag>,
+    },
   ];
+
+  if (isLoading) {
+    return (
+      <div style={{ textAlign: 'center', padding: 40 }}>
+        <Spin />
+      </div>
+    );
+  }
 
   return (
     <div className="tab-content">
-      <Table
-        columns={columns}
-        dataSource={children}
-        rowKey="name"
-        pagination={false}
-        size="small"
-      />
+      <div style={{ marginBottom: 16 }}>
+        <Button type="primary" onClick={onUploadDocuments}>
+          Upload Documents
+        </Button>
+      </div>
+      {documents && documents.length > 0 ? (
+        <Table
+          dataSource={documents}
+          columns={columns}
+          rowKey="id"
+          pagination={false}
+          size="middle"
+        />
+      ) : (
+        <Empty description="No documents uploaded yet" />
+      )}
     </div>
   );
 };
