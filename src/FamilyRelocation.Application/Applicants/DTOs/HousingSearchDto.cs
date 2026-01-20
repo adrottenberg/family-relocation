@@ -41,9 +41,29 @@ public record HousingSearchDto
     public required bool BrokerAgreementSigned { get; init; }
 
     /// <summary>
+    /// URL of the broker agreement document (if signed).
+    /// </summary>
+    public string? BrokerAgreementDocumentUrl { get; init; }
+
+    /// <summary>
+    /// Date when the broker agreement was signed.
+    /// </summary>
+    public DateTime? BrokerAgreementSignedDate { get; init; }
+
+    /// <summary>
     /// Whether the community takanos have been signed.
     /// </summary>
     public required bool CommunityTakanosSigned { get; init; }
+
+    /// <summary>
+    /// URL of the community takanos document (if signed).
+    /// </summary>
+    public string? CommunityTakanosDocumentUrl { get; init; }
+
+    /// <summary>
+    /// Date when the community takanos were signed.
+    /// </summary>
+    public DateTime? CommunityTakanosSignedDate { get; init; }
 
     /// <summary>
     /// Notes about the housing search.

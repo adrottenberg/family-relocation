@@ -117,7 +117,11 @@ export interface HousingSearchDto {
   currentContract?: ContractDto;
   failedContractCount: number;
   brokerAgreementSigned: boolean;
+  brokerAgreementDocumentUrl?: string;
+  brokerAgreementSignedDate?: string;
   communityTakanosSigned: boolean;
+  communityTakanosDocumentUrl?: string;
+  communityTakanosSignedDate?: string;
   notes?: string;
 }
 

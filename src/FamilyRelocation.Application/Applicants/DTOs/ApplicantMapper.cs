@@ -171,7 +171,11 @@ public static class ApplicantMapper
             CurrentContract = housingSearch.CurrentContract?.ToContractDto(),
             FailedContractCount = housingSearch.FailedContractCount,
             BrokerAgreementSigned = housingSearch.BrokerAgreementSigned,
+            BrokerAgreementDocumentUrl = housingSearch.BrokerAgreementDocumentUrl,
+            BrokerAgreementSignedDate = housingSearch.BrokerAgreementSignedDate,
             CommunityTakanosSigned = housingSearch.CommunityTakanosSigned,
+            CommunityTakanosDocumentUrl = housingSearch.CommunityTakanosDocumentUrl,
+            CommunityTakanosSignedDate = housingSearch.CommunityTakanosSignedDate,
             Notes = housingSearch.Notes
         };
     }
