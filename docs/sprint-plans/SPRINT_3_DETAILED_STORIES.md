@@ -2,8 +2,8 @@
 ## Family Relocation System - Board Review Workflow, Public Application & CRUD Completion
 
 **Sprint Duration:** 2 weeks
-**Sprint Goal:** Complete board review workflow, public application form, enable stage transitions, and finish applicant CRUD cycle
-**Total Points:** ~43 points (22 Backend + 21 Frontend)
+**Sprint Goal:** Public application form, pipeline drag-drop UX, edit applicant UI, and soft delete
+**Total Points:** ~25 points (4 Backend + 21 Frontend)
 **Prerequisites:** Sprint 2 complete (React app, Pipeline UI, Audit logs)
 
 ---
@@ -12,17 +12,18 @@
 
 ### Stories in This Sprint
 
-#### Backend Stories (22 points)
+#### Backend Stories (4 points)
 
-| ID | Story | Points | Epic |
-|----|-------|--------|------|
-| US-015 | Wire up stage change API | 2 | Application Management |
-| US-016 | Update housing preferences API | 3 | Housing Preferences |
-| US-019 | Set board decision | 5 | Board Review |
-| US-020 | Reject applicant (transition to Rejected) | 3 | Board Review |
-| US-021 | Approve applicant (transition to HouseHunting) | 5 | Board Review |
-| US-F07-BE | Update applicant API (already exists, add validation) | 2 | Applicant CRUD |
-| US-022 | Delete applicant (soft delete) | 2 | Applicant CRUD |
+| ID | Story | Points | Status |
+|----|-------|--------|--------|
+| US-015 | Stage change API | - | ✅ **ALREADY EXISTS** (`PUT /api/applicants/{id}/stage`) |
+| US-016 | Update preferences API | - | ✅ **ALREADY EXISTS** (`PUT /api/applicants/{id}/preferences`) |
+| US-019 | Set board decision | - | ✅ **ALREADY EXISTS** (`PUT /api/applicants/{id}/board-review`) |
+| US-020 | Reject applicant | - | ✅ **HANDLED BY** board-review (auto-transitions) |
+| US-021 | Approve applicant | - | ✅ **HANDLED BY** board-review (auto-transitions) |
+| US-022 | Delete applicant (soft delete) | 2 | 🆕 **NEW** |
+| - | Sign agreements API | - | ✅ **ALREADY EXISTS** (`POST /api/applicants/{id}/agreements`) |
+| - | Minor API fixes/validation | 2 | 🔧 Buffer for any issues |
 
 #### Frontend Stories (21 points)
 
@@ -33,7 +34,22 @@
 | US-F09 | Pipeline drag-drop with transition modals | 5 | Application Management |
 | US-F10 | Public application page (no auth) | 8 | Public Application |
 
-**Total: 43 points (22 Backend + 21 Frontend)**
+**Total: 25 points (4 Backend + 21 Frontend)**
+
+### 🎉 Backend Already Complete!
+
+Great news - Sprint 1 and Sprint 2 already implemented most backend functionality:
+
+```
+✅ PUT  /api/applicants/{id}/stage        - Change stage with contract/closing info
+✅ PUT  /api/applicants/{id}/board-review - Set decision, auto-transitions stage
+✅ PUT  /api/applicants/{id}/preferences  - Update housing preferences
+✅ POST /api/applicants/{id}/agreements   - Sign broker/community agreements
+✅ PUT  /api/applicants/{id}              - Update applicant info
+✅ POST /api/applicants                   - Create (AllowAnonymous for public form)
+```
+
+**Sprint 3 is primarily frontend work!**
 
 ---
 
@@ -53,12 +69,12 @@
    - Pipeline API (GET /api/applicants/pipeline)
    - Audit log feature
 
-3. **Missing:**
-   - Stage change API endpoint
-   - Board review endpoints
+3. **Missing (Frontend Only):**
    - Edit applicant form (frontend)
-   - Delete applicant
-   - Public application page for families
+   - Board review UI on detail page (frontend)
+   - Pipeline drag-drop wired to API (frontend)
+   - Public application page for families (frontend)
+   - Delete applicant API (backend - only new backend work)
 
 ### API Endpoints After Sprint 3
 
@@ -1434,25 +1450,21 @@ src/FamilyRelocation.Web/src/
 
 # PART 4: SPRINT SCHEDULE
 
-### Week 1: Backend Focus
+### Week 1: Public Application & Pipeline
 
 | Day | Tasks |
 |-----|-------|
-| 1 | US-015: Stage change API |
-| 1-2 | US-016: Update preferences API |
-| 2-3 | US-019: Set board decision API |
-| 3-4 | US-020: Reject applicant API |
-| 4-5 | US-021: Approve applicant API |
-| 5 | US-022: Delete applicant API |
+| 1-2 | US-F10: Public application page - steps 1-3 (husband, wife, children) |
+| 3 | US-F10: Public application page - steps 4-6 (address, preferences, review) |
+| 4-5 | US-F09: Pipeline drag-drop with transition modals |
 
-### Week 2: Frontend Focus
+### Week 2: CRUD & Polish
 
 | Day | Tasks |
 |-----|-------|
-| 1-2 | US-F10: Public application page (multi-step form) |
-| 3 | US-F07: Edit applicant drawer |
-| 4 | US-F08: Board review UI |
-| 4-5 | US-F09: Pipeline drag-drop wiring |
+| 1-2 | US-F07: Edit applicant drawer |
+| 3 | US-F08: Board review UI on detail page |
+| 4 | US-022: Soft delete API + UI |
 | 5 | Testing, bug fixes, PR |
 
 ---
