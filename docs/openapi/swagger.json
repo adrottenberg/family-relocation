@@ -1503,13 +1503,240 @@
         }
       }
     },
+    "/api/documents/applicant/{applicantId}": {
+      "get": {
+        "tags": [
+          "Documents"
+        ],
+        "summary": "Gets all documents for an applicant.",
+        "parameters": [
+          {
+            "name": "applicantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/documents/upload": {
       "post": {
         "tags": [
           "Documents"
         ],
-        "summary": "Uploads a document to cloud storage.",
-        "description": "Supported file types: PDF, JPEG, PNG\r\nMaximum file size: 10MB\r\n            \r\nDocument types:\r\n- BrokerAgreement: Signed broker agreement\r\n- CommunityTakanos: Signed community guidelines\r\n- Other: Other supporting documents",
+        "summary": "Uploads a document to cloud storage and records it in the database.",
+        "description": "Supported file types: PDF, JPEG, PNG\r\nMaximum file size: 10MB\r\n            \r\nThe documentTypeId must be a valid, active document type ID.\r\nUse GET /api/document-types to get available document types.",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "applicantId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "documentTypeId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                }
+              },
+              "encoding": {
+                "file": {
+                  "style": "form"
+                },
+                "applicantId": {
+                  "style": "form"
+                },
+                "documentTypeId": {
+                  "style": "form"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/documents/{id}": {
+      "delete": {
+        "tags": [
+          "Documents"
+        ],
+        "summary": "Deletes a document from the database.",
+        "description": "Note: This removes the database record. The file in S3 may need separate cleanup.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/documents/presigned-url": {
+      "get": {
+        "tags": [
+          "Documents"
+        ],
+        "summary": "Gets a pre-signed URL for temporary access to a document.",
+        "description": "The URL is valid for 1 hour by default.\r\nUse this to view or download documents stored in S3.",
+        "parameters": [
+          {
+            "name": "documentKey",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "expiryMinutes",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/documents/upload-legacy": {
+      "post": {
+        "tags": [
+          "Documents"
+        ],
+        "summary": "Legacy upload endpoint for backward compatibility.\r\nUses document type name instead of ID.",
         "requestBody": {
           "content": {
             "multipart/form-data": {
@@ -1590,27 +1817,62 @@
         }
       }
     },
-    "/api/documents/presigned-url": {
+    "/api/document-types": {
       "get": {
         "tags": [
-          "Documents"
+          "DocumentTypes"
         ],
-        "summary": "Gets a pre-signed URL for temporary access to a document.",
-        "description": "The URL is valid for 1 hour by default.\r\nUse this to view or download documents stored in S3.",
+        "summary": "Gets all document types.",
         "parameters": [
           {
-            "name": "documentKey",
+            "name": "activeOnly",
             "in": "query",
+            "description": "If true (default), only return active document types.",
+            "schema": {
+              "type": "boolean",
+              "default": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/stage-requirements/{fromStage}/{toStage}": {
+      "get": {
+        "tags": [
+          "StageRequirements"
+        ],
+        "summary": "Gets document requirements for a specific stage transition.",
+        "parameters": [
+          {
+            "name": "fromStage",
+            "in": "path",
+            "description": "The stage transitioning from.",
+            "required": true,
             "schema": {
               "type": "string"
             }
           },
           {
-            "name": "expiryMinutes",
-            "in": "query",
+            "name": "toStage",
+            "in": "path",
+            "description": "The stage transitioning to.",
+            "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int32"
+              "type": "string"
+            }
+          },
+          {
+            "name": "applicantId",
+            "in": "query",
+            "description": "Optional applicant ID to check which documents are already uploaded.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
             }
           }
         ],
@@ -2422,6 +2684,12 @@
     },
     {
       "name": "Documents"
+    },
+    {
+      "name": "DocumentTypes"
+    },
+    {
+      "name": "StageRequirements"
     }
   ]
 }
