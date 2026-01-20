@@ -25,27 +25,11 @@
   margin-bottom: 32px;
 }
 
-.logo-icon {
-  width: 64px;
-  height: 64px;
-  background: var(--brand-500);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-size: 24px;
-  font-weight: 700;
+.logo-image {
+  max-width: 200px;
+  height: auto;
   margin: 0 auto 16px;
-}
-
-.logo-title {
-  color: var(--brand-600) !important;
-  margin-bottom: 4px !important;
-}
-
-.logo-subtitle {
-  font-size: 14px;
+  display: block;
 }
 
 /* Login Form */

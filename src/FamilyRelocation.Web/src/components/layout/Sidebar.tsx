@@ -71,11 +71,7 @@ const Sidebar = () => {
     <Sider className="app-sidebar" width={220} theme="light">
       {/* Logo */}
       <div className="sidebar-logo">
-        <img src="/tree-logo.png" alt="Logo" className="logo-image" />
-        <div className="logo-text">
-          <div className="logo-title">וועד הישוב</div>
-          <div className="logo-subtitle">CRM</div>
-        </div>
+        <img src="/logo.png" alt="וועד הישוב דקהילת יוניאן" title="וועד הישוב דקהילת יוניאן" className="sidebar-logo-image" />
       </div>
 
       {/* Navigation */}
