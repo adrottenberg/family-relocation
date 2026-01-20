@@ -96,7 +96,9 @@ const LoginPage = () => {
       refreshToken: tokens.refreshToken,
       expiresIn: tokens.expiresIn,
     });
-    setUser({ email: userEmail });
+    // TODO: Extract roles from JWT token (idToken) in production
+    // For now, defaulting to Admin role for testing
+    setUser({ email: userEmail, roles: ['Admin'] });
     navigate('/dashboard', { replace: true });
   };
 

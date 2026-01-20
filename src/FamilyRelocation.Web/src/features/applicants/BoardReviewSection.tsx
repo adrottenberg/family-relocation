@@ -4,12 +4,15 @@ import {
   CloseCircleOutlined,
   ClockCircleOutlined,
   EditOutlined,
+  UploadOutlined,
 } from '@ant-design/icons';
 import type { ApplicantDto } from '../../api/types';
 
 interface BoardReviewSectionProps {
   applicant: ApplicantDto;
   onRecordDecision: () => void;
+  onUploadDocuments: () => void;
+  canApprove?: boolean;
 }
 
 const getDecisionConfig = (decision: string) => {
@@ -45,7 +48,7 @@ const getDecisionConfig = (decision: string) => {
   }
 };
 
-const BoardReviewSection = ({ applicant, onRecordDecision }: BoardReviewSectionProps) => {
+const BoardReviewSection = ({ applicant, onRecordDecision, onUploadDocuments, canApprove = false }: BoardReviewSectionProps) => {
   const boardReview = applicant.boardReview;
   const decision = boardReview?.decision || 'Pending';
   const config = getDecisionConfig(decision);
@@ -65,14 +68,16 @@ const BoardReviewSection = ({ applicant, onRecordDecision }: BoardReviewSectionP
       size="small"
       className="info-card"
       extra={
-        <Button
-          type={isPending ? 'primary' : 'default'}
-          icon={isPending ? undefined : <EditOutlined />}
-          onClick={onRecordDecision}
-          size="small"
-        >
-          {isPending ? 'Record Decision' : 'Update'}
-        </Button>
+        canApprove && (
+          <Button
+            type={isPending ? 'primary' : 'default'}
+            icon={isPending ? undefined : <EditOutlined />}
+            onClick={onRecordDecision}
+            size="small"
+          >
+            {isPending ? 'Record Decision' : 'Update'}
+          </Button>
+        )
       }
     >
       <Space direction="vertical" style={{ width: '100%' }} size="middle">
@@ -119,10 +124,19 @@ const BoardReviewSection = ({ applicant, onRecordDecision }: BoardReviewSectionP
             showIcon
             message="Next Steps Required"
             description={
-              <ul style={{ margin: '8px 0 0', paddingLeft: 20 }}>
-                {!brokerSigned && <li>Broker Agreement needs to be signed</li>}
-                {!takanosSigned && <li>Community Takanos needs to be signed</li>}
-              </ul>
+              <div>
+                <ul style={{ margin: '8px 0 12px', paddingLeft: 20 }}>
+                  {!brokerSigned && <li>Broker Agreement needs to be signed</li>}
+                  {!takanosSigned && <li>Community Takanos needs to be signed</li>}
+                </ul>
+                <Button
+                  type="primary"
+                  icon={<UploadOutlined />}
+                  onClick={onUploadDocuments}
+                >
+                  Upload Agreements
+                </Button>
+              </div>
             }
           />
         )}

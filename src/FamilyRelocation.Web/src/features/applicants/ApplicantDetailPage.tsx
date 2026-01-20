@@ -25,9 +25,11 @@ import { useQuery } from '@tanstack/react-query';
 import { applicantsApi } from '../../api';
 import type { ApplicantDto, ChildDto, AuditLogDto } from '../../api/types';
 import { colors, statusTagStyles, stageTagStyles } from '../../theme/antd-theme';
+import { useAuthStore } from '../../store/authStore';
 import BoardReviewSection from './BoardReviewSection';
 import SetBoardDecisionModal from './SetBoardDecisionModal';
 import EditApplicantDrawer from './EditApplicantDrawer';
+import DocumentUploadModal from './DocumentUploadModal';
 import './ApplicantDetailPage.css';
 
 const { Title, Text } = Typography;
@@ -35,8 +37,10 @@ const { Title, Text } = Typography;
 const ApplicantDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const canApproveBoardDecisions = useAuthStore((state) => state.canApproveBoardDecisions);
   const [boardDecisionModalOpen, setBoardDecisionModalOpen] = useState(false);
   const [editDrawerOpen, setEditDrawerOpen] = useState(false);
+  const [documentUploadModalOpen, setDocumentUploadModalOpen] = useState(false);
 
   const { data: applicant, isLoading, error } = useQuery({
     queryKey: ['applicant', id],
@@ -111,6 +115,8 @@ const ApplicantDetailPage = () => {
         <OverviewTab
           applicant={applicant}
           onRecordBoardDecision={() => setBoardDecisionModalOpen(true)}
+          onUploadDocuments={() => setDocumentUploadModalOpen(true)}
+          canApprove={canApproveBoardDecisions()}
         />
       ),
     },
@@ -185,6 +191,13 @@ const ApplicantDetailPage = () => {
         onClose={() => setEditDrawerOpen(false)}
         applicant={applicant}
       />
+
+      {/* Document Upload Modal */}
+      <DocumentUploadModal
+        open={documentUploadModalOpen}
+        onClose={() => setDocumentUploadModalOpen(false)}
+        applicant={applicant}
+      />
     </div>
   );
 };
@@ -200,9 +213,11 @@ const getPrimaryPhone = (phoneNumbers?: { number: string; isPrimary: boolean }[]
 interface OverviewTabProps {
   applicant: ApplicantDto;
   onRecordBoardDecision: () => void;
+  onUploadDocuments: () => void;
+  canApprove: boolean;
 }
 
-const OverviewTab = ({ applicant, onRecordBoardDecision }: OverviewTabProps) => {
+const OverviewTab = ({ applicant, onRecordBoardDecision, onUploadDocuments, canApprove }: OverviewTabProps) => {
   const { husband, wife, address } = applicant;
 
   return (
@@ -212,6 +227,8 @@ const OverviewTab = ({ applicant, onRecordBoardDecision }: OverviewTabProps) => 
         <BoardReviewSection
           applicant={applicant}
           onRecordDecision={onRecordBoardDecision}
+          onUploadDocuments={onUploadDocuments}
+          canApprove={canApprove}
         />
 
         {/* Husband Info */}

@@ -7,6 +7,7 @@ import { applicantsApi } from '../../api';
 import type { ApplicantListItemDto } from '../../api/types';
 import { colors } from '../../theme/antd-theme';
 import { validateTransition, type Stage, type TransitionType } from './transitionRules';
+import { useAuthStore } from '../../store/authStore';
 import {
   TransitionBlockedModal,
   BoardApprovalRequiredModal,
@@ -75,6 +76,7 @@ const initialModalState: ModalState = {
 const PipelinePage = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const canApproveBoardDecisions = useAuthStore((state) => state.canApproveBoardDecisions);
   const [search, setSearch] = useState('');
   const [cityFilter, setCityFilter] = useState<string | undefined>();
   const [boardDecisionFilter, setBoardDecisionFilter] = useState<string | undefined>();
@@ -301,6 +303,7 @@ const PipelinePage = () => {
         onClose={closeModal}
         applicantId={modalState.applicantId}
         familyName={modalState.familyName}
+        canApprove={canApproveBoardDecisions()}
       />
 
       <AgreementsRequiredModal
@@ -430,7 +433,6 @@ const KanbanCard = ({ item, borderColor, onDragStart, onClick }: KanbanCardProps
         <UserOutlined style={{ fontSize: 12, color: colors.neutral[400] }} />
         <Text type="secondary" style={{ fontSize: 13 }}>
           {item.husbandFirstName}
-          {item.wifeFirstName && ` & ${item.wifeFirstName}`}
         </Text>
       </div>
       <div className="card-details">
