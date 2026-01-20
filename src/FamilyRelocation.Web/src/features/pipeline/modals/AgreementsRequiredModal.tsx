@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Modal, Button, List, Tag, Upload, Progress, Space, message, Divider } from 'antd';
+import { useState, useEffect } from 'react';
+import { Modal, Button, List, Tag, Upload, Progress, Space, message, Divider, Spin, Empty } from 'antd';
 import {
   FileTextOutlined,
   CheckCircleOutlined,
@@ -8,8 +8,9 @@ import {
   CloudUploadOutlined,
   ArrowRightOutlined,
 } from '@ant-design/icons';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { documentsApi, applicantsApi } from '../../../api';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { documentsApi, applicantsApi, getStageRequirements } from '../../../api';
+import type { DocumentRequirementDto } from '../../../api/types';
 import type { UploadFile } from 'antd/es/upload/interface';
 
 interface AgreementsRequiredModalProps {
@@ -17,18 +18,15 @@ interface AgreementsRequiredModalProps {
   onClose: () => void;
   applicantId: string;
   familyName: string;
-  brokerAgreementSigned: boolean;
-  communityTakanosSigned: boolean;
+  fromStage: string;
+  toStage: string;
   onTransitionComplete?: () => void;
 }
 
-interface UploadState {
-  brokerFile: UploadFile | null;
-  takanosFile: UploadFile | null;
-  brokerUploading: boolean;
-  takanosUploading: boolean;
-  brokerProgress: number;
-  takanosProgress: number;
+interface DocumentUploadState {
+  file: UploadFile | null;
+  uploading: boolean;
+  progress: number;
 }
 
 const AgreementsRequiredModal = ({
@@ -36,72 +34,78 @@ const AgreementsRequiredModal = ({
   onClose,
   applicantId,
   familyName,
-  brokerAgreementSigned: initialBrokerSigned,
-  communityTakanosSigned: initialTakanosSigned,
+  fromStage,
+  toStage,
   onTransitionComplete,
 }: AgreementsRequiredModalProps) => {
   const queryClient = useQueryClient();
 
-  // Track local signed state that updates after uploads
-  const [brokerSigned, setBrokerSigned] = useState(initialBrokerSigned);
-  const [takanosSigned, setTakanosSigned] = useState(initialTakanosSigned);
+  // Track upload state per document type
+  const [uploadStates, setUploadStates] = useState<Record<string, DocumentUploadState>>({});
 
-  const [uploadState, setUploadState] = useState<UploadState>({
-    brokerFile: null,
-    takanosFile: null,
-    brokerUploading: false,
-    takanosUploading: false,
-    brokerProgress: 0,
-    takanosProgress: 0,
+  // Track local uploaded state that updates after uploads
+  const [localUploadedStatus, setLocalUploadedStatus] = useState<Record<string, boolean>>({});
+
+  // Fetch stage requirements with applicant's document status
+  const { data: requirements, isLoading } = useQuery({
+    queryKey: ['stageRequirements', fromStage, toStage, applicantId],
+    queryFn: () => getStageRequirements(fromStage, toStage, applicantId),
+    enabled: open,
   });
 
-  // Reset state when modal opens with new props
-  useState(() => {
-    setBrokerSigned(initialBrokerSigned);
-    setTakanosSigned(initialTakanosSigned);
-  });
+  // Initialize states when requirements load
+  useEffect(() => {
+    if (requirements?.requirements) {
+      const initialUploadStates: Record<string, DocumentUploadState> = {};
+      const initialUploadedStatus: Record<string, boolean> = {};
 
-  const uploadBrokerMutation = useMutation({
-    mutationFn: async (file: File) => {
-      setUploadState((s) => ({ ...s, brokerUploading: true, brokerProgress: 30 }));
-      const result = await documentsApi.upload(file, applicantId, 'BrokerAgreement');
-      setUploadState((s) => ({ ...s, brokerProgress: 70 }));
-      await applicantsApi.recordBrokerAgreement(applicantId, result.documentUrl);
-      setUploadState((s) => ({ ...s, brokerProgress: 100 }));
-      return result;
+      requirements.requirements.forEach((req) => {
+        initialUploadStates[req.documentTypeId] = {
+          file: null,
+          uploading: false,
+          progress: 0,
+        };
+        initialUploadedStatus[req.documentTypeId] = req.isUploaded;
+      });
+
+      setUploadStates(initialUploadStates);
+      setLocalUploadedStatus(initialUploadedStatus);
+    }
+  }, [requirements]);
+
+  const uploadMutation = useMutation({
+    mutationFn: async ({ file, documentTypeId }: { file: File; documentTypeId: string }) => {
+      setUploadStates((prev) => ({
+        ...prev,
+        [documentTypeId]: { ...prev[documentTypeId], uploading: true, progress: 30 },
+      }));
+
+      const result = await documentsApi.upload(file, applicantId, documentTypeId);
+      setUploadStates((prev) => ({
+        ...prev,
+        [documentTypeId]: { ...prev[documentTypeId], progress: 100 },
+      }));
+
+      return { result, documentTypeId };
     },
-    onSuccess: () => {
-      message.success('Broker Agreement uploaded successfully');
-      setBrokerSigned(true);
+    onSuccess: ({ documentTypeId }) => {
+      const req = requirements?.requirements.find((r) => r.documentTypeId === documentTypeId);
+      message.success(`${req?.documentTypeName || 'Document'} uploaded successfully`);
+      setLocalUploadedStatus((prev) => ({ ...prev, [documentTypeId]: true }));
       queryClient.invalidateQueries({ queryKey: ['applicant', applicantId] });
       queryClient.invalidateQueries({ queryKey: ['pipeline'] });
-      setUploadState((s) => ({ ...s, brokerUploading: false, brokerFile: null }));
+      setUploadStates((prev) => ({
+        ...prev,
+        [documentTypeId]: { file: null, uploading: false, progress: 0 },
+      }));
     },
-    onError: () => {
-      message.error('Failed to upload Broker Agreement');
-      setUploadState((s) => ({ ...s, brokerUploading: false, brokerProgress: 0 }));
-    },
-  });
-
-  const uploadTakanosMutation = useMutation({
-    mutationFn: async (file: File) => {
-      setUploadState((s) => ({ ...s, takanosUploading: true, takanosProgress: 30 }));
-      const result = await documentsApi.upload(file, applicantId, 'CommunityTakanos');
-      setUploadState((s) => ({ ...s, takanosProgress: 70 }));
-      await applicantsApi.recordCommunityTakanos(applicantId, result.documentUrl);
-      setUploadState((s) => ({ ...s, takanosProgress: 100 }));
-      return result;
-    },
-    onSuccess: () => {
-      message.success('Community Takanos uploaded successfully');
-      setTakanosSigned(true);
-      queryClient.invalidateQueries({ queryKey: ['applicant', applicantId] });
-      queryClient.invalidateQueries({ queryKey: ['pipeline'] });
-      setUploadState((s) => ({ ...s, takanosUploading: false, takanosFile: null }));
-    },
-    onError: () => {
-      message.error('Failed to upload Community Takanos');
-      setUploadState((s) => ({ ...s, takanosUploading: false, takanosProgress: 0 }));
+    onError: (_, { documentTypeId }) => {
+      const req = requirements?.requirements.find((r) => r.documentTypeId === documentTypeId);
+      message.error(`Failed to upload ${req?.documentTypeName || 'document'}`);
+      setUploadStates((prev) => ({
+        ...prev,
+        [documentTypeId]: { ...prev[documentTypeId], uploading: false, progress: 0 },
+      }));
     },
   });
 
@@ -121,9 +125,10 @@ const AgreementsRequiredModal = ({
   });
 
   const beforeUploadValidation = (file: File) => {
-    const isValid = file.type === 'application/pdf' ||
-                    file.type === 'image/jpeg' ||
-                    file.type === 'image/png';
+    const isValid =
+      file.type === 'application/pdf' ||
+      file.type === 'image/jpeg' ||
+      file.type === 'image/png';
     if (!isValid) {
       message.error('Only PDF, JPEG, and PNG files are allowed');
       return Upload.LIST_IGNORE;
@@ -136,51 +141,109 @@ const AgreementsRequiredModal = ({
     return false;
   };
 
-  const handleBrokerUpload = () => {
-    if (uploadState.brokerFile) {
-      uploadBrokerMutation.mutate(uploadState.brokerFile as unknown as File);
+  const handleUpload = (documentTypeId: string) => {
+    const state = uploadStates[documentTypeId];
+    if (state?.file) {
+      uploadMutation.mutate({
+        file: state.file as unknown as File,
+        documentTypeId,
+      });
     }
   };
 
-  const handleTakanosUpload = () => {
-    if (uploadState.takanosFile) {
-      uploadTakanosMutation.mutate(uploadState.takanosFile as unknown as File);
-    }
+  const setUploadState = (documentTypeId: string, updates: Partial<DocumentUploadState>) => {
+    setUploadStates((prev) => ({
+      ...prev,
+      [documentTypeId]: { ...prev[documentTypeId], ...updates },
+    }));
   };
 
-  const bothSigned = brokerSigned && takanosSigned;
+  // Check if all required documents are uploaded
+  const allRequiredUploaded =
+    requirements?.requirements.every(
+      (req) => !req.isRequired || localUploadedStatus[req.documentTypeId]
+    ) ?? false;
 
-  const agreements = [
-    {
-      key: 'broker',
-      name: 'Broker Agreement',
-      signed: brokerSigned,
-      file: uploadState.brokerFile,
-      uploading: uploadState.brokerUploading,
-      progress: uploadState.brokerProgress,
-      onFileSelect: (file: UploadFile) => setUploadState((s) => ({ ...s, brokerFile: file })),
-      onFileRemove: () => setUploadState((s) => ({ ...s, brokerFile: null })),
-      onUpload: handleBrokerUpload,
-    },
-    {
-      key: 'takanos',
-      name: 'Community Takanos',
-      signed: takanosSigned,
-      file: uploadState.takanosFile,
-      uploading: uploadState.takanosUploading,
-      progress: uploadState.takanosProgress,
-      onFileSelect: (file: UploadFile) => setUploadState((s) => ({ ...s, takanosFile: file })),
-      onFileRemove: () => setUploadState((s) => ({ ...s, takanosFile: null })),
-      onUpload: handleTakanosUpload,
-    },
-  ];
+  const renderRequirementItem = (req: DocumentRequirementDto) => {
+    const isUploaded = localUploadedStatus[req.documentTypeId];
+    const state = uploadStates[req.documentTypeId] || {
+      file: null,
+      uploading: false,
+      progress: 0,
+    };
+
+    return (
+      <List.Item style={{ display: 'block' }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 8,
+          }}
+        >
+          <Space>
+            {isUploaded ? (
+              <CheckCircleOutlined style={{ color: '#52c41a', fontSize: 18 }} />
+            ) : (
+              <CloseCircleOutlined style={{ color: '#ff4d4f', fontSize: 18 }} />
+            )}
+            <span style={{ fontWeight: 500 }}>{req.documentTypeName}</span>
+            {req.isRequired && <Tag color="red">Required</Tag>}
+          </Space>
+          <Tag color={isUploaded ? 'success' : 'error'}>
+            {isUploaded ? 'Uploaded' : 'Not Uploaded'}
+          </Tag>
+        </div>
+
+        {!isUploaded && (
+          <div style={{ marginLeft: 26 }}>
+            <Space direction="vertical" style={{ width: '100%' }} size="small">
+              <Upload
+                accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+                beforeUpload={(file) => {
+                  const result = beforeUploadValidation(file);
+                  if (result !== Upload.LIST_IGNORE) {
+                    setUploadState(req.documentTypeId, {
+                      file: file as unknown as UploadFile,
+                    });
+                  }
+                  return result;
+                }}
+                fileList={state.file ? [state.file] : []}
+                onRemove={() => setUploadState(req.documentTypeId, { file: null })}
+                maxCount={1}
+              >
+                <Button icon={<UploadOutlined />} size="small">
+                  Select File (PDF, JPEG, PNG)
+                </Button>
+              </Upload>
+
+              {state.uploading && <Progress percent={state.progress} size="small" />}
+
+              {state.file && !state.uploading && (
+                <Button
+                  type="primary"
+                  size="small"
+                  icon={<CloudUploadOutlined />}
+                  onClick={() => handleUpload(req.documentTypeId)}
+                >
+                  Upload {req.documentTypeName}
+                </Button>
+              )}
+            </Space>
+          </div>
+        )}
+      </List.Item>
+    );
+  };
 
   return (
     <Modal
       title={
         <Space>
           <FileTextOutlined style={{ color: '#1890ff' }} />
-          Signed Agreements Required
+          Documents Required for Stage Transition
         </Space>
       }
       open={open}
@@ -189,7 +252,7 @@ const AgreementsRequiredModal = ({
         <Button key="cancel" onClick={onClose}>
           Cancel
         </Button>,
-        bothSigned && (
+        allRequiredUploaded && (
           <Button
             key="proceed"
             type="primary"
@@ -204,69 +267,21 @@ const AgreementsRequiredModal = ({
       width={520}
     >
       <div style={{ marginBottom: 16, padding: 12, background: '#f5f5f5', borderRadius: 6 }}>
-        <strong>{familyName} Family</strong> needs signed agreements before starting house hunting.
+        <strong>{familyName} Family</strong> needs the following documents before transitioning from{' '}
+        <Tag>{fromStage}</Tag> to <Tag>{toStage}</Tag>.
       </div>
 
-      <List
-        dataSource={agreements}
-        renderItem={(item) => (
-          <List.Item style={{ display: 'block' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <Space>
-                {item.signed ? (
-                  <CheckCircleOutlined style={{ color: '#52c41a', fontSize: 18 }} />
-                ) : (
-                  <CloseCircleOutlined style={{ color: '#ff4d4f', fontSize: 18 }} />
-                )}
-                <span style={{ fontWeight: 500 }}>{item.name}</span>
-              </Space>
-              <Tag color={item.signed ? 'success' : 'error'}>
-                {item.signed ? 'Signed' : 'Not Signed'}
-              </Tag>
-            </div>
+      {isLoading ? (
+        <div style={{ textAlign: 'center', padding: 40 }}>
+          <Spin />
+        </div>
+      ) : !requirements?.requirements || requirements.requirements.length === 0 ? (
+        <Empty description="No document requirements for this transition" />
+      ) : (
+        <List dataSource={requirements.requirements} renderItem={renderRequirementItem} />
+      )}
 
-            {!item.signed && (
-              <div style={{ marginLeft: 26 }}>
-                <Space direction="vertical" style={{ width: '100%' }} size="small">
-                  <Upload
-                    beforeUpload={(file) => {
-                      const result = beforeUploadValidation(file);
-                      if (result !== Upload.LIST_IGNORE) {
-                        item.onFileSelect(file as unknown as UploadFile);
-                      }
-                      return result;
-                    }}
-                    fileList={item.file ? [item.file] : []}
-                    onRemove={() => item.onFileRemove()}
-                    maxCount={1}
-                  >
-                    <Button icon={<UploadOutlined />} size="small">
-                      Select File
-                    </Button>
-                  </Upload>
-
-                  {item.uploading && (
-                    <Progress percent={item.progress} size="small" />
-                  )}
-
-                  {item.file && !item.uploading && (
-                    <Button
-                      type="primary"
-                      size="small"
-                      icon={<CloudUploadOutlined />}
-                      onClick={item.onUpload}
-                    >
-                      Upload {item.name}
-                    </Button>
-                  )}
-                </Space>
-              </div>
-            )}
-          </List.Item>
-        )}
-      />
-
-      {bothSigned && (
+      {allRequiredUploaded && requirements?.requirements && requirements.requirements.length > 0 && (
         <>
           <Divider />
           <div
@@ -279,7 +294,7 @@ const AgreementsRequiredModal = ({
             }}
           >
             <CheckCircleOutlined style={{ color: '#52c41a', marginRight: 8 }} />
-            All agreements signed! Click "Move to House Hunting" to proceed.
+            All required documents uploaded! Click "Move to House Hunting" to proceed.
           </div>
         </>
       )}

@@ -526,3 +526,85 @@ Authorization: Bearer {{accessToken}}
     "reviewDate": "2026-02-01",
     "notes": "Waiting for additional references."
 }
+
+###############################################################################
+# DOCUMENT TYPES & DOCUMENTS
+# Dynamic document type system for stage transition requirements
+###############################################################################
+
+# Variables for Documents
+@documentTypeId = paste-document-type-id-here
+@documentId = paste-document-id-here
+@documentKey = paste-document-key-here
+
+### Get Document Types
+# Returns all active document types - use the ID for uploads
+GET {{baseUrl}}/api/document-types?activeOnly=true
+Authorization: Bearer {{accessToken}}
+
+### Get Applicant Documents
+# Returns all documents uploaded for an applicant
+GET {{baseUrl}}/api/documents/applicant/{{applicantId}}
+Authorization: Bearer {{accessToken}}
+
+### Get Stage Requirements
+# Returns required documents for transitioning between stages
+# If applicantId is provided, also shows which are already uploaded
+GET {{baseUrl}}/api/stage-requirements/BoardApproved/HouseHunting?applicantId={{applicantId}}
+Authorization: Bearer {{accessToken}}
+
+### Upload Document
+# Upload a document using document type ID
+# Supported: PDF, JPEG, PNG (max 10MB)
+# Use multipart/form-data - this example shows the structure
+# In VS Code REST Client, use:
+#   file: < ./path/to/file.pdf
+POST {{baseUrl}}/api/documents/upload
+Authorization: Bearer {{accessToken}}
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary
+
+------WebKitFormBoundary
+Content-Disposition: form-data; name="applicantId"
+
+{{applicantId}}
+------WebKitFormBoundary
+Content-Disposition: form-data; name="documentTypeId"
+
+{{documentTypeId}}
+------WebKitFormBoundary
+Content-Disposition: form-data; name="file"; filename="document.pdf"
+Content-Type: application/pdf
+
+< ./document.pdf
+------WebKitFormBoundary--
+
+### Upload Document (Legacy)
+# Upload using document type name instead of ID
+POST {{baseUrl}}/api/documents/upload-legacy
+Authorization: Bearer {{accessToken}}
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary
+
+------WebKitFormBoundary
+Content-Disposition: form-data; name="applicantId"
+
+{{applicantId}}
+------WebKitFormBoundary
+Content-Disposition: form-data; name="documentType"
+
+BrokerAgreement
+------WebKitFormBoundary
+Content-Disposition: form-data; name="file"; filename="document.pdf"
+Content-Type: application/pdf
+
+< ./document.pdf
+------WebKitFormBoundary--
+
+### Get Presigned URL
+# Get a temporary URL to view/download a document
+GET {{baseUrl}}/api/documents/presigned-url?documentKey={{documentKey}}&expiryMinutes=60
+Authorization: Bearer {{accessToken}}
+
+### Delete Document
+# Removes the document record from the database
+DELETE {{baseUrl}}/api/documents/{{documentId}}
+Authorization: Bearer {{accessToken}}

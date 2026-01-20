@@ -91,7 +91,7 @@ const ContractInfoModal = ({
             style={{ width: '100%' }}
             size="large"
             formatter={(value) => `$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-            parser={(value) => value?.replace(/\$\s?|(,*)/g, '') as unknown as number}
+            parser={(value) => Number(value?.replace(/\$\s?|(,*)/g, '') || 0) as unknown as 0}
             min={0}
             placeholder="Enter contract price"
           />

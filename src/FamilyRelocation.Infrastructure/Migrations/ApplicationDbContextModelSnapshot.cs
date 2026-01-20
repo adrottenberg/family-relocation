@@ -62,6 +62,54 @@ namespace FamilyRelocation.Infrastructure.Migrations
                     b.ToTable("Applicants", (string)null);
                 });
 
+            modelBuilder.Entity("FamilyRelocation.Domain.Entities.ApplicantDocument", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ApplicantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid>("DocumentTypeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<long>("FileSizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("StorageKey")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime>("UploadedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UploadedBy")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApplicantId");
+
+                    b.HasIndex("DocumentTypeId");
+
+                    b.HasIndex("UploadedAt");
+
+                    b.HasIndex("ApplicantId", "DocumentTypeId");
+
+                    b.ToTable("ApplicantDocuments", (string)null);
+                });
+
             modelBuilder.Entity("FamilyRelocation.Domain.Entities.AuditLogEntry", b =>
                 {
                     b.Property<Guid>("Id")
@@ -114,6 +162,73 @@ namespace FamilyRelocation.Infrastructure.Migrations
                     b.ToTable("AuditLogs", (string)null);
                 });
 
+            modelBuilder.Entity("FamilyRelocation.Domain.Entities.DocumentType", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<bool>("IsSystemType")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsActive");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("DocumentTypes", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb01"),
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Agreement to work with the community's broker",
+                            DisplayName = "Broker Agreement",
+                            IsActive = true,
+                            IsSystemType = true,
+                            Name = "BrokerAgreement"
+                        },
+                        new
+                        {
+                            Id = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02"),
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Community guidelines and rules agreement",
+                            DisplayName = "Community Takanos",
+                            IsActive = true,
+                            IsSystemType = true,
+                            Name = "CommunityTakanos"
+                        });
+                });
+
             modelBuilder.Entity("FamilyRelocation.Domain.Entities.HousingSearch", b =>
                 {
                     b.Property<Guid>("Id")
@@ -122,20 +237,6 @@ namespace FamilyRelocation.Infrastructure.Migrations
 
                     b.Property<Guid>("ApplicantId")
                         .HasColumnType("uuid");
-
-                    b.Property<string>("BrokerAgreementDocumentUrl")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<DateTime?>("BrokerAgreementSignedDate")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("CommunityTakanosDocumentUrl")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<DateTime?>("CommunityTakanosSignedDate")
-                        .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid>("CreatedBy")
                         .HasColumnType("uuid");
@@ -182,6 +283,55 @@ namespace FamilyRelocation.Infrastructure.Migrations
                     b.HasIndex("Stage");
 
                     b.ToTable("HousingSearches", (string)null);
+                });
+
+            modelBuilder.Entity("FamilyRelocation.Domain.Entities.StageTransitionRequirement", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("DocumentTypeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("FromStage")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsRequired")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<int>("ToStage")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DocumentTypeId");
+
+                    b.HasIndex("FromStage", "ToStage");
+
+                    b.HasIndex("FromStage", "ToStage", "DocumentTypeId")
+                        .IsUnique();
+
+                    b.ToTable("StageTransitionRequirements", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("cccccccc-cccc-cccc-cccc-cccccccccc01"),
+                            DocumentTypeId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb01"),
+                            FromStage = 1,
+                            IsRequired = true,
+                            ToStage = 3
+                        },
+                        new
+                        {
+                            Id = new Guid("cccccccc-cccc-cccc-cccc-cccccccccc02"),
+                            DocumentTypeId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02"),
+                            FromStage = 1,
+                            IsRequired = true,
+                            ToStage = 3
+                        });
                 });
 
             modelBuilder.Entity("FamilyRelocation.Domain.Entities.Applicant", b =>
@@ -264,6 +414,14 @@ namespace FamilyRelocation.Infrastructure.Migrations
 
                             b1.Property<int>("__synthesizedOrdinal")
                                 .ValueGeneratedOnAdd();
+
+                            b1.Property<int>("Age");
+
+                            b1.Property<int>("Gender");
+
+                            b1.Property<string>("Name");
+
+                            b1.Property<string>("School");
 
                             b1.HasKey("ApplicantId", "__synthesizedOrdinal");
 
@@ -398,6 +556,25 @@ namespace FamilyRelocation.Infrastructure.Migrations
                     b.Navigation("Wife");
                 });
 
+            modelBuilder.Entity("FamilyRelocation.Domain.Entities.ApplicantDocument", b =>
+                {
+                    b.HasOne("FamilyRelocation.Domain.Entities.Applicant", "Applicant")
+                        .WithMany("Documents")
+                        .HasForeignKey("ApplicantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("FamilyRelocation.Domain.Entities.DocumentType", "DocumentType")
+                        .WithMany()
+                        .HasForeignKey("DocumentTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Applicant");
+
+                    b.Navigation("DocumentType");
+                });
+
             modelBuilder.Entity("FamilyRelocation.Domain.Entities.HousingSearch", b =>
                 {
                     b.HasOne("FamilyRelocation.Domain.Entities.Applicant", "Applicant")
@@ -411,6 +588,12 @@ namespace FamilyRelocation.Infrastructure.Migrations
                             b1.Property<Guid>("HousingSearchId");
 
                             b1.Property<DateTime?>("ActualClosingDate");
+
+                            b1.Property<DateTime>("ContractDate");
+
+                            b1.Property<DateTime?>("ExpectedClosingDate");
+
+                            b1.Property<Guid>("PropertyId");
 
                             b1.HasKey("HousingSearchId");
 
@@ -426,6 +609,11 @@ namespace FamilyRelocation.Infrastructure.Migrations
                             b1.OwnsOne("FamilyRelocation.Domain.ValueObjects.Money", "Price", b2 =>
                                 {
                                     b2.Property<Guid>("ContractHousingSearchId");
+
+                                    b2.Property<decimal>("Amount");
+
+                                    b2.Property<string>("Currency")
+                                        .IsRequired();
 
                                     b2.HasKey("ContractHousingSearchId");
 
@@ -446,6 +634,10 @@ namespace FamilyRelocation.Infrastructure.Migrations
                             b1.Property<int>("__synthesizedOrdinal")
                                 .ValueGeneratedOnAdd();
 
+                            b1.Property<DateTime>("FailedDate");
+
+                            b1.Property<string>("Reason");
+
                             b1.HasKey("HousingSearchId", "__synthesizedOrdinal");
 
                             b1.ToTable("HousingSearches");
@@ -465,6 +657,12 @@ namespace FamilyRelocation.Infrastructure.Migrations
 
                                     b2.Property<DateTime?>("ActualClosingDate");
 
+                                    b2.Property<DateTime>("ContractDate");
+
+                                    b2.Property<DateTime?>("ExpectedClosingDate");
+
+                                    b2.Property<Guid>("PropertyId");
+
                                     b2.HasKey("FailedContractAttemptHousingSearchId", "FailedContractAttempt__synthesizedOrdinal");
 
                                     b2.ToTable("HousingSearches");
@@ -477,6 +675,11 @@ namespace FamilyRelocation.Infrastructure.Migrations
                                             b3.Property<Guid>("ContractFailedContractAttemptHousingSearchId");
 
                                             b3.Property<int>("ContractFailedContractAttempt__synthesizedOrdinal");
+
+                                            b3.Property<decimal>("Amount");
+
+                                            b3.Property<string>("Currency")
+                                                .IsRequired();
 
                                             b3.HasKey("ContractFailedContractAttemptHousingSearchId", "ContractFailedContractAttempt__synthesizedOrdinal");
 
@@ -498,6 +701,15 @@ namespace FamilyRelocation.Infrastructure.Migrations
                         {
                             b1.Property<Guid>("HousingSearchId");
 
+                            b1.Property<decimal?>("MinBathrooms");
+
+                            b1.Property<int?>("MinBedrooms");
+
+                            b1.Property<int?>("MoveTimeline");
+
+                            b1.PrimitiveCollection<string>("RequiredFeatures")
+                                .IsRequired();
+
                             b1.HasKey("HousingSearchId");
 
                             b1.ToTable("HousingSearches");
@@ -513,6 +725,11 @@ namespace FamilyRelocation.Infrastructure.Migrations
                                 {
                                     b2.Property<Guid>("HousingPreferencesHousingSearchId");
 
+                                    b2.Property<decimal>("Amount");
+
+                                    b2.Property<string>("Currency")
+                                        .IsRequired();
+
                                     b2.HasKey("HousingPreferencesHousingSearchId");
 
                                     b2.ToTable("HousingSearches");
@@ -524,6 +741,15 @@ namespace FamilyRelocation.Infrastructure.Migrations
                             b1.OwnsOne("FamilyRelocation.Domain.ValueObjects.ShulProximityPreference", "ShulProximity", b2 =>
                                 {
                                     b2.Property<Guid>("HousingPreferencesHousingSearchId");
+
+                                    b2.Property<bool>("AnyShulAcceptable");
+
+                                    b2.Property<double?>("MaxWalkingDistanceMiles");
+
+                                    b2.Property<int?>("MaxWalkingTimeMinutes");
+
+                                    b2.PrimitiveCollection<string>("PreferredShulIds")
+                                        .IsRequired();
 
                                     b2.HasKey("HousingPreferencesHousingSearchId");
 
@@ -547,8 +773,21 @@ namespace FamilyRelocation.Infrastructure.Migrations
                     b.Navigation("_failedContracts");
                 });
 
+            modelBuilder.Entity("FamilyRelocation.Domain.Entities.StageTransitionRequirement", b =>
+                {
+                    b.HasOne("FamilyRelocation.Domain.Entities.DocumentType", "DocumentType")
+                        .WithMany()
+                        .HasForeignKey("DocumentTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("DocumentType");
+                });
+
             modelBuilder.Entity("FamilyRelocation.Domain.Entities.Applicant", b =>
                 {
+                    b.Navigation("Documents");
+
                     b.Navigation("HousingSearch");
                 });
 #pragma warning restore 612, 618

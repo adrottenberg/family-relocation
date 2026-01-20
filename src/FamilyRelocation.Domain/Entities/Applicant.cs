@@ -39,6 +39,10 @@ public class Applicant : Entity<Guid>
     // Navigation - one housing search per applicant
     public virtual HousingSearch? HousingSearch { get; private set; }
 
+    // Navigation - documents uploaded for this applicant
+    private readonly List<ApplicantDocument> _documents = new();
+    public IReadOnlyCollection<ApplicantDocument> Documents => _documents.AsReadOnly();
+
     // Audit
     public Guid CreatedBy { get; private set; }
     public DateTime CreatedDate { get; private set; }

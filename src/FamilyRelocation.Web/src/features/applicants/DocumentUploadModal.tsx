@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Modal, Upload, Button, message, Space, Card, Tag, Progress, Tooltip } from 'antd';
+import { useState, useEffect } from 'react';
+import { Modal, Upload, Button, message, Space, Card, Tag, Progress, Tooltip, Spin, Empty } from 'antd';
 import {
   UploadOutlined,
   FileTextOutlined,
@@ -9,9 +9,9 @@ import {
   SwapOutlined,
   ArrowRightOutlined,
 } from '@ant-design/icons';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { documentsApi, applicantsApi } from '../../api';
-import type { ApplicantDto } from '../../api/types';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { documentsApi, applicantsApi, getDocumentTypes } from '../../api';
+import type { ApplicantDto, DocumentTypeDto, ApplicantDocumentDto } from '../../api/types';
 import type { UploadFile } from 'antd/es/upload/interface';
 
 interface DocumentUploadModalProps {
@@ -20,83 +20,100 @@ interface DocumentUploadModalProps {
   applicant: ApplicantDto;
 }
 
-interface UploadState {
-  brokerFile: UploadFile | null;
-  takanosFile: UploadFile | null;
-  brokerUploading: boolean;
-  takanosUploading: boolean;
-  brokerProgress: number;
-  takanosProgress: number;
-  brokerReplaceMode: boolean;
-  takanosReplaceMode: boolean;
+interface DocumentUploadState {
+  file: UploadFile | null;
+  uploading: boolean;
+  progress: number;
+  replaceMode: boolean;
 }
 
 const DocumentUploadModal = ({ open, onClose, applicant }: DocumentUploadModalProps) => {
   const queryClient = useQueryClient();
   const housingSearch = applicant.housingSearch;
-  const brokerSigned = housingSearch?.brokerAgreementSigned || false;
-  const takanosSigned = housingSearch?.communityTakanosSigned || false;
-  const brokerDocUrl = housingSearch?.brokerAgreementDocumentUrl;
-  const takanosDocUrl = housingSearch?.communityTakanosDocumentUrl;
 
-  const [uploadState, setUploadState] = useState<UploadState>({
-    brokerFile: null,
-    takanosFile: null,
-    brokerUploading: false,
-    takanosUploading: false,
-    brokerProgress: 0,
-    takanosProgress: 0,
-    brokerReplaceMode: false,
-    takanosReplaceMode: false,
+  // Track upload state per document type
+  const [uploadStates, setUploadStates] = useState<Record<string, DocumentUploadState>>({});
+
+  // Fetch document types
+  const { data: documentTypes, isLoading: typesLoading } = useQuery({
+    queryKey: ['documentTypes'],
+    queryFn: () => getDocumentTypes(true),
+    enabled: open,
   });
 
-  const uploadBrokerMutation = useMutation({
-    mutationFn: async (file: File) => {
-      setUploadState((s) => ({ ...s, brokerUploading: true, brokerProgress: 30 }));
-
-      // Upload to S3
-      const result = await documentsApi.upload(file, applicant.id, 'BrokerAgreement');
-      setUploadState((s) => ({ ...s, brokerProgress: 70 }));
-
-      // Record the agreement
-      await applicantsApi.recordBrokerAgreement(applicant.id, result.documentUrl);
-      setUploadState((s) => ({ ...s, brokerProgress: 100 }));
-
-      return result;
-    },
-    onSuccess: () => {
-      message.success('Broker Agreement uploaded successfully');
-      queryClient.invalidateQueries({ queryKey: ['applicant', applicant.id] });
-      setUploadState((s) => ({ ...s, brokerUploading: false, brokerFile: null, brokerReplaceMode: false }));
-    },
-    onError: () => {
-      message.error('Failed to upload Broker Agreement');
-      setUploadState((s) => ({ ...s, brokerUploading: false, brokerProgress: 0 }));
-    },
+  // Fetch applicant's uploaded documents
+  const { data: applicantDocuments, isLoading: docsLoading } = useQuery({
+    queryKey: ['applicantDocuments', applicant.id],
+    queryFn: () => documentsApi.getApplicantDocuments(applicant.id),
+    enabled: open,
   });
 
-  const uploadTakanosMutation = useMutation({
-    mutationFn: async (file: File) => {
-      setUploadState((s) => ({ ...s, takanosUploading: true, takanosProgress: 30 }));
+  // Initialize upload states when document types load
+  useEffect(() => {
+    if (documentTypes) {
+      const initialStates: Record<string, DocumentUploadState> = {};
+      documentTypes.forEach((dt) => {
+        if (!uploadStates[dt.id]) {
+          initialStates[dt.id] = {
+            file: null,
+            uploading: false,
+            progress: 0,
+            replaceMode: false,
+          };
+        }
+      });
+      if (Object.keys(initialStates).length > 0) {
+        setUploadStates((prev) => ({ ...prev, ...initialStates }));
+      }
+    }
+  }, [documentTypes]);
+
+  // Check if a document type is already uploaded
+  const isDocumentUploaded = (documentTypeId: string): ApplicantDocumentDto | undefined => {
+    return applicantDocuments?.find((doc) => doc.documentTypeId === documentTypeId);
+  };
+
+  // Get the number of required documents that are uploaded (for stage transition check)
+  const getAllRequiredUploaded = (): boolean => {
+    if (!documentTypes || !applicantDocuments) return false;
+    // For now, check if all document types have been uploaded
+    // In a full implementation, this would check against stage requirements
+    return documentTypes.every((dt) => isDocumentUploaded(dt.id));
+  };
+
+  const uploadMutation = useMutation({
+    mutationFn: async ({ file, documentTypeId }: { file: File; documentTypeId: string }) => {
+      setUploadStates((prev) => ({
+        ...prev,
+        [documentTypeId]: { ...prev[documentTypeId], uploading: true, progress: 30 },
+      }));
 
       // Upload to S3
-      const result = await documentsApi.upload(file, applicant.id, 'CommunityTakanos');
-      setUploadState((s) => ({ ...s, takanosProgress: 70 }));
+      const result = await documentsApi.upload(file, applicant.id, documentTypeId);
+      setUploadStates((prev) => ({
+        ...prev,
+        [documentTypeId]: { ...prev[documentTypeId], progress: 100 },
+      }));
 
-      // Record the agreement
-      await applicantsApi.recordCommunityTakanos(applicant.id, result.documentUrl);
-      setUploadState((s) => ({ ...s, takanosProgress: 100 }));
-
-      return result;
+      return { result, documentTypeId };
     },
-    onSuccess: () => {
-      message.success('Community Takanos uploaded successfully');
+    onSuccess: ({ documentTypeId }) => {
+      const docType = documentTypes?.find((dt) => dt.id === documentTypeId);
+      message.success(`${docType?.displayName || 'Document'} uploaded successfully`);
       queryClient.invalidateQueries({ queryKey: ['applicant', applicant.id] });
-      setUploadState((s) => ({ ...s, takanosUploading: false, takanosFile: null, takanosReplaceMode: false }));
+      queryClient.invalidateQueries({ queryKey: ['applicantDocuments', applicant.id] });
+      setUploadStates((prev) => ({
+        ...prev,
+        [documentTypeId]: { file: null, uploading: false, progress: 0, replaceMode: false },
+      }));
     },
-    onError: () => {
-      message.error('Failed to upload Community Takanos');
-      setUploadState((s) => ({ ...s, takanosUploading: false, takanosProgress: 0 }));
+    onError: (_, { documentTypeId }) => {
+      const docType = documentTypes?.find((dt) => dt.id === documentTypeId);
+      message.error(`Failed to upload ${docType?.displayName || 'document'}`);
+      setUploadStates((prev) => ({
+        ...prev,
+        [documentTypeId]: { ...prev[documentTypeId], uploading: false, progress: 0 },
+      }));
     },
   });
 
@@ -114,38 +131,30 @@ const DocumentUploadModal = ({ open, onClose, applicant }: DocumentUploadModalPr
     },
   });
 
-  const handleBrokerUpload = () => {
-    if (uploadState.brokerFile) {
-      uploadBrokerMutation.mutate(uploadState.brokerFile as unknown as File);
+  const handleUpload = (documentTypeId: string) => {
+    const state = uploadStates[documentTypeId];
+    if (state?.file) {
+      uploadMutation.mutate({
+        file: state.file as unknown as File,
+        documentTypeId,
+      });
     }
   };
 
-  const handleTakanosUpload = () => {
-    if (uploadState.takanosFile) {
-      uploadTakanosMutation.mutate(uploadState.takanosFile as unknown as File);
-    }
-  };
-
-  const handleViewDocument = async (documentUrl: string) => {
+  const handleViewDocument = async (storageKey: string) => {
     try {
-      // Extract the S3 key from the URL - the key is the path after the bucket name
-      const url = new URL(documentUrl);
-      const key = url.pathname.substring(1); // Remove leading slash
-
-      const result = await documentsApi.getPresignedUrl(key);
+      const result = await documentsApi.getPresignedUrl(storageKey);
       window.open(result.url, '_blank');
     } catch {
       message.error('Failed to get document URL');
     }
   };
 
-  const bothSigned = brokerSigned && takanosSigned;
-  const canStartHouseHunting = bothSigned && housingSearch?.stage === 'BoardApproved';
-
   const beforeUploadValidation = (file: File) => {
-    const isValid = file.type === 'application/pdf' ||
-                    file.type === 'image/jpeg' ||
-                    file.type === 'image/png';
+    const isValid =
+      file.type === 'application/pdf' ||
+      file.type === 'image/jpeg' ||
+      file.type === 'image/png';
     if (!isValid) {
       message.error('Only PDF, JPEG, and PNG files are allowed');
       return Upload.LIST_IGNORE;
@@ -158,40 +167,58 @@ const DocumentUploadModal = ({ open, onClose, applicant }: DocumentUploadModalPr
     return false;
   };
 
-  const renderBrokerCard = () => {
-    const showUploadUI = !brokerSigned || uploadState.brokerReplaceMode;
+  const setUploadState = (documentTypeId: string, updates: Partial<DocumentUploadState>) => {
+    setUploadStates((prev) => ({
+      ...prev,
+      [documentTypeId]: { ...prev[documentTypeId], ...updates },
+    }));
+  };
+
+  const allUploaded = getAllRequiredUploaded();
+  const canStartHouseHunting = allUploaded && housingSearch?.stage === 'BoardApproved';
+
+  const renderDocumentCard = (docType: DocumentTypeDto) => {
+    const uploadedDoc = isDocumentUploaded(docType.id);
+    const state = uploadStates[docType.id] || {
+      file: null,
+      uploading: false,
+      progress: 0,
+      replaceMode: false,
+    };
 
     return (
       <Card
+        key={docType.id}
         size="small"
         title={
           <Space>
             <FileTextOutlined />
-            Broker Agreement
-            {brokerSigned && <Tag color="success">Signed</Tag>}
+            {docType.displayName}
+            {uploadedDoc && <Tag color="success">Uploaded</Tag>}
           </Space>
         }
       >
-        {brokerSigned && !uploadState.brokerReplaceMode ? (
+        {uploadedDoc && !state.replaceMode ? (
           <Space direction="vertical" style={{ width: '100%' }}>
             <div style={{ color: '#52c41a', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <CheckCircleOutlined /> Agreement has been uploaded
+              <CheckCircleOutlined /> {uploadedDoc.fileName}
+            </div>
+            <div style={{ color: '#888', fontSize: 12 }}>
+              Uploaded {new Date(uploadedDoc.uploadedAt).toLocaleDateString()}
             </div>
             <Space>
-              {brokerDocUrl && (
-                <Tooltip title="View uploaded document">
-                  <Button
-                    icon={<EyeOutlined />}
-                    onClick={() => handleViewDocument(brokerDocUrl)}
-                  >
-                    View
-                  </Button>
-                </Tooltip>
-              )}
+              <Tooltip title="View uploaded document">
+                <Button
+                  icon={<EyeOutlined />}
+                  onClick={() => handleViewDocument(uploadedDoc.storageKey)}
+                >
+                  View
+                </Button>
+              </Tooltip>
               <Tooltip title="Upload a new version">
                 <Button
                   icon={<SwapOutlined />}
-                  onClick={() => setUploadState((s) => ({ ...s, brokerReplaceMode: true }))}
+                  onClick={() => setUploadState(docType.id, { replaceMode: true })}
                 >
                   Replace
                 </Button>
@@ -200,45 +227,44 @@ const DocumentUploadModal = ({ open, onClose, applicant }: DocumentUploadModalPr
           </Space>
         ) : (
           <Space direction="vertical" style={{ width: '100%' }}>
-            {uploadState.brokerReplaceMode && (
+            {state.replaceMode && (
               <div style={{ marginBottom: 8, color: '#666' }}>
                 Upload a new document to replace the existing one.
                 <Button
                   type="link"
                   size="small"
-                  onClick={() => setUploadState((s) => ({ ...s, brokerReplaceMode: false, brokerFile: null }))}
+                  onClick={() => setUploadState(docType.id, { replaceMode: false, file: null })}
                 >
                   Cancel
                 </Button>
               </div>
             )}
             <Upload
+              accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
               beforeUpload={(file) => {
                 const result = beforeUploadValidation(file);
                 if (result !== Upload.LIST_IGNORE) {
-                  setUploadState((s) => ({ ...s, brokerFile: file as unknown as UploadFile }));
+                  setUploadState(docType.id, { file: file as unknown as UploadFile });
                 }
                 return result;
               }}
-              fileList={uploadState.brokerFile ? [uploadState.brokerFile] : []}
-              onRemove={() => setUploadState((s) => ({ ...s, brokerFile: null }))}
+              fileList={state.file ? [state.file] : []}
+              onRemove={() => setUploadState(docType.id, { file: null })}
               maxCount={1}
             >
-              <Button icon={<UploadOutlined />}>Select File</Button>
+              <Button icon={<UploadOutlined />}>Select File (PDF, JPEG, PNG)</Button>
             </Upload>
 
-            {uploadState.brokerUploading && (
-              <Progress percent={uploadState.brokerProgress} size="small" />
-            )}
+            {state.uploading && <Progress percent={state.progress} size="small" />}
 
-            {uploadState.brokerFile && !uploadState.brokerUploading && (
+            {state.file && !state.uploading && (
               <Button
                 type="primary"
                 icon={<CloudUploadOutlined />}
-                onClick={handleBrokerUpload}
-                loading={uploadState.brokerUploading}
+                onClick={() => handleUpload(docType.id)}
+                loading={state.uploading}
               >
-                {uploadState.brokerReplaceMode ? 'Replace' : 'Upload'} Broker Agreement
+                {state.replaceMode ? 'Replace' : 'Upload'} {docType.displayName}
               </Button>
             )}
           </Space>
@@ -247,94 +273,7 @@ const DocumentUploadModal = ({ open, onClose, applicant }: DocumentUploadModalPr
     );
   };
 
-  const renderTakanosCard = () => {
-    const showUploadUI = !takanosSigned || uploadState.takanosReplaceMode;
-
-    return (
-      <Card
-        size="small"
-        title={
-          <Space>
-            <FileTextOutlined />
-            Community Takanos
-            {takanosSigned && <Tag color="success">Signed</Tag>}
-          </Space>
-        }
-      >
-        {takanosSigned && !uploadState.takanosReplaceMode ? (
-          <Space direction="vertical" style={{ width: '100%' }}>
-            <div style={{ color: '#52c41a', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <CheckCircleOutlined /> Agreement has been uploaded
-            </div>
-            <Space>
-              {takanosDocUrl && (
-                <Tooltip title="View uploaded document">
-                  <Button
-                    icon={<EyeOutlined />}
-                    onClick={() => handleViewDocument(takanosDocUrl)}
-                  >
-                    View
-                  </Button>
-                </Tooltip>
-              )}
-              <Tooltip title="Upload a new version">
-                <Button
-                  icon={<SwapOutlined />}
-                  onClick={() => setUploadState((s) => ({ ...s, takanosReplaceMode: true }))}
-                >
-                  Replace
-                </Button>
-              </Tooltip>
-            </Space>
-          </Space>
-        ) : (
-          <Space direction="vertical" style={{ width: '100%' }}>
-            {uploadState.takanosReplaceMode && (
-              <div style={{ marginBottom: 8, color: '#666' }}>
-                Upload a new document to replace the existing one.
-                <Button
-                  type="link"
-                  size="small"
-                  onClick={() => setUploadState((s) => ({ ...s, takanosReplaceMode: false, takanosFile: null }))}
-                >
-                  Cancel
-                </Button>
-              </div>
-            )}
-            <Upload
-              beforeUpload={(file) => {
-                const result = beforeUploadValidation(file);
-                if (result !== Upload.LIST_IGNORE) {
-                  setUploadState((s) => ({ ...s, takanosFile: file as unknown as UploadFile }));
-                }
-                return result;
-              }}
-              fileList={uploadState.takanosFile ? [uploadState.takanosFile] : []}
-              onRemove={() => setUploadState((s) => ({ ...s, takanosFile: null }))}
-              maxCount={1}
-            >
-              <Button icon={<UploadOutlined />}>Select File</Button>
-            </Upload>
-
-            {uploadState.takanosUploading && (
-              <Progress percent={uploadState.takanosProgress} size="small" />
-            )}
-
-            {uploadState.takanosFile && !uploadState.takanosUploading && (
-              <Button
-                type="primary"
-                icon={<CloudUploadOutlined />}
-                onClick={handleTakanosUpload}
-                loading={uploadState.takanosUploading}
-              >
-                {uploadState.takanosReplaceMode ? 'Replace' : 'Upload'} Community Takanos
-              </Button>
-            )}
-          </Space>
-        )}
-      </Card>
-    );
-  };
+  const isLoading = typesLoading || docsLoading;
 
   return (
     <Modal
@@ -343,7 +282,7 @@ const DocumentUploadModal = ({ open, onClose, applicant }: DocumentUploadModalPr
       onCancel={onClose}
       footer={[
         <Button key="close" onClick={onClose}>
-          {bothSigned ? 'Done' : 'Close'}
+          {allUploaded ? 'Done' : 'Close'}
         </Button>,
         canStartHouseHunting && (
           <Button
@@ -360,31 +299,41 @@ const DocumentUploadModal = ({ open, onClose, applicant }: DocumentUploadModalPr
       width={520}
     >
       <div style={{ marginBottom: 16, padding: 12, background: '#f5f5f5', borderRadius: 6 }}>
-        <strong>{applicant.husband.lastName} Family</strong> - Upload signed agreements to proceed with house hunting.
+        <strong>{applicant.husband.lastName} Family</strong> - Upload signed agreements to proceed
+        with house hunting.
       </div>
 
-      <Space direction="vertical" style={{ width: '100%' }} size="middle">
-        {renderBrokerCard()}
-        {renderTakanosCard()}
+      {isLoading ? (
+        <div style={{ textAlign: 'center', padding: 40 }}>
+          <Spin />
+        </div>
+      ) : !documentTypes || documentTypes.length === 0 ? (
+        <Empty description="No document types configured" />
+      ) : (
+        <Space direction="vertical" style={{ width: '100%' }} size="middle">
+          {documentTypes.map(renderDocumentCard)}
 
-        {/* Status summary */}
-        {bothSigned && (
-          <div
-            style={{
-              padding: 12,
-              background: canStartHouseHunting ? '#f6ffed' : '#fff7e6',
-              border: `1px solid ${canStartHouseHunting ? '#b7eb8f' : '#ffd591'}`,
-              borderRadius: 6,
-              textAlign: 'center',
-            }}
-          >
-            <CheckCircleOutlined style={{ color: canStartHouseHunting ? '#52c41a' : '#faad14', marginRight: 8 }} />
-            {canStartHouseHunting
-              ? 'All agreements signed! Click "Move to House Hunting" to proceed.'
-              : 'All agreements signed! Ready to start house hunting.'}
-          </div>
-        )}
-      </Space>
+          {/* Status summary */}
+          {allUploaded && (
+            <div
+              style={{
+                padding: 12,
+                background: canStartHouseHunting ? '#f6ffed' : '#fff7e6',
+                border: `1px solid ${canStartHouseHunting ? '#b7eb8f' : '#ffd591'}`,
+                borderRadius: 6,
+                textAlign: 'center',
+              }}
+            >
+              <CheckCircleOutlined
+                style={{ color: canStartHouseHunting ? '#52c41a' : '#faad14', marginRight: 8 }}
+              />
+              {canStartHouseHunting
+                ? 'All agreements signed! Click "Move to House Hunting" to proceed.'
+                : 'All agreements signed! Ready to start house hunting.'}
+            </div>
+          )}
+        </Space>
+      )}
     </Modal>
   );
 };

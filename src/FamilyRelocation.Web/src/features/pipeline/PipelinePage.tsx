@@ -60,8 +60,6 @@ interface ModalState {
   fromStage: string;
   toStage: string;
   message: string;
-  brokerAgreementSigned?: boolean;
-  communityTakanosSigned?: boolean;
 }
 
 const initialModalState: ModalState = {
@@ -177,10 +175,6 @@ const PipelinePage = () => {
       targetStage as Stage,
       {
         boardDecision,
-        // We don't have agreement status in the list view, so assume false for now
-        // In a real app, we'd fetch this or include it in the list data
-        brokerAgreementSigned: false,
-        communityTakanosSigned: false,
       }
     );
 
@@ -196,8 +190,6 @@ const PipelinePage = () => {
         fromStage: currentStage,
         toStage: targetStage,
         message: result.message || '',
-        brokerAgreementSigned: false,
-        communityTakanosSigned: false,
       });
     }
   };
@@ -311,8 +303,8 @@ const PipelinePage = () => {
         onClose={closeModal}
         applicantId={modalState.applicantId}
         familyName={modalState.familyName}
-        brokerAgreementSigned={modalState.brokerAgreementSigned || false}
-        communityTakanosSigned={modalState.communityTakanosSigned || false}
+        fromStage={modalState.fromStage}
+        toStage={modalState.toStage}
       />
 
       <ContractInfoModal

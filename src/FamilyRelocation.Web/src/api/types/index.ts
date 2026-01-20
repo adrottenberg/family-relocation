@@ -116,13 +116,51 @@ export interface HousingSearchDto {
   preferences?: HousingPreferencesDto;
   currentContract?: ContractDto;
   failedContractCount: number;
-  brokerAgreementSigned: boolean;
-  brokerAgreementDocumentUrl?: string;
-  brokerAgreementSignedDate?: string;
-  communityTakanosSigned: boolean;
-  communityTakanosDocumentUrl?: string;
-  communityTakanosSignedDate?: string;
   notes?: string;
+}
+
+// Document types
+export interface DocumentTypeDto {
+  id: string;
+  name: string;
+  displayName: string;
+  description?: string;
+  isActive: boolean;
+  isSystemType: boolean;
+}
+
+export interface ApplicantDocumentDto {
+  id: string;
+  documentTypeId: string;
+  documentTypeName: string;
+  fileName: string;
+  storageKey: string;
+  contentType: string;
+  fileSizeBytes: number;
+  uploadedAt: string;
+  uploadedBy?: string;
+}
+
+export interface StageTransitionRequirementsDto {
+  fromStage: string;
+  toStage: string;
+  requirements: DocumentRequirementDto[];
+}
+
+export interface StageTransitionRequirementDto {
+  id: string;
+  fromStage: string;
+  toStage: string;
+  documentTypeId: string;
+  documentTypeName: string;
+  isRequired: boolean;
+}
+
+export interface DocumentRequirementDto {
+  documentTypeId: string;
+  documentTypeName: string;
+  isRequired: boolean;
+  isUploaded: boolean;
 }
 
 export interface HousingPreferencesDto {

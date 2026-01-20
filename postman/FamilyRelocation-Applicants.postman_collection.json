@@ -945,7 +945,143 @@
 			"name": "Documents",
 			"item": [
 				{
+					"name": "Get Document Types",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/document-types?activeOnly=true",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"document-types"
+							],
+							"query": [
+								{
+									"key": "activeOnly",
+									"value": "true",
+									"description": "If true (default), only return active document types"
+								}
+							]
+						},
+						"description": "Get all available document types.\n\n**Response includes:**\n- `id`: Document type ID (use this for uploads)\n- `name`: Internal name (e.g., BrokerAgreement)\n- `displayName`: Human-readable name (e.g., Broker Agreement)\n- `description`: Optional description\n- `isActive`: Whether the type is active\n- `isSystemType`: Whether it's a system-defined type"
+					}
+				},
+				{
+					"name": "Get Applicant Documents",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/documents/applicant/{{applicantId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"documents",
+								"applicant",
+								"{{applicantId}}"
+							]
+						},
+						"description": "Get all documents uploaded for an applicant.\n\n**Response includes:**\n- `id`: Document ID\n- `documentTypeId`: Document type ID\n- `documentTypeName`: Document type name\n- `fileName`: Original filename\n- `storageKey`: S3 key (use for presigned URL)\n- `contentType`: MIME type\n- `fileSizeBytes`: File size\n- `uploadedAt`: Upload timestamp\n- `uploadedBy`: User who uploaded"
+					}
+				},
+				{
 					"name": "Upload Document",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.collectionVariables.set('documentKey', jsonData.uploadResult.documentKey);",
+									"    pm.collectionVariables.set('documentId', jsonData.document.id);",
+									"    pm.test('Document uploaded - IDs saved', function() {",
+									"        pm.expect(jsonData.document.id).to.be.a('string');",
+									"        pm.expect(jsonData.uploadResult.documentKey).to.be.a('string');",
+									"    });",
+									"    console.log('Document ID: ' + jsonData.document.id);",
+									"    console.log('Storage Key: ' + jsonData.uploadResult.documentKey);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": ""
+								},
+								{
+									"key": "applicantId",
+									"value": "{{applicantId}}",
+									"type": "text"
+								},
+								{
+									"key": "documentTypeId",
+									"value": "{{documentTypeId}}",
+									"description": "Document type ID from GET /api/document-types",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/documents/upload",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"documents",
+								"upload"
+							]
+						},
+						"description": "Upload a document to S3.\n\n**Supported file types:** PDF, JPEG, PNG\n**Maximum file size:** 10MB\n\n**Parameters:**\n- `file`: The document file\n- `applicantId`: The applicant ID\n- `documentTypeId`: Document type ID (get from GET /api/document-types)\n\n**Response includes:**\n- `document`: The created document record\n- `uploadResult`: S3 upload details including documentKey and URL"
+					}
+				},
+				{
+					"name": "Upload Document (Legacy)",
 					"request": {
 						"auth": {
 							"type": "bearer",
@@ -975,23 +1111,52 @@
 								{
 									"key": "documentType",
 									"value": "BrokerAgreement",
-									"description": "BrokerAgreement, CommunityTakanos, or Other",
+									"description": "Document type name (e.g., BrokerAgreement, CommunityTakanos)",
 									"type": "text"
 								}
 							]
 						},
 						"url": {
-							"raw": "{{baseUrl}}/api/documents/upload",
+							"raw": "{{baseUrl}}/api/documents/upload-legacy",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
 								"api",
 								"documents",
-								"upload"
+								"upload-legacy"
 							]
 						},
-						"description": "Upload a document to S3.\n\n**Supported file types:** PDF, JPEG, PNG\n**Maximum file size:** 10MB\n\n**Document types:**\n- BrokerAgreement: Signed broker agreement\n- CommunityTakanos: Signed community guidelines\n- Other: Other supporting documents\n\n**Response includes:**\n- `documentKey`: S3 object key for the uploaded file\n- `url`: Pre-signed URL to access the document (valid for 1 hour)"
+						"description": "Legacy upload endpoint for backward compatibility.\n\nUses document type name instead of ID.\n\n**Supported file types:** PDF, JPEG, PNG\n**Maximum file size:** 10MB"
+					}
+				},
+				{
+					"name": "Delete Document",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/documents/{{documentId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"documents",
+								"{{documentId}}"
+							]
+						},
+						"description": "Delete a document from the database.\n\n**Note:** This removes the database record. The file in S3 may need separate cleanup."
 					}
 				},
 				{
@@ -1034,9 +1199,46 @@
 						},
 						"description": "Get a pre-signed URL for temporary access to a document.\n\n**Parameters:**\n- `documentKey`: The S3 object key (from upload response)\n- `expiryMinutes`: URL validity in minutes (default: 60, max: 1440)\n\n**Response includes:**\n- `url`: Pre-signed URL to access the document\n- `expiresAt`: Expiration timestamp"
 					}
+				},
+				{
+					"name": "Get Stage Requirements",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/stage-requirements/BoardApproved/HouseHunting?applicantId={{applicantId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"stage-requirements",
+								"BoardApproved",
+								"HouseHunting"
+							],
+							"query": [
+								{
+									"key": "applicantId",
+									"value": "{{applicantId}}",
+									"description": "Optional: Check which documents are already uploaded for this applicant"
+								}
+							]
+						},
+						"description": "Get document requirements for a stage transition.\n\n**Parameters:**\n- `fromStage`: The current stage (e.g., BoardApproved)\n- `toStage`: The target stage (e.g., HouseHunting)\n- `applicantId` (optional): Check which documents are already uploaded\n\n**Response includes:**\n- `fromStage`: Current stage\n- `toStage`: Target stage\n- `requirements`: List of required documents with:\n  - `documentTypeId`: Document type ID\n  - `documentTypeName`: Document type name\n  - `isRequired`: Whether the document is required\n  - `isUploaded`: Whether the document has been uploaded (if applicantId provided)"
+					}
 				}
 			],
-			"description": "Document upload and retrieval endpoints.\n\n**Workflow:**\n1. Upload document using POST /api/documents/upload\n2. Record agreement using POST /api/applicants/{id}/agreements with the returned documentKey\n3. View documents using GET /api/documents/presigned-url"
+			"description": "Document upload and retrieval endpoints.\n\n**Workflow:**\n1. Get available document types: GET /api/document-types\n2. Get stage requirements: GET /api/stage-requirements/{from}/{to}\n3. Upload document using POST /api/documents/upload with documentTypeId\n4. View applicant documents: GET /api/documents/applicant/{id}\n5. Download document: GET /api/documents/presigned-url"
 		},
 		{
 			"name": "Board Review",
@@ -1224,6 +1426,16 @@
 		},
 		{
 			"key": "documentKey",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "documentId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "documentTypeId",
 			"value": "",
 			"type": "string"
 		}

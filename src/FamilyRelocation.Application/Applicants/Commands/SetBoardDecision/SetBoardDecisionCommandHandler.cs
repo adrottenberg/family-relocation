@@ -1,5 +1,6 @@
 using FamilyRelocation.Application.Common.Exceptions;
 using FamilyRelocation.Application.Common.Interfaces;
+using FamilyRelocation.Domain.Common;
 using FamilyRelocation.Domain.Entities;
 using FamilyRelocation.Domain.Enums;
 using MediatR;
@@ -29,6 +30,7 @@ public class SetBoardDecisionCommandHandler : IRequestHandler<SetBoardDecisionCo
     {
         var applicant = await _context.Set<Applicant>()
             .Include(a => a.HousingSearch)
+            .Include(a => a.Documents)
             .FirstOrDefaultAsync(a => a.Id == command.ApplicantId, cancellationToken)
             ?? throw new NotFoundException("Applicant", command.ApplicantId);
 
@@ -47,6 +49,9 @@ public class SetBoardDecisionCommandHandler : IRequestHandler<SetBoardDecisionCo
         var request = command.Request;
         var previousStage = housingSearch.Stage;
 
+        // Check if required documents are uploaded
+        var hasRequiredDocuments = HasRequiredDocuments(applicant.Documents);
+
         // Set the board decision
         applicant.SetBoardDecision(
             decision: request.Decision,
@@ -59,8 +64,8 @@ public class SetBoardDecisionCommandHandler : IRequestHandler<SetBoardDecisionCo
         switch (request.Decision)
         {
             case BoardDecision.Approved:
-                housingSearch.ApproveBoardReview(userId);
-                nextSteps = BuildNextStepsInfo(housingSearch);
+                housingSearch.ApproveBoardReview(userId, hasRequiredDocuments);
+                nextSteps = BuildNextStepsInfo(applicant.Documents);
                 break;
 
             case BoardDecision.Rejected:
@@ -90,10 +95,17 @@ public class SetBoardDecisionCommandHandler : IRequestHandler<SetBoardDecisionCo
         };
     }
 
-    private static NextStepsInfo BuildNextStepsInfo(HousingSearch housingSearch)
+    private static bool HasRequiredDocuments(IReadOnlyCollection<ApplicantDocument> documents)
     {
-        var brokerSigned = housingSearch.BrokerAgreementSignedDate.HasValue;
-        var takanosSigned = housingSearch.CommunityTakanosSignedDate.HasValue;
+        var hasBroker = documents.Any(d => d.DocumentTypeId == WellKnownIds.BrokerAgreementDocumentTypeId);
+        var hasTakanos = documents.Any(d => d.DocumentTypeId == WellKnownIds.CommunityTakanosDocumentTypeId);
+        return hasBroker && hasTakanos;
+    }
+
+    private static NextStepsInfo BuildNextStepsInfo(IReadOnlyCollection<ApplicantDocument> documents)
+    {
+        var brokerSigned = documents.Any(d => d.DocumentTypeId == WellKnownIds.BrokerAgreementDocumentTypeId);
+        var takanosSigned = documents.Any(d => d.DocumentTypeId == WellKnownIds.CommunityTakanosDocumentTypeId);
 
         return new NextStepsInfo
         {

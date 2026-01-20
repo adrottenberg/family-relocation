@@ -85,7 +85,7 @@ const PreferencesStep = ({ data, onNext, onBack }: PreferencesStepProps) => {
         <InputNumber
           style={{ width: '100%' }}
           formatter={(value) => `$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-          parser={(value) => Number(value?.replace(/\$\s?|(,*)/g, '') || 0)}
+          parser={(value) => Number(value?.replace(/\$\s?|(,*)/g, '') || 0) as unknown as 0}
           placeholder="Enter your budget"
           min={0}
           step={10000}

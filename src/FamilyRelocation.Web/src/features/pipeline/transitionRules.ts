@@ -18,8 +18,6 @@ export interface TransitionResult {
 
 export interface ApplicantContext {
   boardDecision: string;
-  brokerAgreementSigned?: boolean;
-  communityTakanosSigned?: boolean;
 }
 
 // Valid transitions map
@@ -67,16 +65,12 @@ export function validateTransition(
     };
   }
 
-  // BoardApproved -> HouseHunting: Need signed agreements
+  // BoardApproved -> HouseHunting: Need signed agreements (checked dynamically by modal)
   if (fromStage === 'BoardApproved' && toStage === 'HouseHunting') {
-    const bothSigned = context.brokerAgreementSigned && context.communityTakanosSigned;
-    if (!bothSigned) {
-      return {
-        type: 'needsAgreements',
-        message: 'Signed agreements are required before starting House Hunting',
-      };
-    }
-    return { type: 'direct' };
+    return {
+      type: 'needsAgreements',
+      message: 'Signed agreements are required before starting House Hunting',
+    };
   }
 
   // HouseHunting -> UnderContract: Need contract info
