@@ -78,7 +78,8 @@ public class SetBoardDecisionCommandHandler : IRequestHandler<SetBoardDecisionCo
                     templateName,
                     new Dictionary<string, string>
                     {
-                        ["FamilyName"] = applicant.FamilyName
+                        ["HusbandFirstName"] = applicant.Husband.FirstName,
+                        ["HusbandLastName"] = applicant.Husband.LastName
                     },
                     cancellationToken);
             }

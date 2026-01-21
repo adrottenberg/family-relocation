@@ -88,7 +88,8 @@ public class ChangeStageCommandHandler : IRequestHandler<ChangeStageCommand, Cha
                 "StageChanged",
                 new Dictionary<string, string>
                 {
-                    ["FamilyName"] = applicant.FamilyName,
+                    ["HusbandFirstName"] = applicant.Husband.FirstName,
+                    ["HusbandLastName"] = applicant.Husband.LastName,
                     ["NewStage"] = FormatStageName(targetStage)
                 },
                 cancellationToken);

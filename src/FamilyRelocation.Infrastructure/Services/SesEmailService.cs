@@ -88,14 +88,15 @@ public class SesEmailService : IEmailService
 
     private string GetApplicationReceivedTemplate(Dictionary<string, string> data)
     {
-        var familyName = data.GetValueOrDefault("FamilyName", "");
+        var husbandFirstName = data.GetValueOrDefault("HusbandFirstName", "");
+        var husbandLastName = data.GetValueOrDefault("HusbandLastName", "");
         return $@"
 <!DOCTYPE html>
 <html>
 <head><style>body {{ font-family: Arial, sans-serif; line-height: 1.6; }}</style></head>
 <body>
 <h2>Thank You for Your Application</h2>
-<p>Dear {familyName} Family,</p>
+<p>Dear {husbandFirstName} {husbandLastName},</p>
 <p>We have received your application to join our community in Union County. Thank you for your interest!</p>
 <p><strong>What happens next:</strong></p>
 <ul>
@@ -111,14 +112,15 @@ public class SesEmailService : IEmailService
 
     private string GetBoardDecisionApprovedTemplate(Dictionary<string, string> data)
     {
-        var familyName = data.GetValueOrDefault("FamilyName", "");
+        var husbandFirstName = data.GetValueOrDefault("HusbandFirstName", "");
+        var husbandLastName = data.GetValueOrDefault("HusbandLastName", "");
         return $@"
 <!DOCTYPE html>
 <html>
 <head><style>body {{ font-family: Arial, sans-serif; line-height: 1.6; }}</style></head>
 <body>
 <h2>Congratulations!</h2>
-<p>Dear {familyName} Family,</p>
+<p>Dear {husbandFirstName} {husbandLastName},</p>
 <p>We are pleased to inform you that your application has been <strong>approved</strong> by our board!</p>
 <p><strong>Next Steps:</strong></p>
 <ul>
@@ -134,14 +136,15 @@ public class SesEmailService : IEmailService
 
     private string GetBoardDecisionRejectedTemplate(Dictionary<string, string> data)
     {
-        var familyName = data.GetValueOrDefault("FamilyName", "");
+        var husbandFirstName = data.GetValueOrDefault("HusbandFirstName", "");
+        var husbandLastName = data.GetValueOrDefault("HusbandLastName", "");
         return $@"
 <!DOCTYPE html>
 <html>
 <head><style>body {{ font-family: Arial, sans-serif; line-height: 1.6; }}</style></head>
 <body>
 <h2>Application Update</h2>
-<p>Dear {familyName} Family,</p>
+<p>Dear {husbandFirstName} {husbandLastName},</p>
 <p>Thank you for your interest in joining our community. After careful consideration, the board has decided not to proceed with your application at this time.</p>
 <p>If you have any questions about this decision, please feel free to contact us.</p>
 <p>We wish you the best in your search for a new home.</p>
@@ -152,14 +155,15 @@ public class SesEmailService : IEmailService
 
     private string GetBoardDecisionDeferredTemplate(Dictionary<string, string> data)
     {
-        var familyName = data.GetValueOrDefault("FamilyName", "");
+        var husbandFirstName = data.GetValueOrDefault("HusbandFirstName", "");
+        var husbandLastName = data.GetValueOrDefault("HusbandLastName", "");
         return $@"
 <!DOCTYPE html>
 <html>
 <head><style>body {{ font-family: Arial, sans-serif; line-height: 1.6; }}</style></head>
 <body>
 <h2>Application Update</h2>
-<p>Dear {familyName} Family,</p>
+<p>Dear {husbandFirstName} {husbandLastName},</p>
 <p>Thank you for your patience. The board has reviewed your application and has decided to defer the decision for now.</p>
 <p>We will be in touch with you soon regarding next steps or any additional information we may need.</p>
 <p>Best regards,<br>Vaad HaYishuv</p>
@@ -169,7 +173,8 @@ public class SesEmailService : IEmailService
 
     private string GetStageChangedTemplate(Dictionary<string, string> data)
     {
-        var familyName = data.GetValueOrDefault("FamilyName", "");
+        var husbandFirstName = data.GetValueOrDefault("HusbandFirstName", "");
+        var husbandLastName = data.GetValueOrDefault("HusbandLastName", "");
         var newStage = data.GetValueOrDefault("NewStage", "");
         var message = newStage switch
         {
@@ -185,7 +190,7 @@ public class SesEmailService : IEmailService
 <head><style>body {{ font-family: Arial, sans-serif; line-height: 1.6; }}</style></head>
 <body>
 <h2>Status Update</h2>
-<p>Dear {familyName} Family,</p>
+<p>Dear {husbandFirstName} {husbandLastName},</p>
 <p>{message}</p>
 <p>If you have any questions, please don't hesitate to contact us.</p>
 <p>Best regards,<br>Vaad HaYishuv</p>

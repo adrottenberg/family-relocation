@@ -90,7 +90,8 @@ public class CreateApplicantCommandHandler : IRequestHandler<CreateApplicantComm
                 "ApplicationReceived",
                 new Dictionary<string, string>
                 {
-                    ["FamilyName"] = applicant.FamilyName
+                    ["HusbandFirstName"] = applicant.Husband.FirstName,
+                    ["HusbandLastName"] = applicant.Husband.LastName
                 },
                 cancellationToken);
         }
