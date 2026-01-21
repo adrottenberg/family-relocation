@@ -1,4 +1,5 @@
 using FamilyRelocation.Application.Common.Interfaces;
+using FamilyRelocation.Application.Common.Models;
 using FamilyRelocation.Domain.Entities;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -35,7 +36,7 @@ public class GetRecentActivitiesQueryHandler : IRequestHandler<GetRecentActiviti
     }
 }
 
-public class GetActivitiesByEntityQueryHandler : IRequestHandler<GetActivitiesByEntityQuery, List<ActivityDto>>
+public class GetActivitiesByEntityQueryHandler : IRequestHandler<GetActivitiesByEntityQuery, PaginatedList<ActivityDto>>
 {
     private readonly IApplicationDbContext _context;
 
@@ -44,15 +45,20 @@ public class GetActivitiesByEntityQueryHandler : IRequestHandler<GetActivitiesBy
         _context = context;
     }
 
-    public async Task<List<ActivityDto>> Handle(GetActivitiesByEntityQuery request, CancellationToken ct)
+    public async Task<PaginatedList<ActivityDto>> Handle(GetActivitiesByEntityQuery request, CancellationToken ct)
     {
-        var activities = await _context.Set<ActivityLog>()
-            .Where(a => a.EntityType == request.EntityType && a.EntityId == request.EntityId)
+        var query = _context.Set<ActivityLog>()
+            .Where(a => a.EntityType == request.EntityType && a.EntityId == request.EntityId);
+
+        var totalCount = await query.CountAsync(ct);
+
+        var activities = await query
             .OrderByDescending(a => a.Timestamp)
-            .Take(50)
+            .Skip((request.Page - 1) * request.PageSize)
+            .Take(request.PageSize)
             .ToListAsync(ct);
 
-        return activities.Select(a => new ActivityDto
+        var items = activities.Select(a => new ActivityDto
         {
             Id = a.Id,
             EntityType = a.EntityType,
@@ -63,5 +69,7 @@ public class GetActivitiesByEntityQueryHandler : IRequestHandler<GetActivitiesBy
             UserName = a.UserName,
             Timestamp = a.Timestamp
         }).ToList();
+
+        return new PaginatedList<ActivityDto>(items, totalCount, request.Page, request.PageSize);
     }
 }

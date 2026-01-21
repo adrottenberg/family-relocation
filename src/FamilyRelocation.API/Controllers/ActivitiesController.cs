@@ -38,11 +38,19 @@ public class ActivitiesController : ControllerBase
     /// </summary>
     /// <param name="entityType">The type of entity (e.g., "Applicant", "Property")</param>
     /// <param name="entityId">The entity's unique identifier</param>
+    /// <param name="page">Page number (default: 1)</param>
+    /// <param name="pageSize">Items per page (default: 20, max: 100)</param>
     [HttpGet("{entityType}/{entityId:guid}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetByEntity(string entityType, Guid entityId)
+    public async Task<IActionResult> GetByEntity(
+        string entityType,
+        Guid entityId,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20)
     {
-        var result = await _mediator.Send(new GetActivitiesByEntityQuery(entityType, entityId));
+        pageSize = Math.Min(pageSize, 100);
+        page = Math.Max(page, 1);
+        var result = await _mediator.Send(new GetActivitiesByEntityQuery(entityType, entityId, page, pageSize));
         return Ok(result);
     }
 }
