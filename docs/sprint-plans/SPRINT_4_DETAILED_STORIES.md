@@ -3,7 +3,7 @@
 
 **Sprint Duration:** 2 weeks
 **Sprint Goal:** Implement follow-up reminders, audit log viewer, user management, and complete role-based access control
-**Total Points:** ~73 points (46 Backend + 27 Frontend)
+**Total Points:** ~76 points (46 Backend + 30 Frontend)
 **Prerequisites:** Sprint 3 complete (PR #19 merged)
 
 ---
@@ -47,8 +47,9 @@
 | US-F18 | Create/edit user modal | 2 | User Mgmt |
 | US-F19 | Log Activity Modal | 3 | Activity |
 | US-F20 | Board Approval Report Print View | 2 | Reports |
+| US-F21 | Pipeline Moved In Column and Limits | 3 | Pipeline |
 
-**Total: 73 points (46 Backend + 27 Frontend)**
+**Total: 76 points (46 Backend + 30 Frontend)**
 
 ---
 
@@ -1035,17 +1036,62 @@ await _activityLogger.LogAsync(
 
 ---
 
+### US-F21: Pipeline Moved In Column and Limits (3 points)
+
+**As a** coordinator
+**I want** separate Closed and Moved In columns on the pipeline
+**So that** I can track families through the complete journey and manage large lists
+
+#### Acceptance Criteria
+
+1. Add "Moved In" as a 6th column on the pipeline kanban board
+2. Separate `Closed` stage from `MovedIn` stage (currently combined)
+3. Limit Closed and Moved In columns to show only 10 most recent families
+4. Display "View all X (Y more)" link at bottom of limited columns
+5. Link navigates to `/applicants?stage=Closed` or `?stage=MovedIn`
+6. Add MovedIn transition modal (Closed -> MovedIn) with move-in date picker
+7. Update `transitionRules.ts` to add MovedIn as separate PipelineStage
+8. Update `getPipelineStage()` to return 'MovedIn' instead of 'Closed' for MovedIn housing searches
+
+#### Technical Implementation
+
+**Frontend Changes:**
+
+1. `transitionRules.ts`:
+   - Add `'MovedIn'` to `PipelineStage` type
+   - Add `needsMovedInInfo` to `TransitionType`
+   - Add `Closed: ['MovedIn']` and `MovedIn: []` to validTransitions
+   - Update `getPipelineStage()` switch to return 'MovedIn' separately
+
+2. `PipelinePage.tsx`:
+   - Add MovedIn to `stageConfig` with `maxItems: 10`
+   - Add Closed `maxItems: 10` to stageConfig
+   - Add MovedIn to `stageOrder` array
+   - Update `KanbanColumn` to accept `maxItems` prop
+   - Render "View all" link when items exceed maxItems
+
+3. Create `MovedInConfirmModal.tsx`:
+   - Date picker for move-in date
+   - Calls `housingSearchesApi.changeStage(id, { newStage: 'MovedIn', movedInDate })`
+
+4. `ApplicantDetailPage.tsx`:
+   - Add MovedIn to `allStages` array
+   - Handle `needsMovedInInfo` case in `handleStageChange`
+
+---
+
 ## UPDATED STORY POINTS
 
 | Category | Original | Added | New Total |
 |----------|----------|-------|-----------|
 | Backend | 30 | 16 | 46 |
-| Frontend | 22 | 5 | 27 |
-| **Total** | **52** | **21** | **73** |
+| Frontend | 22 | 8 | 30 |
+| **Total** | **52** | **24** | **76** |
 
 *Notes:*
 - *US-047 increased to 4 points due to unified communication logging approach*
 - *US-052 (2 points) added for expanding activity logging coverage*
+- *US-F21 (3 points) added for MovedIn column and pipeline limits*
 
 ---
 
