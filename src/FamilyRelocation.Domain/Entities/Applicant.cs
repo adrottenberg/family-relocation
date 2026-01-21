@@ -6,9 +6,9 @@ using FamilyRelocation.Domain.ValueObjects;
 namespace FamilyRelocation.Domain.Entities;
 
 /// <summary>
-/// Applicant aggregate root - represents a family applying for relocation assistance
-/// Board review is at APPLICANT level (not HousingSearch level)
-/// Housing preferences are on HousingSearch (they may change between search attempts)
+/// Applicant aggregate root - represents a family applying for relocation assistance.
+/// Board review is at APPLICANT level (not HousingSearch level).
+/// An approved applicant can have multiple housing searches (one-to-many).
 /// </summary>
 public class Applicant : Entity<Guid>
 {
@@ -17,6 +17,9 @@ public class Applicant : Entity<Guid>
         get => Id;
         private set => Id = value;
     }
+
+    // Application Status (Submitted -> Approved/Rejected)
+    public ApplicationStatus Status { get; private set; }
 
     // Family Members
     public HusbandInfo Husband { get; private set; } = null!;
@@ -36,8 +39,9 @@ public class Applicant : Entity<Guid>
     // Board Review (value object - set by staff after review)
     public BoardReview? BoardReview { get; private set; }
 
-    // Navigation - one housing search per applicant
-    public virtual HousingSearch? HousingSearch { get; private set; }
+    // Navigation - collection of housing searches (one-to-many)
+    private readonly List<HousingSearch> _housingSearches = new();
+    public IReadOnlyCollection<HousingSearch> HousingSearches => _housingSearches.AsReadOnly();
 
     // Navigation - documents uploaded for this applicant
     private readonly List<ApplicantDocument> _documents = new();
@@ -53,7 +57,8 @@ public class Applicant : Entity<Guid>
     private Applicant() { }
 
     /// <summary>
-    /// Factory method to create a new applicant (family) from intake
+    /// Factory method to create a new applicant (family) from intake.
+    /// Starts in Submitted status - no HousingSearch created until approved.
     /// </summary>
     public static Applicant Create(
         HusbandInfo husband,
@@ -69,6 +74,7 @@ public class Applicant : Entity<Guid>
         var applicant = new Applicant
         {
             ApplicantId = Guid.NewGuid(),
+            Status = ApplicationStatus.Submitted,
             Husband = husband,
             Wife = wife,
             Address = address,
@@ -137,8 +143,8 @@ public class Applicant : Entity<Guid>
     }
 
     /// <summary>
-    /// Set board decision for this applicant
-    /// Board review is at APPLICANT level, not HousingSearch level
+    /// Set board decision for this applicant.
+    /// If approved, automatically creates first HousingSearch in Searching stage.
     /// </summary>
     public void SetBoardDecision(
         BoardDecision decision,
@@ -146,21 +152,75 @@ public class Applicant : Entity<Guid>
         Guid reviewedByUserId,
         DateTime? reviewDate = null)
     {
+        if (Status != ApplicationStatus.Submitted)
+            throw new InvalidOperationException(
+                $"Can only set board decision when status is Submitted. Current status: {Status}");
+
         BoardReview = new BoardReview(decision, reviewedByUserId, notes, reviewDate);
         SetModified(reviewedByUserId);
 
+        // Update application status based on decision
+        Status = decision switch
+        {
+            BoardDecision.Approved => ApplicationStatus.Approved,
+            BoardDecision.Rejected => ApplicationStatus.Rejected,
+            _ => Status // Pending or Deferred don't change status
+        };
+
         AddDomainEvent(new ApplicantBoardDecisionMade(ApplicantId, decision, reviewedByUserId));
+
+        // If approved, create the first housing search
+        if (decision == BoardDecision.Approved)
+        {
+            var housingSearch = HousingSearch.Create(ApplicantId, reviewedByUserId);
+            _housingSearches.Add(housingSearch);
+        }
     }
+
+    /// <summary>
+    /// Start a new housing search (for approved applicants who need to search again).
+    /// Use case: Previous search ended (moved in, or decided not to move), family wants to search again.
+    /// </summary>
+    public HousingSearch StartNewHousingSearch(Guid createdBy)
+    {
+        if (Status != ApplicationStatus.Approved)
+            throw new InvalidOperationException(
+                $"Can only start housing search for approved applicants. Current status: {Status}");
+
+        // Deactivate any active searches
+        foreach (var search in _housingSearches.Where(s => s.IsActive))
+        {
+            search.Deactivate(createdBy);
+        }
+
+        var newSearch = HousingSearch.Create(ApplicantId, createdBy);
+        _housingSearches.Add(newSearch);
+        SetModified(createdBy);
+
+        return newSearch;
+    }
+
+    /// <summary>
+    /// Get the active housing search (most common case - 99% of applicants have one)
+    /// </summary>
+    public HousingSearch? ActiveHousingSearch =>
+        _housingSearches.FirstOrDefault(s => s.IsActive);
+
+    /// <summary>
+    /// Get the most recent housing search
+    /// </summary>
+    public HousingSearch? LatestHousingSearch =>
+        _housingSearches.OrderByDescending(s => s.CreatedDate).FirstOrDefault();
 
     /// <summary>
     /// Check if applicant is approved by board
     /// </summary>
-    public bool IsApproved => BoardReview?.IsApproved ?? false;
+    public bool IsApproved => Status == ApplicationStatus.Approved;
 
     /// <summary>
     /// Check if applicant has pending board review
     /// </summary>
-    public bool IsPendingBoardReview => BoardReview == null || BoardReview.IsPending;
+    public bool IsPendingBoardReview => Status == ApplicationStatus.Submitted;
 
     /// <summary>
     /// Convenience: Get family display name (husband's full name)

@@ -30,25 +30,25 @@ public class UpdatePreferencesCommandHandler : IRequestHandler<UpdatePreferences
     public async Task<UpdatePreferencesResponse> Handle(UpdatePreferencesCommand command, CancellationToken cancellationToken)
     {
         var applicant = await _context.Set<Applicant>()
-            .Include(a => a.HousingSearch)
+            .Include(a => a.HousingSearches)
             .FirstOrDefaultAsync(a => a.Id == command.ApplicantId, cancellationToken)
             ?? throw new NotFoundException("Applicant", command.ApplicantId);
 
-        if (applicant.HousingSearch == null)
-            throw new NotFoundException("HousingSearch for Applicant", command.ApplicantId);
+        var housingSearch = applicant.ActiveHousingSearch
+            ?? throw new NotFoundException("Active HousingSearch for Applicant", command.ApplicantId);
 
         var userId = _currentUserService.UserId
             ?? throw new UnauthorizedAccessException("User must be authenticated to update preferences.");
 
         var preferences = command.Request.ToDomain();
-        applicant.HousingSearch.UpdatePreferences(preferences, userId);
+        housingSearch.UpdatePreferences(preferences, userId);
 
         await _context.SaveChangesAsync(cancellationToken);
 
         return new UpdatePreferencesResponse
         {
-            Preferences = applicant.HousingSearch.Preferences?.ToDto() ?? new HousingPreferencesDto(),
-            ModifiedDate = applicant.HousingSearch.ModifiedDate
+            Preferences = housingSearch.Preferences?.ToDto() ?? new HousingPreferencesDto(),
+            ModifiedDate = housingSearch.ModifiedDate
         };
     }
 }

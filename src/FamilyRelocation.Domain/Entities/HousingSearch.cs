@@ -6,22 +6,19 @@ using FamilyRelocation.Domain.ValueObjects;
 namespace FamilyRelocation.Domain.Entities;
 
 /// <summary>
-/// Housing Search aggregate root
-/// Represents a family's house-hunting journey from start to completion
-/// An applicant has one housing search that tracks their entire journey
+/// Housing Search entity - represents an approved family's house-hunting journey.
+/// Created when an applicant is approved by the board.
+/// An applicant can have multiple housing searches (one-to-many), though 99% will have just one.
 /// </summary>
 public class HousingSearch : Entity<Guid>
 {
-    // Valid stage transitions (state machine)
+    // Valid stage transitions (state machine) - only search-level stages
     private static readonly Dictionary<HousingSearchStage, HousingSearchStage[]> ValidTransitions = new()
     {
-        [HousingSearchStage.Submitted] = [HousingSearchStage.BoardApproved, HousingSearchStage.Rejected],
-        [HousingSearchStage.BoardApproved] = [HousingSearchStage.HouseHunting],
-        [HousingSearchStage.Rejected] = [],
-        [HousingSearchStage.HouseHunting] = [HousingSearchStage.UnderContract, HousingSearchStage.Paused],
-        [HousingSearchStage.UnderContract] = [HousingSearchStage.Closed, HousingSearchStage.HouseHunting],
-        [HousingSearchStage.Closed] = [HousingSearchStage.MovedIn, HousingSearchStage.HouseHunting],
-        [HousingSearchStage.Paused] = [HousingSearchStage.HouseHunting],
+        [HousingSearchStage.Searching] = [HousingSearchStage.UnderContract, HousingSearchStage.Paused],
+        [HousingSearchStage.UnderContract] = [HousingSearchStage.Closed, HousingSearchStage.Searching],
+        [HousingSearchStage.Closed] = [HousingSearchStage.MovedIn, HousingSearchStage.Searching],
+        [HousingSearchStage.Paused] = [HousingSearchStage.Searching],
         [HousingSearchStage.MovedIn] = [],
     };
 
@@ -66,7 +63,8 @@ public class HousingSearch : Entity<Guid>
     private HousingSearch() { }
 
     /// <summary>
-    /// Factory method to create a new housing search
+    /// Factory method to create a new housing search.
+    /// Always starts in Searching stage (created when applicant is approved).
     /// </summary>
     public static HousingSearch Create(
         Guid applicantId,
@@ -79,7 +77,7 @@ public class HousingSearch : Entity<Guid>
         {
             HousingSearchId = Guid.NewGuid(),
             ApplicantId = applicantId,
-            Stage = HousingSearchStage.Submitted,
+            Stage = HousingSearchStage.Searching,
             StageChangedDate = DateTime.UtcNow,
             Preferences = HousingPreferences.Default(),
             IsActive = true,
@@ -117,62 +115,6 @@ public class HousingSearch : Entity<Guid>
     }
 
     /// <summary>
-    /// Transition to BoardApproved stage after board approval.
-    /// </summary>
-    /// <param name="modifiedBy">User ID making the change.</param>
-    /// <param name="hasRequiredDocuments">True if all required documents are uploaded for the next transition.</param>
-    public void ApproveBoardReview(Guid modifiedBy, bool hasRequiredDocuments = false)
-    {
-        if (Stage != HousingSearchStage.Submitted)
-            throw new InvalidOperationException(
-                $"Can only approve from Submitted stage. Current stage: {Stage}");
-
-        TransitionTo(HousingSearchStage.BoardApproved, modifiedBy);
-
-        // If all required documents are uploaded, automatically start house hunting
-        if (hasRequiredDocuments)
-        {
-            TransitionTo(HousingSearchStage.HouseHunting, modifiedBy);
-        }
-    }
-
-    /// <summary>
-    /// Begin house hunting (from BoardApproved stage).
-    /// Caller must verify that all required documents are uploaded before calling this.
-    /// </summary>
-    /// <param name="modifiedBy">User ID making the change.</param>
-    public void StartHouseHunting(Guid modifiedBy)
-    {
-        if (Stage != HousingSearchStage.BoardApproved)
-            throw new InvalidOperationException(
-                $"StartHouseHunting can only be called from BoardApproved stage. " +
-                $"Use Resume to restart from Paused, or ContractFellThrough from UnderContract/Closed. " +
-                $"Current stage: {Stage}");
-
-        TransitionTo(HousingSearchStage.HouseHunting, modifiedBy);
-    }
-
-    /// <summary>
-    /// Reject the housing search (board rejection).
-    /// Can only reject from Submitted stage.
-    /// </summary>
-    public void Reject(string? reason, Guid modifiedBy)
-    {
-        if (Stage != HousingSearchStage.Submitted)
-            throw new InvalidOperationException(
-                $"Can only reject from Submitted stage. Current stage: {Stage}");
-
-        if (!string.IsNullOrWhiteSpace(reason))
-        {
-            Notes = string.IsNullOrEmpty(Notes)
-                ? $"Rejected: {reason}"
-                : $"{Notes}\n\nRejected: {reason}";
-        }
-
-        TransitionTo(HousingSearchStage.Rejected, modifiedBy);
-    }
-
-    /// <summary>
     /// Pause the housing search (family taking a break)
     /// </summary>
     public void Pause(string? reason, Guid modifiedBy)
@@ -192,7 +134,7 @@ public class HousingSearch : Entity<Guid>
     /// </summary>
     public void Resume(Guid modifiedBy)
     {
-        TransitionTo(HousingSearchStage.HouseHunting, modifiedBy);
+        TransitionTo(HousingSearchStage.Searching, modifiedBy);
     }
 
     /// <summary>
@@ -214,7 +156,7 @@ public class HousingSearch : Entity<Guid>
     }
 
     /// <summary>
-    /// Contract fell through - preserve history and return to house hunting
+    /// Contract fell through - preserve history and return to searching
     /// </summary>
     public void ContractFellThrough(string? reason, Guid modifiedBy)
     {
@@ -237,7 +179,7 @@ public class HousingSearch : Entity<Guid>
         // Clear current contract
         CurrentContract = null;
 
-        TransitionTo(HousingSearchStage.HouseHunting, modifiedBy);
+        TransitionTo(HousingSearchStage.Searching, modifiedBy);
     }
 
     /// <summary>
@@ -323,11 +265,6 @@ public class HousingSearch : Entity<Guid>
     /// Check if housing search is complete (moved in)
     /// </summary>
     public bool IsComplete => Stage == HousingSearchStage.MovedIn;
-
-    /// <summary>
-    /// Check if housing search was rejected
-    /// </summary>
-    public bool IsRejected => Stage == HousingSearchStage.Rejected;
 
     /// <summary>
     /// Number of failed contract attempts

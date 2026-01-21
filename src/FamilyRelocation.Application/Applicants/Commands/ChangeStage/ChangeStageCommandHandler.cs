@@ -10,6 +10,8 @@ namespace FamilyRelocation.Application.Applicants.Commands.ChangeStage;
 
 /// <summary>
 /// Handles the ChangeStageCommand to transition a housing search to a new stage.
+/// Only handles search-level stages (Searching, UnderContract, Closed, MovedIn, Paused).
+/// Application-level transitions (Submitted -> Approved/Rejected) are handled by SetBoardDecisionCommand.
 /// </summary>
 public class ChangeStageCommandHandler : IRequestHandler<ChangeStageCommand, ChangeStageResponse>
 {
@@ -31,12 +33,12 @@ public class ChangeStageCommandHandler : IRequestHandler<ChangeStageCommand, Cha
     public async Task<ChangeStageResponse> Handle(ChangeStageCommand command, CancellationToken cancellationToken)
     {
         var applicant = await _context.Set<Applicant>()
-            .Include(a => a.HousingSearch)
+            .Include(a => a.HousingSearches)
             .FirstOrDefaultAsync(a => a.Id == command.ApplicantId, cancellationToken)
             ?? throw new NotFoundException("Applicant", command.ApplicantId);
 
-        if (applicant.HousingSearch == null)
-            throw new NotFoundException("HousingSearch for Applicant", command.ApplicantId);
+        var housingSearch = applicant.ActiveHousingSearch
+            ?? throw new NotFoundException("Active HousingSearch for Applicant", command.ApplicantId);
 
         var request = command.Request;
         var userId = _currentUserService.UserId
@@ -45,17 +47,11 @@ public class ChangeStageCommandHandler : IRequestHandler<ChangeStageCommand, Cha
         if (!Enum.TryParse<HousingSearchStage>(request.NewStage, ignoreCase: true, out var targetStage))
             throw new ValidationException($"Invalid stage: {request.NewStage}");
 
-        var housingSearch = applicant.HousingSearch;
-
         // Route to appropriate domain method based on target stage
         switch (targetStage)
         {
-            case HousingSearchStage.HouseHunting:
-                TransitionToHouseHunting(housingSearch, request, userId);
-                break;
-
-            case HousingSearchStage.Rejected:
-                housingSearch.Reject(request.Reason, userId);
+            case HousingSearchStage.Searching:
+                TransitionToSearching(housingSearch, request, userId);
                 break;
 
             case HousingSearchStage.Paused:
@@ -74,12 +70,6 @@ public class ChangeStageCommandHandler : IRequestHandler<ChangeStageCommand, Cha
                 TransitionToMovedIn(housingSearch, request, userId);
                 break;
 
-            case HousingSearchStage.BoardApproved:
-            case HousingSearchStage.Submitted:
-                throw new ValidationException(
-                    $"Cannot transition to {targetStage} via this endpoint. " +
-                    "Use the board review endpoints instead.");
-
             default:
                 throw new ValidationException($"Cannot transition to stage: {targetStage}");
         }
@@ -93,18 +83,13 @@ public class ChangeStageCommandHandler : IRequestHandler<ChangeStageCommand, Cha
         };
     }
 
-    private static void TransitionToHouseHunting(
+    private static void TransitionToSearching(
         HousingSearch housingSearch,
         ChangeStageRequest request,
         Guid userId)
     {
         switch (housingSearch.Stage)
         {
-            case HousingSearchStage.BoardApproved:
-                // Domain validates agreements are signed
-                housingSearch.StartHouseHunting(userId);
-                break;
-
             case HousingSearchStage.Paused:
                 housingSearch.Resume(userId);
                 break;
@@ -116,8 +101,7 @@ public class ChangeStageCommandHandler : IRequestHandler<ChangeStageCommand, Cha
 
             default:
                 throw new ValidationException(
-                    $"Cannot transition from {housingSearch.Stage} to HouseHunting. " +
-                    "Applicant must be in BoardApproved stage first.");
+                    $"Cannot transition from {housingSearch.Stage} to Searching.");
         }
     }
 

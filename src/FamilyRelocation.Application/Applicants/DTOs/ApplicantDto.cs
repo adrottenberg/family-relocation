@@ -11,6 +11,11 @@ public record ApplicantDto
     public required Guid Id { get; init; }
 
     /// <summary>
+    /// Application status (Submitted, Approved, Rejected).
+    /// </summary>
+    public required string Status { get; init; }
+
+    /// <summary>
     /// Information about the husband/primary applicant.
     /// </summary>
     public required HusbandInfoDto Husband { get; init; }

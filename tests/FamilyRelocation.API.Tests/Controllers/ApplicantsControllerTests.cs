@@ -32,6 +32,7 @@ public class ApplicantsControllerTests
         var expectedDto = new ApplicantDto
         {
             Id = applicantId,
+            Status = "Submitted",
             Husband = new HusbandInfoDto
             {
                 FirstName = "Moshe",
@@ -89,6 +90,7 @@ public class ApplicantsControllerTests
         var expectedDto = new ApplicantDto
         {
             Id = applicantId,
+            Status = "Submitted",
             Husband = new HusbandInfoDto
             {
                 FirstName = "Moshe",
@@ -163,6 +165,7 @@ public class ApplicantsControllerTests
         var expectedDto = new ApplicantDto
         {
             Id = applicantId,
+            Status = "Submitted",
             Husband = new HusbandInfoDto
             {
                 FirstName = "Moshe",
@@ -206,6 +209,7 @@ public class ApplicantsControllerTests
         var expectedDto = new ApplicantDto
         {
             Id = applicantId,
+            Status = "Submitted",
             Husband = new HusbandInfoDto
             {
                 FirstName = "Moshe",
@@ -393,6 +397,7 @@ public class ApplicantsControllerTests
         var expectedDto = new ApplicantDto
         {
             Id = applicantId,
+            Status = "Submitted",
             Husband = new HusbandInfoDto
             {
                 FirstName = "Moshe",
@@ -491,6 +496,7 @@ public class ApplicantsControllerTests
         var expectedDto = new ApplicantDto
         {
             Id = applicantId,
+            Status = "Submitted",
             Husband = new HusbandInfoDto
             {
                 FirstName = "Moshe",

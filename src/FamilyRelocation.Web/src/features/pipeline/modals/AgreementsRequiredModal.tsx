@@ -109,10 +109,10 @@ const AgreementsRequiredModal = ({
     },
   });
 
-  const startHouseHuntingMutation = useMutation({
-    mutationFn: () => applicantsApi.startHouseHunting(applicantId),
+  const transitionMutation = useMutation({
+    mutationFn: () => applicantsApi.changeStage(applicantId, { newStage: toStage }),
     onSuccess: () => {
-      message.success('Moved to House Hunting!');
+      message.success(`Moved to ${toStage}!`);
       queryClient.invalidateQueries({ queryKey: ['applicant', applicantId] });
       queryClient.invalidateQueries({ queryKey: ['applicants'] });
       queryClient.invalidateQueries({ queryKey: ['pipeline'] });
@@ -120,7 +120,7 @@ const AgreementsRequiredModal = ({
       onClose();
     },
     onError: () => {
-      message.error('Failed to move to house hunting');
+      message.error(`Failed to transition to ${toStage}`);
     },
   });
 
@@ -257,10 +257,10 @@ const AgreementsRequiredModal = ({
             key="proceed"
             type="primary"
             icon={<ArrowRightOutlined />}
-            onClick={() => startHouseHuntingMutation.mutate()}
-            loading={startHouseHuntingMutation.isPending}
+            onClick={() => transitionMutation.mutate()}
+            loading={transitionMutation.isPending}
           >
-            Move to House Hunting
+            Move to {toStage}
           </Button>
         ),
       ].filter(Boolean)}
@@ -294,7 +294,7 @@ const AgreementsRequiredModal = ({
             }}
           >
             <CheckCircleOutlined style={{ color: '#52c41a', marginRight: 8 }} />
-            All required documents uploaded! Click "Move to House Hunting" to proceed.
+            All required documents uploaded! Click "Move to {toStage}" to proceed.
           </div>
         </>
       )}

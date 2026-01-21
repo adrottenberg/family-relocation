@@ -49,24 +49,14 @@ public class StageTransitionRequirementConfiguration : IEntityTypeConfiguration<
 
         builder.HasIndex(r => new { r.FromStage, r.ToStage });
 
-        // Seed data: BoardApproved -> HouseHunting requires both agreements
-        builder.HasData(
-            new
-            {
-                Id = WellKnownIds.BoardToHuntingBrokerRequirementId,
-                FromStage = HousingSearchStage.BoardApproved,
-                ToStage = HousingSearchStage.HouseHunting,
-                DocumentTypeId = WellKnownIds.BrokerAgreementDocumentTypeId,
-                IsRequired = true
-            },
-            new
-            {
-                Id = WellKnownIds.BoardToHuntingTakanosRequirementId,
-                FromStage = HousingSearchStage.BoardApproved,
-                ToStage = HousingSearchStage.HouseHunting,
-                DocumentTypeId = WellKnownIds.CommunityTakanosDocumentTypeId,
-                IsRequired = true
-            }
-        );
+        // Note: Stage requirements for housing search transitions
+        // With the refactored model, document requirements for board approval are
+        // now checked at the Applicant level (not HousingSearch transitions).
+        //
+        // Future seed data can be added for search-level requirements like:
+        // - Searching -> UnderContract (might require pre-approval letter)
+        // - UnderContract -> Closed (might require closing documents)
+        //
+        // For now, no seed data - requirements can be configured via Settings page.
     }
 }

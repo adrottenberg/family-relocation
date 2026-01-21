@@ -37,12 +37,12 @@ const ContractFailedModal = ({
     mutationFn: async (values: FormValues) => {
       const reasonLabel = FAILURE_REASONS.find(r => r.value === values.reason)?.label || values.reason;
       return applicantsApi.changeStage(applicantId, {
-        newStage: 'HouseHunting',
+        newStage: 'Searching',
         notes: `Contract failed: ${reasonLabel}${values.notes ? `. ${values.notes}` : ''}`,
       });
     },
     onSuccess: () => {
-      message.info('Moved back to House Hunting');
+      message.info('Moved back to Searching');
       queryClient.invalidateQueries({ queryKey: ['pipeline'] });
       queryClient.invalidateQueries({ queryKey: ['applicants'] });
       form.resetFields();

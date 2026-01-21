@@ -50,8 +50,8 @@ const BoardApprovalRequiredModal = ({
         notes: values.notes,
       }),
     onSuccess: (data) => {
-      if (data.newStage === 'BoardApproved' || data.newStage === 'HouseHunting') {
-        message.success('Board decision recorded! Applicant approved.');
+      if (data.newStage === 'Searching') {
+        message.success('Board decision recorded! Applicant approved and ready for searching.');
         queryClient.invalidateQueries({ queryKey: ['applicant', applicantId] });
         queryClient.invalidateQueries({ queryKey: ['applicants'] });
         queryClient.invalidateQueries({ queryKey: ['pipeline'] });

@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { applicantsApi } from '../../api';
 import type { ApplicantListItemDto } from '../../api/types';
 import { colors } from '../../theme/antd-theme';
-import { validateTransition, type Stage, type TransitionType } from './transitionRules';
+import { validateTransition, getPipelineStage, type Stage, type TransitionType } from './transitionRules';
 import { useAuthStore } from '../../store/authStore';
 import {
   TransitionBlockedModal,
@@ -14,18 +14,17 @@ import {
   ContractInfoModal,
   ClosingConfirmModal,
   ContractFailedModal,
-  AgreementsRequiredModal,
 } from './modals';
 import './PipelinePage.css';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
 
-// Stage configuration
+// Stage configuration for pipeline columns
+// Note: With the refactored model, we show 4 columns: Submitted, Searching, UnderContract, Closed
 const stageConfig: Record<string, { color: string; bg: string; label: string }> = {
   Submitted: { color: '#3b82f6', bg: '#dbeafe', label: 'Submitted' },
-  BoardApproved: { color: '#8b5cf6', bg: '#ede9fe', label: 'Board Approved' },
-  HouseHunting: { color: '#f59e0b', bg: '#fef3c7', label: 'House Hunting' },
+  Searching: { color: '#f59e0b', bg: '#fef3c7', label: 'Searching' },
   UnderContract: { color: '#8b5cf6', bg: '#ede9fe', label: 'Under Contract' },
   Closed: { color: '#10b981', bg: '#d1fae5', label: 'Closed' },
 };
@@ -92,20 +91,29 @@ const PipelinePage = () => {
   });
 
   // Transform flat applicant list into pipeline stages
+  // Uses getPipelineStage to determine the correct column based on board decision and housing search stage
   const data = useMemo(() => {
     if (!rawData?.items) return null;
 
-    const stageOrder = ['Submitted', 'BoardApproved', 'HouseHunting', 'UnderContract', 'Closed'];
+    // Pipeline stages: Submitted, Searching, UnderContract, Closed
+    const stageOrder = ['Submitted', 'Searching', 'UnderContract', 'Closed'];
 
     const stages: PipelineStage[] = stageOrder.map((stageName) => {
       const stageItems = rawData.items
-        .filter((a: ApplicantListItemDto) => (a.stage || 'Submitted') === stageName)
+        .filter((a: ApplicantListItemDto) => {
+          // Determine pipeline stage from board decision and housing search stage
+          const pipelineStage = getPipelineStage(a.boardDecision, a.stage);
+          return pipelineStage === stageName;
+        })
         .map((a: ApplicantListItemDto): PipelineItem => {
           const nameParts = a.husbandFullName.split(' ');
           const familyName = nameParts.pop() || a.husbandFullName;
           const husbandFirstName = nameParts.join(' ') || '';
           const createdDate = new Date(a.createdDate);
           const daysInStage = Math.floor((Date.now() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
+
+          // Get the pipeline stage for display
+          const pipelineStage = getPipelineStage(a.boardDecision, a.stage);
 
           return {
             applicantId: a.id,
@@ -115,7 +123,7 @@ const PipelinePage = () => {
             wifeFirstName: a.wifeMaidenName,
             childrenCount: 0, // Not available in list view
             boardDecision: a.boardDecision || 'Pending',
-            stage: a.stage || 'Submitted',
+            stage: pipelineStage, // Use the computed pipeline stage
             daysInStage,
             budget: undefined, // Not available in list view
             preferredCities: undefined, // Not available in list view
@@ -296,15 +304,6 @@ const PipelinePage = () => {
         applicantId={modalState.applicantId}
         familyName={modalState.familyName}
         canApprove={canApproveBoardDecisions()}
-      />
-
-      <AgreementsRequiredModal
-        open={modalState.type === 'needsAgreements'}
-        onClose={closeModal}
-        applicantId={modalState.applicantId}
-        familyName={modalState.familyName}
-        fromStage={modalState.fromStage}
-        toStage={modalState.toStage}
       />
 
       <ContractInfoModal

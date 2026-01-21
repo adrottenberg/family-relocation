@@ -79,7 +79,6 @@ public class HousingSearchConfiguration : IEntityTypeConfiguration<HousingSearch
         // Ignore computed properties
         builder.Ignore(h => h.IsUnderContract);
         builder.Ignore(h => h.IsComplete);
-        builder.Ignore(h => h.IsRejected);
         builder.Ignore(h => h.FailedContractCount);
 
         // Audit

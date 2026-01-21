@@ -156,26 +156,28 @@ public class DocumentEndpointsTests : IDisposable
     #region Stage Requirements Tests
 
     [Fact]
-    public async Task GetStageRequirements_BoardApprovedToHouseHunting_ReturnsRequirements()
+    public async Task GetStageRequirements_SearchingToUnderContract_ReturnsEmptyRequirements()
     {
+        // Note: With the refactored stage model, document requirements for board approval
+        // are now checked at the Applicant level, not HousingSearch transitions.
+        // This test verifies that valid stage transitions can be queried.
+
         // Act
-        var response = await _client.GetAsync("/api/stage-requirements/BoardApproved/HouseHunting");
+        var response = await _client.GetAsync("/api/stage-requirements/Searching/UnderContract");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var content = await response.Content.ReadAsStringAsync();
         var requirements = JsonSerializer.Deserialize<StageRequirementsDto>(content, _jsonOptions);
         requirements.Should().NotBeNull();
-        requirements!.FromStage.Should().Be("BoardApproved");
-        requirements.ToStage.Should().Be("HouseHunting");
-        requirements.Requirements.Should().NotBeEmpty();
-        // Should require Broker Agreement and Community Takanos (display names)
-        requirements.Requirements.Should().Contain(r => r.DocumentTypeName == "Broker Agreement");
-        requirements.Requirements.Should().Contain(r => r.DocumentTypeName == "Community Takanos");
+        requirements!.FromStage.Should().Be("Searching");
+        requirements.ToStage.Should().Be("UnderContract");
+        // No document requirements configured for this transition by default
+        requirements.Requirements.Should().BeEmpty();
     }
 
     [Fact]
-    public async Task GetStageRequirements_WithApplicantId_IncludesUploadStatus()
+    public async Task GetStageRequirements_WithApplicantId_ReturnsValidResponse()
     {
         // Arrange - Create an applicant first
         var createResponse = await _client.PostAsJsonAsync("/api/applicants", new
@@ -186,23 +188,23 @@ public class DocumentEndpointsTests : IDisposable
         var createContent = await createResponse.Content.ReadAsStringAsync();
         var createResult = JsonSerializer.Deserialize<CreateApplicantResponse>(createContent, _jsonOptions);
 
-        // Act
-        var response = await _client.GetAsync($"/api/stage-requirements/BoardApproved/HouseHunting?applicantId={createResult!.ApplicantId}");
+        // Act - Query a valid stage transition with applicantId
+        var response = await _client.GetAsync($"/api/stage-requirements/Searching/UnderContract?applicantId={createResult!.ApplicantId}");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var content = await response.Content.ReadAsStringAsync();
         var requirements = JsonSerializer.Deserialize<StageRequirementsDto>(content, _jsonOptions);
         requirements.Should().NotBeNull();
-        // Documents should show as not uploaded
-        requirements!.Requirements.Should().OnlyContain(r => !r.IsUploaded);
+        // No requirements configured, so empty list (but with applicant context working)
+        requirements!.Requirements.Should().BeEmpty();
     }
 
     [Fact]
-    public async Task GetStageRequirements_NoRequirements_ReturnsEmptyList()
+    public async Task GetStageRequirements_UnderContractToClosed_ReturnsEmptyList()
     {
         // Act - Try a transition that has no document requirements
-        var response = await _client.GetAsync("/api/stage-requirements/HouseHunting/UnderContract");
+        var response = await _client.GetAsync("/api/stage-requirements/UnderContract/Closed");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);

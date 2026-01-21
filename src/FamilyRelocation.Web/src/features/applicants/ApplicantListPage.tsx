@@ -46,7 +46,7 @@ const ApplicantListPage = () => {
   const getStageTagStyle = (stageName: string) => {
     const stageMap: Record<string, keyof typeof stageTagStyles> = {
       'Submitted': 'submitted',
-      'HouseHunting': 'houseHunting',
+      'Searching': 'houseHunting', // Reuse houseHunting style for Searching
       'UnderContract': 'underContract',
       'Closed': 'closed',
     };
@@ -56,13 +56,10 @@ const ApplicantListPage = () => {
 
   const formatStageName = (stage: string) => {
     const names: Record<string, string> = {
-      'Submitted': 'Submitted',
-      'BoardApproved': 'Board Approved',
-      'HouseHunting': 'House Hunting',
+      'Searching': 'Searching',
       'UnderContract': 'Under Contract',
       'Closed': 'Closed',
       'Paused': 'Paused',
-      'Rejected': 'Rejected',
       'MovedIn': 'Moved In',
     };
     return names[stage] || stage;
@@ -200,12 +197,11 @@ const ApplicantListPage = () => {
             style={{ width: 160 }}
             allowClear
           >
-            <Option value="Submitted">Submitted</Option>
-            <Option value="BoardApproved">Board Approved</Option>
-            <Option value="HouseHunting">House Hunting</Option>
+            <Option value="Searching">Searching</Option>
             <Option value="UnderContract">Under Contract</Option>
             <Option value="Closed">Closed</Option>
             <Option value="MovedIn">Moved In</Option>
+            <Option value="Paused">Paused</Option>
           </Select>
           {hasFilters && (
             <Button
