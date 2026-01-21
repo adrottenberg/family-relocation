@@ -1122,6 +1122,264 @@ Current: `v0.1.0` (Pre-release/development)
 
 ---
 
+---
+
+## CODE REVIEW FIXES (Critical - Added January 21, 2026)
+
+These issues were identified during the comprehensive code review and must be addressed before production deployment.
+
+### CR-001: Global Exception Handler Middleware (3 points) - CRITICAL
+
+**Problem:** Validation errors return HTTP 500 with full stack traces exposed.
+
+**Verified via API testing:**
+```
+POST /api/applicants with empty fields returns:
+System.ArgumentException: First name is required (Parameter 'firstName')
+   at FamilyRelocation.Domain.ValueObjects.HusbandInfo..ctor...
+```
+
+**Fix:**
+
+1. Create `src/FamilyRelocation.API/Middleware/GlobalExceptionHandler.cs`:
+```csharp
+public class GlobalExceptionHandler : IExceptionHandler
+{
+    public async ValueTask<bool> TryHandleAsync(HttpContext context, Exception exception, CancellationToken ct)
+    {
+        var response = exception switch
+        {
+            ValidationException ve => (StatusCodes.Status400BadRequest, ve.Errors),
+            NotFoundException nf => (StatusCodes.Status404NotFound, new { message = nf.Message }),
+            DuplicateEmailException de => (StatusCodes.Status409Conflict, new { message = de.Message }),
+            ArgumentException ae => (StatusCodes.Status400BadRequest, new { message = ae.Message }),
+            UnauthorizedAccessException => (StatusCodes.Status403Forbidden, new { message = "Access denied" }),
+            _ => (StatusCodes.Status500InternalServerError, new { message = "An error occurred" })
+        };
+
+        context.Response.StatusCode = response.Item1;
+        await context.Response.WriteAsJsonAsync(response.Item2, ct);
+        return true;
+    }
+}
+```
+
+2. Register in `Program.cs`:
+```csharp
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+// ...
+app.UseExceptionHandler();
+```
+
+---
+
+### CR-002: MediatR Validation Pipeline (2 points) - CRITICAL
+
+**Problem:** FluentValidation validators are registered but never executed. Validation happens in domain layer instead of at API boundary.
+
+**Fix:**
+
+1. Create `src/FamilyRelocation.Application/Common/Behaviors/ValidationBehavior.cs`:
+```csharp
+public class ValidationBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
+    where TRequest : notnull
+{
+    private readonly IEnumerable<IValidator<TRequest>> _validators;
+
+    public ValidationBehavior(IEnumerable<IValidator<TRequest>> validators)
+        => _validators = validators;
+
+    public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken ct)
+    {
+        if (!_validators.Any()) return await next();
+
+        var context = new ValidationContext<TRequest>(request);
+        var failures = _validators
+            .Select(v => v.Validate(context))
+            .SelectMany(r => r.Errors)
+            .Where(f => f != null)
+            .ToList();
+
+        if (failures.Count != 0)
+            throw new ValidationException(failures);
+
+        return await next();
+    }
+}
+```
+
+2. Update `src/FamilyRelocation.Application/DependencyInjection.cs`:
+```csharp
+services.AddMediatR(cfg =>
+{
+    cfg.RegisterServicesFromAssembly(assembly);
+    cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+});
+```
+
+---
+
+### CR-003: CORS Configuration (1 point) - CRITICAL
+
+**Problem:** No CORS configuration. Frontend on different port/domain will fail.
+
+**Fix in `Program.cs`:**
+```csharp
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy.WithOrigins("http://localhost:5173", "https://your-production-domain.com")
+              .AllowAnyMethod()
+              .AllowAnyHeader()
+              .AllowCredentials();
+    });
+});
+
+// After UseRouting, before UseAuthorization:
+app.UseCors("AllowFrontend");
+```
+
+---
+
+### CR-004: Cryptographic Password Generation (1 point) - CRITICAL
+
+**Problem:** `CognitoAuthenticationService.GenerateTemporaryPassword()` uses `new Random()` which is not cryptographically secure.
+
+**File:** `src/FamilyRelocation.Infrastructure/AWS/CognitoAuthenticationService.cs:397`
+
+**Fix:**
+```csharp
+private static string GenerateTemporaryPassword()
+{
+    const string upperCase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    const string lowerCase = "abcdefghijklmnopqrstuvwxyz";
+    const string digits = "0123456789";
+    const string special = "!@#$%^&*";
+
+    var password = new char[12];
+    using var rng = RandomNumberGenerator.Create();
+
+    // Ensure at least one of each required type
+    password[0] = GetRandomChar(upperCase, rng);
+    password[1] = GetRandomChar(lowerCase, rng);
+    password[2] = GetRandomChar(digits, rng);
+    password[3] = GetRandomChar(special, rng);
+
+    // Fill rest with random chars from all
+    var allChars = upperCase + lowerCase + digits + special;
+    for (int i = 4; i < password.Length; i++)
+        password[i] = GetRandomChar(allChars, rng);
+
+    // Shuffle using crypto-random
+    return new string(password.OrderBy(_ => GetRandomInt(rng)).ToArray());
+}
+
+private static char GetRandomChar(string chars, RandomNumberGenerator rng)
+{
+    var bytes = new byte[4];
+    rng.GetBytes(bytes);
+    return chars[Math.Abs(BitConverter.ToInt32(bytes, 0)) % chars.Length];
+}
+
+private static int GetRandomInt(RandomNumberGenerator rng)
+{
+    var bytes = new byte[4];
+    rng.GetBytes(bytes);
+    return BitConverter.ToInt32(bytes, 0);
+}
+```
+
+---
+
+### CR-005: JWT Audience Validation (1 point) - HIGH
+
+**Problem:** `ValidateAudience = false` in JWT configuration disables audience validation.
+
+**File:** `src/FamilyRelocation.API/Program.cs:71`
+
+**Fix:**
+```csharp
+options.TokenValidationParameters = new TokenValidationParameters
+{
+    ValidateIssuerSigningKey = true,
+    ValidateIssuer = true,
+    ValidateAudience = true,  // Enable
+    ValidAudience = builder.Configuration["AWS:Cognito:ClientId"],
+    ValidateLifetime = true
+};
+```
+
+---
+
+### CR-006: Swagger Security Definition (1 point) - HIGH
+
+**Problem:** Swagger UI has no Authorization button - can't test protected endpoints.
+
+**Fix in `Program.cs`:**
+```csharp
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new OpenApiInfo { /* ... */ });
+
+    // Add security definition
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "JWT Authorization header using the Bearer scheme.",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
+    });
+
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+
+    // Include XML comments...
+});
+```
+
+---
+
+### CR-007: Add Missing Command Validators (2 points) - MEDIUM
+
+**Problem:** Several commands lack FluentValidation validators.
+
+**Files to create:**
+
+1. `Application/Applicants/Commands/DeleteApplicant/DeleteApplicantCommandValidator.cs`
+2. `Application/Applicants/Commands/ChangeStage/ChangeStageCommandValidator.cs`
+3. `Application/Documents/Commands/DeleteDocument/DeleteDocumentCommandValidator.cs`
+4. `Application/DocumentTypes/Commands/CreateDocumentType/CreateDocumentTypeCommandValidator.cs`
+5. `Application/DocumentTypes/Commands/UpdateDocumentType/UpdateDocumentTypeCommandValidator.cs`
+6. `Application/StageRequirements/Commands/CreateStageRequirement/CreateStageRequirementCommandValidator.cs`
+
+Each validator should validate that IDs are not empty Guids and required strings are not empty.
+
+---
+
+## UPDATED SPRINT 4 TOTALS
+
+| Category | Original | Code Review | New Total |
+|----------|----------|-------------|-----------|
+| Backend | 46 | 11 | 57 |
+| Frontend | 30 | 0 | 30 |
+| **Total** | **76** | **11** | **87** |
+
+---
+
 ## NOTES
 
 - The Audit Log backend is already complete - this sprint focuses on the frontend viewer
@@ -1132,3 +1390,4 @@ Current: `v0.1.0` (Pre-release/development)
 - **Activity logging for stage changes**: Fixed - added IActivityLogger to ChangeHousingSearchStageCommandHandler
 - **SES sandbox mode**: Requires email verification for each recipient in sandbox; consider requesting production access
 - **Broker role**: Consider privacy implications - may need data masking layer
+- **Code Review Issues**: CR-001 through CR-007 added from January 21, 2026 comprehensive code review
