@@ -6,4 +6,6 @@ export * from './endpoints/housingSearches';
 export * from './endpoints/documents';
 export * from './endpoints/documentTypes';
 export * from './endpoints/stageRequirements';
+export * from './endpoints/properties';
+export * from './endpoints/dashboard';
 export * from './types';

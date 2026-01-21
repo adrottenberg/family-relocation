@@ -12,6 +12,7 @@ const DashboardPage = lazy(() => import('./features/dashboard/DashboardPage'));
 const ApplicantListPage = lazy(() => import('./features/applicants/ApplicantListPage'));
 const ApplicantDetailPage = lazy(() => import('./features/applicants/ApplicantDetailPage'));
 const PipelinePage = lazy(() => import('./features/pipeline/PipelinePage'));
+const PropertiesListPage = lazy(() => import('./features/properties/PropertiesListPage'));
 const SettingsPage = lazy(() => import('./features/settings/SettingsPage'));
 
 const LoadingFallback = () => (
@@ -53,6 +54,7 @@ function App() {
           <Route path="applicants" element={<ApplicantListPage />} />
           <Route path="applicants/:id" element={<ApplicantDetailPage />} />
           <Route path="pipeline" element={<PipelinePage />} />
+          <Route path="properties" element={<PropertiesListPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
 

@@ -1,10 +1,12 @@
 using Amazon.CognitoIdentityProvider;
 using Amazon.S3;
+using Amazon.SimpleEmail;
 using FamilyRelocation.Application.Auth;
 using FamilyRelocation.Application.Common.Interfaces;
 using FamilyRelocation.Infrastructure.AWS;
 using FamilyRelocation.Infrastructure.Persistence;
 using FamilyRelocation.Infrastructure.Persistence.Interceptors;
+using FamilyRelocation.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -43,12 +45,19 @@ public static class DependencyInjection
         services.AddDefaultAWSOptions(configuration.GetAWSOptions());
         services.AddAWSService<IAmazonCognitoIdentityProvider>();
         services.AddAWSService<IAmazonS3>();
+        services.AddAWSService<IAmazonSimpleEmailService>();
 
         // Authentication
         services.AddScoped<IAuthenticationService, CognitoAuthenticationService>();
 
         // Document Storage
         services.AddScoped<IDocumentStorageService, S3DocumentStorageService>();
+
+        // Activity Logging
+        services.AddScoped<IActivityLogger, ActivityLogger>();
+
+        // Email Service
+        services.AddScoped<IEmailService, SesEmailService>();
 
         return services;
     }
