@@ -10,7 +10,7 @@ namespace FamilyRelocation.Application.Applicants.Commands.ChangeStage;
 
 /// <summary>
 /// Handles the ChangeStageCommand to transition a housing search to a new stage.
-/// Only handles search-level stages (Searching, UnderContract, Closed, MovedIn, Paused).
+/// Only handles search-level stages (AwaitingAgreements, Searching, UnderContract, Closed, MovedIn, Paused).
 /// Application-level transitions (Submitted -> Approved/Rejected) are handled by SetBoardDecisionCommand.
 /// </summary>
 public class ChangeStageCommandHandler : IRequestHandler<ChangeStageCommand, ChangeStageResponse>
@@ -90,6 +90,10 @@ public class ChangeStageCommandHandler : IRequestHandler<ChangeStageCommand, Cha
     {
         switch (housingSearch.Stage)
         {
+            case HousingSearchStage.AwaitingAgreements:
+                housingSearch.StartSearching(userId);
+                break;
+
             case HousingSearchStage.Paused:
                 housingSearch.Resume(userId);
                 break;

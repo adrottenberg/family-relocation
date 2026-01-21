@@ -33,10 +33,10 @@ export interface RefreshTokenResponse {
 export type ApplicationStatus = 'Submitted' | 'Approved' | 'Rejected';
 
 // Housing search stage - tracks approved applicant's house hunting journey
-export type HousingSearchStage = 'Searching' | 'UnderContract' | 'Closed' | 'MovedIn' | 'Paused';
+export type HousingSearchStage = 'AwaitingAgreements' | 'Searching' | 'UnderContract' | 'Closed' | 'MovedIn' | 'Paused';
 
 // Pipeline stage - combined view for the pipeline UI
-export type PipelineStage = 'Submitted' | 'Approved' | 'Searching' | 'UnderContract' | 'Closed';
+export type PipelineStage = 'Submitted' | 'AwaitingAgreements' | 'Searching' | 'UnderContract' | 'Closed';
 
 // Applicant list item (lightweight for list views)
 export interface ApplicantListItemDto {

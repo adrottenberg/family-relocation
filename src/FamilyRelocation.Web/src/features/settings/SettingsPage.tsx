@@ -43,6 +43,7 @@ const { Title, Text } = Typography;
 type SettingsSection = 'documentTypes' | 'stageRequirements';
 
 const STAGES = [
+  { value: 'AwaitingAgreements', label: 'Awaiting Agreements' },
   { value: 'Searching', label: 'Searching' },
   { value: 'UnderContract', label: 'Under Contract' },
   { value: 'Closed', label: 'Closed' },

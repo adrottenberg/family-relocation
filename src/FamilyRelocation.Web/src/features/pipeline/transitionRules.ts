@@ -3,17 +3,19 @@
 
 // Pipeline stages combine ApplicationStatus and HousingSearchStage for display
 // - Submitted: No housing search (ApplicationStatus = Submitted)
-// - Searching: Has housing search in Searching stage (ApplicationStatus = Approved)
+// - AwaitingAgreements: Board approved, waiting for agreements to be signed
+// - Searching: Has housing search in Searching stage (actively searching)
 // - UnderContract: Has housing search in UnderContract stage
 // - Closed: Has housing search in Closed stage
-export type PipelineStage = 'Submitted' | 'Searching' | 'UnderContract' | 'Closed';
+export type PipelineStage = 'Submitted' | 'AwaitingAgreements' | 'Searching' | 'UnderContract' | 'Closed';
 
 // Legacy alias for backward compatibility
 export type Stage = PipelineStage;
 
 export type TransitionType =
   | 'direct'              // Can transition directly without modal
-  | 'needsBoardApproval'  // Needs board approval first (Submitted -> Searching)
+  | 'needsBoardApproval'  // Needs board approval first (Submitted -> AwaitingAgreements)
+  | 'needsAgreements'     // Needs agreements signed (AwaitingAgreements -> Searching)
   | 'needsContractInfo'   // Needs contract details (Searching -> UnderContract)
   | 'needsClosingInfo'    // Needs closing confirmation (UnderContract -> Closed)
   | 'contractFailed'      // Contract fell through (UnderContract -> Searching)
@@ -30,11 +32,13 @@ export interface ApplicantContext {
 }
 
 // Valid transitions map
-// Note: Submitted -> Searching happens via board approval (which auto-creates HousingSearch)
+// Note: Submitted -> AwaitingAgreements happens via board approval (which auto-creates HousingSearch)
+// Note: AwaitingAgreements -> Searching happens when required agreements are signed
 const validTransitions: Record<PipelineStage, PipelineStage[]> = {
-  Submitted: ['Searching'],      // Via board approval
-  Searching: ['UnderContract'],  // When contract is signed
-  UnderContract: ['Searching', 'Closed'],  // Contract failed or closed
+  Submitted: ['AwaitingAgreements'],      // Via board approval
+  AwaitingAgreements: ['Searching'],      // When agreements are signed
+  Searching: ['UnderContract'],           // When contract is signed
+  UnderContract: ['Searching', 'Closed'], // Contract failed or closed
   Closed: [], // Terminal state
 };
 
@@ -56,12 +60,20 @@ export function validateTransition(
     };
   }
 
-  // Submitted -> Searching: Needs board approval
-  // This transition happens via SetBoardDecision which auto-creates HousingSearch
-  if (fromStage === 'Submitted' && toStage === 'Searching') {
+  // Submitted -> AwaitingAgreements: Needs board approval
+  // This transition happens via SetBoardDecision which auto-creates HousingSearch in AwaitingAgreements stage
+  if (fromStage === 'Submitted' && toStage === 'AwaitingAgreements') {
     return {
       type: 'needsBoardApproval',
       message: 'Board approval is required to move this applicant forward',
+    };
+  }
+
+  // AwaitingAgreements -> Searching: Needs agreements signed
+  if (fromStage === 'AwaitingAgreements' && toStage === 'Searching') {
+    return {
+      type: 'needsAgreements',
+      message: 'Required agreements must be signed before searching can begin',
     };
   }
 
@@ -95,13 +107,14 @@ export function validateTransition(
 export function formatStage(stage: string): string {
   const names: Record<string, string> = {
     Submitted: 'Submitted',
+    AwaitingAgreements: 'Awaiting Agreements',
     Searching: 'Searching',
     UnderContract: 'Under Contract',
     Closed: 'Closed',
     MovedIn: 'Moved In',
     Paused: 'Paused',
     // Legacy names for backward compatibility
-    BoardApproved: 'Board Approved',
+    BoardApproved: 'Awaiting Agreements',
     HouseHunting: 'Searching',
   };
   return names[stage] || stage;
@@ -119,12 +132,14 @@ export function getPipelineStage(
 
   // Approved - check housing search stage
   if (!housingSearchStage) {
-    // Approved but no housing search - shouldn't happen, but treat as Searching
-    return 'Searching';
+    // Approved but no housing search - shouldn't happen, but treat as AwaitingAgreements
+    return 'AwaitingAgreements';
   }
 
   // Map housing search stage to pipeline stage
   switch (housingSearchStage) {
+    case 'AwaitingAgreements':
+      return 'AwaitingAgreements';
     case 'Searching':
     case 'Paused':
       return 'Searching';
@@ -134,6 +149,6 @@ export function getPipelineStage(
     case 'MovedIn':
       return 'Closed';
     default:
-      return 'Searching';
+      return 'AwaitingAgreements';
   }
 }

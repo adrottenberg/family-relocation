@@ -9,7 +9,7 @@ namespace FamilyRelocation.Domain.Tests.Entities;
 /// <summary>
 /// Tests for HousingSearch entity.
 /// Note: HousingSearch is now created ONLY when an applicant is approved by the board.
-/// It starts in Searching stage (not Submitted - that's an application-level concern).
+/// It starts in AwaitingAgreements stage, then transitions to Searching when agreements are signed.
 /// </summary>
 public class HousingSearchTests
 {
@@ -19,7 +19,7 @@ public class HousingSearchTests
     #region Create Tests
 
     [Fact]
-    public void Create_WithValidData_ShouldCreateHousingSearchInSearchingStage()
+    public void Create_WithValidData_ShouldCreateHousingSearchInAwaitingAgreementsStage()
     {
         // Arrange & Act
         var housingSearch = HousingSearch.Create(
@@ -28,7 +28,7 @@ public class HousingSearchTests
 
         // Assert
         housingSearch.ApplicantId.Should().Be(_applicantId);
-        housingSearch.Stage.Should().Be(HousingSearchStage.Searching);
+        housingSearch.Stage.Should().Be(HousingSearchStage.AwaitingAgreements);
         housingSearch.IsActive.Should().BeTrue();
         housingSearch.CreatedBy.Should().Be(_userId);
         housingSearch.Id.Should().NotBeEmpty();
@@ -610,13 +610,53 @@ public class HousingSearchTests
 
     #endregion
 
+    #region StartSearching Tests
+
+    [Fact]
+    public void StartSearching_FromAwaitingAgreements_ShouldMoveToSearching()
+    {
+        // Arrange
+        var housingSearch = CreateAwaitingAgreementsSearch();
+        housingSearch.ClearDomainEvents();
+
+        // Act
+        housingSearch.StartSearching(_userId);
+
+        // Assert
+        housingSearch.Stage.Should().Be(HousingSearchStage.Searching);
+    }
+
+    [Fact]
+    public void StartSearching_FromSearching_ShouldThrow()
+    {
+        // Arrange
+        var housingSearch = CreateSearchingSearch();
+
+        // Act
+        var act = () => housingSearch.StartSearching(_userId);
+
+        // Assert - can't transition from Searching to Searching
+        act.Should().Throw<InvalidOperationException>();
+    }
+
+    #endregion
+
     #region Helper Methods
 
-    private HousingSearch CreateSearchingSearch()
+    private HousingSearch CreateAwaitingAgreementsSearch()
     {
         return HousingSearch.Create(
             applicantId: _applicantId,
             createdBy: _userId);
+    }
+
+    private HousingSearch CreateSearchingSearch()
+    {
+        var housingSearch = HousingSearch.Create(
+            applicantId: _applicantId,
+            createdBy: _userId);
+        housingSearch.StartSearching(_userId);
+        return housingSearch;
     }
 
     #endregion

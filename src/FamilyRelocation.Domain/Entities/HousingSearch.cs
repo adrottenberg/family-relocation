@@ -15,6 +15,7 @@ public class HousingSearch : Entity<Guid>
     // Valid stage transitions (state machine) - only search-level stages
     private static readonly Dictionary<HousingSearchStage, HousingSearchStage[]> ValidTransitions = new()
     {
+        [HousingSearchStage.AwaitingAgreements] = [HousingSearchStage.Searching],
         [HousingSearchStage.Searching] = [HousingSearchStage.UnderContract, HousingSearchStage.Paused],
         [HousingSearchStage.UnderContract] = [HousingSearchStage.Closed, HousingSearchStage.Searching],
         [HousingSearchStage.Closed] = [HousingSearchStage.MovedIn, HousingSearchStage.Searching],
@@ -64,7 +65,8 @@ public class HousingSearch : Entity<Guid>
 
     /// <summary>
     /// Factory method to create a new housing search.
-    /// Always starts in Searching stage (created when applicant is approved).
+    /// Always starts in AwaitingAgreements stage (created when applicant is board-approved).
+    /// Transitions to Searching once required agreements are signed.
     /// </summary>
     public static HousingSearch Create(
         Guid applicantId,
@@ -77,7 +79,7 @@ public class HousingSearch : Entity<Guid>
         {
             HousingSearchId = Guid.NewGuid(),
             ApplicantId = applicantId,
-            Stage = HousingSearchStage.Searching,
+            Stage = HousingSearchStage.AwaitingAgreements,
             StageChangedDate = DateTime.UtcNow,
             Preferences = HousingPreferences.Default(),
             IsActive = true,
@@ -90,6 +92,15 @@ public class HousingSearch : Entity<Guid>
         housingSearch.AddDomainEvent(new HousingSearchStarted(housingSearch.HousingSearchId, applicantId));
 
         return housingSearch;
+    }
+
+    /// <summary>
+    /// Start house hunting after agreements are signed.
+    /// Transitions from AwaitingAgreements to Searching.
+    /// </summary>
+    public void StartSearching(Guid modifiedBy)
+    {
+        TransitionTo(HousingSearchStage.Searching, modifiedBy);
     }
 
     /// <summary>

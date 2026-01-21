@@ -7,18 +7,21 @@ namespace FamilyRelocation.Domain.Enums;
 /// </summary>
 public enum HousingSearchStage
 {
+    /// <summary>Board approved, waiting for agreements to be signed</summary>
+    AwaitingAgreements = 0,
+
     /// <summary>Actively searching for homes</summary>
-    Searching = 0,
+    Searching = 1,
 
     /// <summary>Property under contract</summary>
-    UnderContract = 1,
+    UnderContract = 2,
 
     /// <summary>Closing completed</summary>
-    Closed = 2,
+    Closed = 3,
 
     /// <summary>Family has moved in - journey complete</summary>
-    MovedIn = 3,
+    MovedIn = 4,
 
     /// <summary>Search temporarily paused</summary>
-    Paused = 4
+    Paused = 5
 }

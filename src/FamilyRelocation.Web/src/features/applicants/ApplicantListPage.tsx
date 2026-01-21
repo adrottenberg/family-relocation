@@ -46,6 +46,7 @@ const ApplicantListPage = () => {
   const getStageTagStyle = (stageName: string) => {
     const stageMap: Record<string, keyof typeof stageTagStyles> = {
       'Submitted': 'submitted',
+      'AwaitingAgreements': 'submitted', // Reuse submitted style for AwaitingAgreements
       'Searching': 'houseHunting', // Reuse houseHunting style for Searching
       'UnderContract': 'underContract',
       'Closed': 'closed',
@@ -56,6 +57,7 @@ const ApplicantListPage = () => {
 
   const formatStageName = (stage: string) => {
     const names: Record<string, string> = {
+      'AwaitingAgreements': 'Awaiting Agreements',
       'Searching': 'Searching',
       'UnderContract': 'Under Contract',
       'Closed': 'Closed',

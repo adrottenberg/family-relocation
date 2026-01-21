@@ -11,6 +11,7 @@ import { useAuthStore } from '../../store/authStore';
 import {
   TransitionBlockedModal,
   BoardApprovalRequiredModal,
+  AgreementsRequiredModal,
   ContractInfoModal,
   ClosingConfirmModal,
   ContractFailedModal,
@@ -21,9 +22,10 @@ const { Title, Text } = Typography;
 const { Option } = Select;
 
 // Stage configuration for pipeline columns
-// Note: With the refactored model, we show 4 columns: Submitted, Searching, UnderContract, Closed
+// Note: With the refactored model, we show 5 columns: Submitted, AwaitingAgreements, Searching, UnderContract, Closed
 const stageConfig: Record<string, { color: string; bg: string; label: string }> = {
   Submitted: { color: '#3b82f6', bg: '#dbeafe', label: 'Submitted' },
+  AwaitingAgreements: { color: '#06b6d4', bg: '#cffafe', label: 'Awaiting Agreements' },
   Searching: { color: '#f59e0b', bg: '#fef3c7', label: 'Searching' },
   UnderContract: { color: '#8b5cf6', bg: '#ede9fe', label: 'Under Contract' },
   Closed: { color: '#10b981', bg: '#d1fae5', label: 'Closed' },
@@ -95,8 +97,8 @@ const PipelinePage = () => {
   const data = useMemo(() => {
     if (!rawData?.items) return null;
 
-    // Pipeline stages: Submitted, Searching, UnderContract, Closed
-    const stageOrder = ['Submitted', 'Searching', 'UnderContract', 'Closed'];
+    // Pipeline stages: Submitted, AwaitingAgreements, Searching, UnderContract, Closed
+    const stageOrder = ['Submitted', 'AwaitingAgreements', 'Searching', 'UnderContract', 'Closed'];
 
     const stages: PipelineStage[] = stageOrder.map((stageName) => {
       const stageItems = rawData.items
@@ -304,6 +306,19 @@ const PipelinePage = () => {
         applicantId={modalState.applicantId}
         familyName={modalState.familyName}
         canApprove={canApproveBoardDecisions()}
+      />
+
+      <AgreementsRequiredModal
+        open={modalState.type === 'needsAgreements'}
+        onClose={closeModal}
+        applicantId={modalState.applicantId}
+        familyName={modalState.familyName}
+        fromStage={modalState.fromStage}
+        toStage={modalState.toStage}
+        onTransitionComplete={() => {
+          queryClient.invalidateQueries({ queryKey: ['pipeline'] });
+          closeModal();
+        }}
       />
 
       <ContractInfoModal

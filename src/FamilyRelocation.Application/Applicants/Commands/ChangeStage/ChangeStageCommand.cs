@@ -18,6 +18,7 @@ public class ChangeStageRequest
 {
     /// <summary>
     /// Target stage: Searching, Paused, UnderContract, Closed, MovedIn.
+    /// Note: AwaitingAgreements is the initial stage after board approval; transition to Searching requires agreements.
     /// </summary>
     public required string NewStage { get; init; }
 
