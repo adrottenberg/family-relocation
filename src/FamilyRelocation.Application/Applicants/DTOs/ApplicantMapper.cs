@@ -16,6 +16,13 @@ public static class ApplicantMapper
     /// </summary>
     public static ApplicantDto ToDto(this Applicant applicant)
     {
+        var activeHousingSearch = applicant.ActiveHousingSearch;
+
+        // Effective preferences: use HousingSearch preferences if approved, otherwise Applicant preferences
+        var effectivePreferences = applicant.IsApproved && activeHousingSearch?.Preferences != null
+            ? activeHousingSearch.Preferences.ToDto()
+            : applicant.Preferences?.ToDto();
+
         return new ApplicantDto
         {
             Id = applicant.Id,
@@ -32,7 +39,8 @@ public static class ApplicantMapper
             IsSelfSubmitted = applicant.IsSelfSubmitted,
             CreatedDate = applicant.CreatedDate,
             BoardReview = applicant.BoardReview?.ToDto(),
-            HousingSearch = applicant.ActiveHousingSearch?.ToDto()
+            HousingSearch = activeHousingSearch?.ToDto(),
+            Preferences = effectivePreferences
         };
     }
 

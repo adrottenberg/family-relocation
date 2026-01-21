@@ -67,10 +67,12 @@ public class HousingSearch : Entity<Guid>
     /// Factory method to create a new housing search.
     /// Always starts in AwaitingAgreements stage (created when applicant is board-approved).
     /// Transitions to Searching once required agreements are signed.
+    /// Preferences are typically copied from the Applicant when created on approval.
     /// </summary>
     public static HousingSearch Create(
         Guid applicantId,
-        Guid createdBy)
+        Guid createdBy,
+        HousingPreferences? preferences = null)
     {
         if (applicantId == Guid.Empty)
             throw new ArgumentException("Applicant ID is required", nameof(applicantId));
@@ -81,7 +83,7 @@ public class HousingSearch : Entity<Guid>
             ApplicantId = applicantId,
             Stage = HousingSearchStage.AwaitingAgreements,
             StageChangedDate = DateTime.UtcNow,
-            Preferences = HousingPreferences.Default(),
+            Preferences = preferences ?? HousingPreferences.Default(),
             IsActive = true,
             CreatedBy = createdBy,
             CreatedDate = DateTime.UtcNow,

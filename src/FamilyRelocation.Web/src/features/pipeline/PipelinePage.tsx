@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card, Input, Select, Typography, Spin, Empty, message } from 'antd';
 import { SearchOutlined, UserOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { applicantsApi } from '../../api';
+import { applicantsApi, housingSearchesApi } from '../../api';
 import type { ApplicantListItemDto } from '../../api/types';
 import { colors } from '../../theme/antd-theme';
 import { validateTransition, getPipelineStage, type Stage, type TransitionType } from './transitionRules';
@@ -57,6 +57,7 @@ interface PipelineStage {
 interface ModalState {
   type: TransitionType | null;
   applicantId: string;
+  housingSearchId: string;
   familyName: string;
   fromStage: string;
   toStage: string;
@@ -66,6 +67,7 @@ interface ModalState {
 const initialModalState: ModalState = {
   type: null,
   applicantId: '',
+  housingSearchId: '',
   familyName: '',
   fromStage: '',
   toStage: '',
@@ -144,8 +146,8 @@ const PipelinePage = () => {
   }, [rawData]);
 
   const changeStage = useMutation({
-    mutationFn: ({ applicantId, newStage }: { applicantId: string; newStage: string }) =>
-      applicantsApi.changeStage(applicantId, { newStage }),
+    mutationFn: ({ housingSearchId, newStage }: { housingSearchId: string; newStage: string }) =>
+      housingSearchesApi.changeStage(housingSearchId, { newStage }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pipeline'] });
       message.success('Stage updated successfully');
@@ -157,6 +159,7 @@ const PipelinePage = () => {
 
   const handleDragStart = (e: React.DragEvent, item: PipelineItem) => {
     e.dataTransfer.setData('applicantId', item.applicantId);
+    e.dataTransfer.setData('housingSearchId', item.housingSearchId);
     e.dataTransfer.setData('currentStage', item.stage);
     e.dataTransfer.setData('familyName', item.familyName);
     e.dataTransfer.setData('boardDecision', item.boardDecision);
@@ -171,6 +174,7 @@ const PipelinePage = () => {
   const handleDrop = (e: React.DragEvent, targetStage: string) => {
     e.preventDefault();
     const applicantId = e.dataTransfer.getData('applicantId');
+    const housingSearchId = e.dataTransfer.getData('housingSearchId');
     const currentStage = e.dataTransfer.getData('currentStage');
     const familyName = e.dataTransfer.getData('familyName');
     const boardDecision = e.dataTransfer.getData('boardDecision');
@@ -188,12 +192,13 @@ const PipelinePage = () => {
 
     if (result.type === 'direct') {
       // Direct transition allowed
-      changeStage.mutate({ applicantId, newStage: targetStage });
+      changeStage.mutate({ housingSearchId, newStage: targetStage });
     } else {
       // Show appropriate modal
       setModalState({
         type: result.type,
         applicantId,
+        housingSearchId,
         familyName,
         fromStage: currentStage,
         toStage: targetStage,
@@ -310,6 +315,7 @@ const PipelinePage = () => {
         open={modalState.type === 'needsAgreements'}
         onClose={closeModal}
         applicantId={modalState.applicantId}
+        housingSearchId={modalState.housingSearchId}
         familyName={modalState.familyName}
         fromStage={modalState.fromStage}
         toStage={modalState.toStage}
@@ -322,21 +328,21 @@ const PipelinePage = () => {
       <ContractInfoModal
         open={modalState.type === 'needsContractInfo'}
         onClose={closeModal}
-        applicantId={modalState.applicantId}
+        housingSearchId={modalState.housingSearchId}
         familyName={modalState.familyName}
       />
 
       <ClosingConfirmModal
         open={modalState.type === 'needsClosingInfo'}
         onClose={closeModal}
-        applicantId={modalState.applicantId}
+        housingSearchId={modalState.housingSearchId}
         familyName={modalState.familyName}
       />
 
       <ContractFailedModal
         open={modalState.type === 'contractFailed'}
         onClose={closeModal}
-        applicantId={modalState.applicantId}
+        housingSearchId={modalState.housingSearchId}
         familyName={modalState.familyName}
       />
     </div>

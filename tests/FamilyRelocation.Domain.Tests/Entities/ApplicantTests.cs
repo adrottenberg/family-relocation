@@ -33,6 +33,7 @@ public class ApplicantTests
             children: null,
             currentKehila: "Brooklyn",
             shabbosShul: "Bobov",
+            preferences: null,
             createdBy: _userId);
 
         // Assert
@@ -61,6 +62,7 @@ public class ApplicantTests
             children: null,
             currentKehila: null,
             shabbosShul: null,
+            preferences: null,
             createdBy: _userId);
 
         // Assert
@@ -80,6 +82,7 @@ public class ApplicantTests
             children: null,
             currentKehila: null,
             shabbosShul: null,
+            preferences: null,
             createdBy: _userId);
 
         // Assert
@@ -104,6 +107,7 @@ public class ApplicantTests
             children: children,
             currentKehila: "Brooklyn",
             shabbosShul: "Bobov",
+            preferences: null,
             createdBy: _userId);
 
         // Assert
@@ -323,6 +327,7 @@ public class ApplicantTests
             children: null,
             currentKehila: null,
             shabbosShul: null,
+            preferences: null,
             createdBy: Domain.Common.WellKnownIds.SelfSubmittedUserId);
 
         // Act & Assert
@@ -341,6 +346,7 @@ public class ApplicantTests
             children: null,
             currentKehila: null,
             shabbosShul: null,
+            preferences: null,
             createdBy: staffUserId);
 
         // Act & Assert
@@ -356,6 +362,7 @@ public class ApplicantTests
             children: null,
             currentKehila: "Brooklyn",
             shabbosShul: "Bobov",
+            preferences: null,
             createdBy: _userId);
     }
 }

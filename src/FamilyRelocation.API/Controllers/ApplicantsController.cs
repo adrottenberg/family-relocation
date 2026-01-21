@@ -1,10 +1,7 @@
-using FamilyRelocation.Application.Applicants.Commands.ChangeStage;
 using FamilyRelocation.Application.Applicants.Commands.CreateApplicant;
 using FamilyRelocation.Application.Applicants.Commands.DeleteApplicant;
 using FamilyRelocation.Application.Applicants.Commands.SetBoardDecision;
 using FamilyRelocation.Application.Applicants.Commands.UpdateApplicant;
-using FamilyRelocation.Application.Applicants.Commands.UpdatePreferences;
-using FamilyRelocation.Application.Applicants.DTOs;
 using FamilyRelocation.Application.Applicants.Queries.GetApplicantById;
 using FamilyRelocation.Application.Applicants.Queries.GetApplicants;
 using FamilyRelocation.Application.Common.Exceptions;
@@ -134,82 +131,11 @@ public class ApplicantsController : ControllerBase
     }
 
     /// <summary>
-    /// Changes the housing search stage for an applicant.
-    /// Required fields depend on the target stage.
-    /// </summary>
-    /// <remarks>
-    /// Stage transitions and required fields:
-    /// - Searching: Reason optional (when returning from UnderContract/Closed if contract fell through)
-    /// - Paused: Reason optional
-    /// - UnderContract: Contract details required (price, optional propertyId and expectedClosingDate)
-    /// - Closed: ClosingDate required
-    /// - MovedIn: MovedInDate required
-    ///
-    /// Note: This only applies to approved applicants with an active HousingSearch.
-    /// Use PUT /api/applicants/{id}/board-review to set board decision (which creates HousingSearch on approval).
-    /// Use GET /api/stage-requirements/{fromStage}/{toStage} to check required documents for transitions.
-    /// </remarks>
-    [HttpPut("{id:guid}/stage")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> ChangeStage(Guid id, [FromBody] ChangeStageRequest request)
-    {
-        try
-        {
-            var command = new ChangeStageCommand(id, request);
-            var result = await _mediator.Send(command);
-            return Ok(result);
-        }
-        catch (NotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (ValidationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-    }
-
-    /// <summary>
-    /// Updates the housing preferences for an applicant's housing search.
-    /// </summary>
-    /// <remarks>
-    /// Updates housing search criteria including:
-    /// - Budget amount
-    /// - Minimum bedrooms/bathrooms
-    /// - Required features (e.g., basement, garage, yard)
-    /// - Shul proximity preferences
-    /// - Move timeline
-    /// </remarks>
-    [HttpPut("{id:guid}/preferences")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> UpdatePreferences(Guid id, [FromBody] HousingPreferencesDto request)
-    {
-        try
-        {
-            var command = new UpdatePreferencesCommand(id, request);
-            var result = await _mediator.Send(command);
-            return Ok(result);
-        }
-        catch (NotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-    }
-
-    /// <summary>
     /// Sets the board's decision on an applicant and updates status accordingly.
     /// </summary>
     /// <remarks>
     /// Records the board's decision and automatically updates the applicant:
-    /// - Approved: Sets ApplicationStatus to Approved and creates a HousingSearch in Searching stage.
+    /// - Approved: Sets ApplicationStatus to Approved and creates a HousingSearch in AwaitingAgreements stage.
     ///   Returns the new housingSearchId. Applicant can now proceed through the pipeline.
     /// - Rejected: Sets ApplicationStatus to Rejected. No HousingSearch is created. Terminal state.
     /// - Deferred: No status change. Applicant remains in Submitted status for future review.

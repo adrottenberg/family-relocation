@@ -3,7 +3,6 @@ import type {
   ApplicantDto,
   ApplicantListItemDto,
   PaginatedList,
-  HousingSearchDto,
   AuditLogDto,
 } from '../types';
 
@@ -13,24 +12,6 @@ export interface GetApplicantsParams {
   search?: string;
   boardDecision?: string;
   stage?: string;
-}
-
-export interface ChangeStageRequest {
-  newStage: string;
-  notes?: string;
-}
-
-export interface UpdatePreferencesRequest {
-  budgetAmount?: number;
-  minBedrooms?: number;
-  minBathrooms?: number;
-  preferredCities?: string[];
-  requiredFeatures?: string[];
-  moveTimeline?: string;
-  shulProximity?: {
-    maxWalkingMinutes?: number;
-    preferredShuls?: string[];
-  };
 }
 
 export interface SetBoardDecisionRequest {
@@ -62,26 +43,6 @@ export const applicantsApi = {
 
   delete: async (id: string): Promise<void> => {
     await apiClient.delete(`/applicants/${id}`);
-  },
-
-  // Housing Search
-  changeStage: async (applicantId: string, request: ChangeStageRequest): Promise<HousingSearchDto> => {
-    const response = await apiClient.put(
-      `/applicants/${applicantId}/stage`,
-      request
-    );
-    return response.data;
-  },
-
-  updatePreferences: async (
-    applicantId: string,
-    preferences: UpdatePreferencesRequest
-  ): Promise<HousingSearchDto> => {
-    const response = await apiClient.put(
-      `/applicants/${applicantId}/preferences`,
-      preferences
-    );
-    return response.data;
   },
 
   // Board Review

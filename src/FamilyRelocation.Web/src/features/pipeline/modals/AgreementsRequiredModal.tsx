@@ -9,7 +9,7 @@ import {
   ArrowRightOutlined,
 } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { documentsApi, applicantsApi, getStageRequirements } from '../../../api';
+import { documentsApi, housingSearchesApi, getStageRequirements } from '../../../api';
 import type { DocumentRequirementDto } from '../../../api/types';
 import type { UploadFile } from 'antd/es/upload/interface';
 
@@ -17,6 +17,7 @@ interface AgreementsRequiredModalProps {
   open: boolean;
   onClose: () => void;
   applicantId: string;
+  housingSearchId: string;
   familyName: string;
   fromStage: string;
   toStage: string;
@@ -33,6 +34,7 @@ const AgreementsRequiredModal = ({
   open,
   onClose,
   applicantId,
+  housingSearchId,
   familyName,
   fromStage,
   toStage,
@@ -110,7 +112,7 @@ const AgreementsRequiredModal = ({
   });
 
   const transitionMutation = useMutation({
-    mutationFn: () => applicantsApi.changeStage(applicantId, { newStage: toStage }),
+    mutationFn: () => housingSearchesApi.changeStage(housingSearchId, { newStage: toStage }),
     onSuccess: () => {
       message.success(`Moved to ${toStage}!`);
       queryClient.invalidateQueries({ queryKey: ['applicant', applicantId] });

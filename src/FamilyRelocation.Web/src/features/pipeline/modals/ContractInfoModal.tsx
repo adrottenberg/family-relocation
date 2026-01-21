@@ -1,12 +1,12 @@
 import { Modal, Form, InputNumber, DatePicker, Input, message } from 'antd';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { applicantsApi } from '../../../api';
+import { housingSearchesApi } from '../../../api';
 import dayjs from 'dayjs';
 
 interface ContractInfoModalProps {
   open: boolean;
   onClose: () => void;
-  applicantId: string;
+  housingSearchId: string;
   familyName: string;
 }
 
@@ -20,7 +20,7 @@ interface FormValues {
 const ContractInfoModal = ({
   open,
   onClose,
-  applicantId,
+  housingSearchId,
   familyName,
 }: ContractInfoModalProps) => {
   const [form] = Form.useForm<FormValues>();
@@ -28,11 +28,12 @@ const ContractInfoModal = ({
 
   const mutation = useMutation({
     mutationFn: async (values: FormValues) => {
-      // First update to UnderContract with contract info
-      // The API will need to accept contract details
-      return applicantsApi.changeStage(applicantId, {
+      return housingSearchesApi.changeStage(housingSearchId, {
         newStage: 'UnderContract',
-        notes: `Contract: $${values.contractPrice.toLocaleString()} on ${values.contractDate.format('MM/DD/YYYY')}${values.propertyAddress ? ` at ${values.propertyAddress}` : ''}`,
+        contract: {
+          price: values.contractPrice,
+          expectedClosingDate: values.expectedClosingDate?.toISOString(),
+        },
       });
     },
     onSuccess: () => {

@@ -125,6 +125,16 @@ public class ApplicantConfiguration : IEntityTypeConfiguration<Applicant>
         builder.Ignore(a => a.IsApproved);
         builder.Ignore(a => a.IsPendingBoardReview);
 
+        // Housing Preferences - OPTIONAL complex type stored as JSONB
+        // Collected at application time, copied to HousingSearch when approved
+        builder.OwnsOne(a => a.Preferences, preferences =>
+        {
+            preferences.ToJson();
+            preferences.OwnsOne(p => p.Budget);
+            preferences.OwnsOne(p => p.ShulProximity);
+            preferences.Ignore(p => p.HasPreferences);
+        });
+
         // Audit
         builder.Property(a => a.CreatedBy);
         builder.Property(a => a.CreatedDate);

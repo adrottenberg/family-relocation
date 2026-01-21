@@ -236,7 +236,7 @@ public class DocumentEndpointsTests : IDisposable
     private record ApplicantDocumentDto(Guid Id, Guid DocumentTypeId, string DocumentTypeName, string FileName, string StorageKey, string ContentType, long FileSizeBytes, DateTime UploadedAt, string? UploadedBy);
     private record StageRequirementsDto(string FromStage, string ToStage, List<DocumentRequirementDto> Requirements);
     private record DocumentRequirementDto(Guid DocumentTypeId, string DocumentTypeName, bool IsRequired, bool IsUploaded);
-    private record CreateApplicantResponse(Guid ApplicantId, Guid HousingSearchId);
+    private record CreateApplicantResponse(Guid ApplicantId, Guid? HousingSearchId);
 
     #endregion
 }

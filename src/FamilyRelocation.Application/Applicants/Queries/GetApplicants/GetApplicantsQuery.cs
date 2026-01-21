@@ -45,7 +45,7 @@ public record GetApplicantsQuery : IRequest<PaginatedList<ApplicantListDto>>
     public DateTime? CreatedBefore { get; init; }
 
     /// <summary>
-    /// Filter by housing search stage (Searching, UnderContract, Closed, MovedIn, Paused).
+    /// Filter by housing search stage (AwaitingAgreements, Searching, UnderContract, Closed, MovedIn, Paused).
     /// </summary>
     public string? Stage { get; init; }
 
