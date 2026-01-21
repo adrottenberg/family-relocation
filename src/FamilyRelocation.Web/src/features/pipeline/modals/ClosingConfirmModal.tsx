@@ -1,12 +1,12 @@
 import { Modal, Form, DatePicker, Input, message } from 'antd';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { applicantsApi } from '../../../api';
+import { housingSearchesApi } from '../../../api';
 import dayjs from 'dayjs';
 
 interface ClosingConfirmModalProps {
   open: boolean;
   onClose: () => void;
-  applicantId: string;
+  housingSearchId: string;
   familyName: string;
 }
 
@@ -18,7 +18,7 @@ interface FormValues {
 const ClosingConfirmModal = ({
   open,
   onClose,
-  applicantId,
+  housingSearchId,
   familyName,
 }: ClosingConfirmModalProps) => {
   const [form] = Form.useForm<FormValues>();
@@ -26,9 +26,9 @@ const ClosingConfirmModal = ({
 
   const mutation = useMutation({
     mutationFn: async (values: FormValues) => {
-      return applicantsApi.changeStage(applicantId, {
+      return housingSearchesApi.changeStage(housingSearchId, {
         newStage: 'Closed',
-        notes: `Closed on ${values.closingDate.format('MM/DD/YYYY')}${values.notes ? `. ${values.notes}` : ''}`,
+        closingDate: values.closingDate.toISOString(),
       });
     },
     onSuccess: () => {

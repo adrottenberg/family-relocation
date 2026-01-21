@@ -76,7 +76,14 @@ public record ApplicantDto
     public BoardReviewDto? BoardReview { get; init; }
 
     /// <summary>
-    /// Housing search details (null if not yet created).
+    /// Housing search details (null if not yet approved).
     /// </summary>
     public HousingSearchDto? HousingSearch { get; init; }
+
+    /// <summary>
+    /// Housing preferences (effective preferences).
+    /// Before approval: shows Applicant.Preferences (set at creation).
+    /// After approval: shows HousingSearch.Preferences (updateable).
+    /// </summary>
+    public HousingPreferencesDto? Preferences { get; init; }
 }

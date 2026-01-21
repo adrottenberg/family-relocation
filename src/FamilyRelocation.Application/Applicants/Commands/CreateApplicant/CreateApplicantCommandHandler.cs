@@ -10,7 +10,8 @@ using MediatR;
 namespace FamilyRelocation.Application.Applicants.Commands.CreateApplicant;
 
 /// <summary>
-/// Handles the CreateApplicantCommand to create a new applicant and their housing search.
+/// Handles the CreateApplicantCommand to create a new applicant.
+/// HousingSearch is created by the domain when the applicant is approved by the board.
 /// </summary>
 public class CreateApplicantCommandHandler : IRequestHandler<CreateApplicantCommand, CreateApplicantResponse>
 {
@@ -61,8 +62,9 @@ public class CreateApplicantCommandHandler : IRequestHandler<CreateApplicantComm
         var wife = request.Wife?.ToDomain();
         var address = request.Address?.ToDomain();
         var children = request.Children?.Select(c => c.ToDomain()).ToList();
+        var preferences = request.HousingPreferences?.ToDomain();
 
-        // Create Applicant
+        // Create Applicant with preferences (HousingSearch is created by domain when approved)
         var applicant = Applicant.Create(
             husband: husband,
             wife: wife,
@@ -70,29 +72,17 @@ public class CreateApplicantCommandHandler : IRequestHandler<CreateApplicantComm
             children: children,
             currentKehila: request.CurrentKehila,
             shabbosShul: request.ShabbosShul,
+            preferences: preferences,
             createdBy: createdBy);
 
-        // Create HousingSearch (automatically created with Applicant)
-        var housingSearch = HousingSearch.Create(
-            applicantId: applicant.Id,
-            createdBy: createdBy);
-
-        // Apply housing preferences if provided
-        if (request.HousingPreferences != null)
-        {
-            var preferences = request.HousingPreferences.ToDomain();
-            housingSearch.UpdatePreferences(preferences, createdBy);
-        }
-
-        // Save both in same transaction
+        // Save applicant - HousingSearch will be created when board approves
         _context.Add(applicant);
-        _context.Add(housingSearch);
         await _context.SaveChangesAsync(cancellationToken);
 
         return new CreateApplicantResponse
         {
             ApplicantId = applicant.Id,
-            HousingSearchId = housingSearch.Id,
+            HousingSearchId = null, // HousingSearch created when approved by board
             Applicant = applicant.ToDto()
         };
     }

@@ -1,11 +1,11 @@
 import { Modal, Form, Input, Select, message } from 'antd';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { applicantsApi } from '../../../api';
+import { housingSearchesApi } from '../../../api';
 
 interface ContractFailedModalProps {
   open: boolean;
   onClose: () => void;
-  applicantId: string;
+  housingSearchId: string;
   familyName: string;
 }
 
@@ -27,7 +27,7 @@ const FAILURE_REASONS = [
 const ContractFailedModal = ({
   open,
   onClose,
-  applicantId,
+  housingSearchId,
   familyName,
 }: ContractFailedModalProps) => {
   const [form] = Form.useForm<FormValues>();
@@ -36,9 +36,10 @@ const ContractFailedModal = ({
   const mutation = useMutation({
     mutationFn: async (values: FormValues) => {
       const reasonLabel = FAILURE_REASONS.find(r => r.value === values.reason)?.label || values.reason;
-      return applicantsApi.changeStage(applicantId, {
+      const fullReason = `${reasonLabel}${values.notes ? `. ${values.notes}` : ''}`;
+      return housingSearchesApi.changeStage(housingSearchId, {
         newStage: 'Searching',
-        notes: `Contract failed: ${reasonLabel}${values.notes ? `. ${values.notes}` : ''}`,
+        reason: fullReason,
       });
     },
     onSuccess: () => {

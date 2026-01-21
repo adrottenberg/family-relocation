@@ -42,7 +42,7 @@ public class ApplicantListDto
     public DateTime CreatedDate { get; init; }
 
     /// <summary>
-    /// Housing search stage (Searching, UnderContract, Closed, MovedIn, Paused).
+    /// Housing search stage (AwaitingAgreements, Searching, UnderContract, Closed, MovedIn, Paused).
     /// Null if no housing search exists (applicant not yet approved).
     /// </summary>
     public string? Stage { get; init; }

@@ -39,6 +39,9 @@ public class Applicant : Entity<Guid>
     // Board Review (value object - set by staff after review)
     public BoardReview? BoardReview { get; private set; }
 
+    // Housing Preferences (collected at application, copied to HousingSearch on approval)
+    public HousingPreferences? Preferences { get; private set; }
+
     // Navigation - collection of housing searches (one-to-many)
     private readonly List<HousingSearch> _housingSearches = new();
     public IReadOnlyCollection<HousingSearch> HousingSearches => _housingSearches.AsReadOnly();
@@ -59,6 +62,7 @@ public class Applicant : Entity<Guid>
     /// <summary>
     /// Factory method to create a new applicant (family) from intake.
     /// Starts in Submitted status - no HousingSearch created until approved.
+    /// Preferences are collected at creation and copied to HousingSearch when approved.
     /// </summary>
     public static Applicant Create(
         HusbandInfo husband,
@@ -67,6 +71,7 @@ public class Applicant : Entity<Guid>
         List<Child>? children,
         string? currentKehila,
         string? shabbosShul,
+        HousingPreferences? preferences,
         Guid createdBy)
     {
         ArgumentNullException.ThrowIfNull(husband);
@@ -81,6 +86,7 @@ public class Applicant : Entity<Guid>
             Children = children ?? new List<Child>(),
             CurrentKehila = currentKehila?.Trim(),
             ShabbosShul = shabbosShul?.Trim(),
+            Preferences = preferences,
             CreatedBy = createdBy,
             CreatedDate = DateTime.UtcNow,
             ModifiedBy = createdBy,
@@ -169,10 +175,10 @@ public class Applicant : Entity<Guid>
 
         AddDomainEvent(new ApplicantBoardDecisionMade(ApplicantId, decision, reviewedByUserId));
 
-        // If approved, create the first housing search
+        // If approved, create the first housing search with copied preferences
         if (decision == BoardDecision.Approved)
         {
-            var housingSearch = HousingSearch.Create(ApplicantId, reviewedByUserId);
+            var housingSearch = HousingSearch.Create(ApplicantId, reviewedByUserId, Preferences);
             _housingSearches.Add(housingSearch);
         }
     }

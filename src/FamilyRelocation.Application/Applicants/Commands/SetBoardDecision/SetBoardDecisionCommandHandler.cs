@@ -10,7 +10,7 @@ namespace FamilyRelocation.Application.Applicants.Commands.SetBoardDecision;
 
 /// <summary>
 /// Handles the SetBoardDecisionCommand to record the board's decision on an applicant.
-/// If approved, the domain automatically creates the first HousingSearch in Searching stage.
+/// If approved, the domain automatically creates the first HousingSearch in AwaitingAgreements stage.
 /// </summary>
 public class SetBoardDecisionCommandHandler : IRequestHandler<SetBoardDecisionCommand, SetBoardDecisionResponse>
 {

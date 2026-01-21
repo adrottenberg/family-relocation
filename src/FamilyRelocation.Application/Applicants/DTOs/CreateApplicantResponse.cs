@@ -1,7 +1,7 @@
 namespace FamilyRelocation.Application.Applicants.DTOs;
 
 /// <summary>
-/// Response from creating an applicant, includes both Applicant and HousingSearch IDs.
+/// Response from creating an applicant.
 /// </summary>
 public class CreateApplicantResponse
 {
@@ -11,9 +11,9 @@ public class CreateApplicantResponse
     public required Guid ApplicantId { get; init; }
 
     /// <summary>
-    /// The ID of the automatically created housing search.
+    /// The ID of the housing search (null until applicant is approved by board).
     /// </summary>
-    public required Guid HousingSearchId { get; init; }
+    public Guid? HousingSearchId { get; init; }
 
     /// <summary>
     /// The full applicant details.
