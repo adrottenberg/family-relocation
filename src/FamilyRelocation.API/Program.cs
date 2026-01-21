@@ -13,6 +13,7 @@ builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+        options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
     });
 builder.Services.AddOpenApi();
 builder.Services.AddEndpointsApiExplorer();

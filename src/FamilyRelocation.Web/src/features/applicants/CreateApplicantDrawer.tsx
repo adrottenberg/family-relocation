@@ -1,16 +1,15 @@
 import { Drawer, Form, Input, Select, Button, Space, Collapse, message, InputNumber, Checkbox } from 'antd';
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { applicantsApi } from '../../api';
-import type { ApplicantDto, PhoneNumberDto, ChildDto } from '../../api/types';
-import { useEffect } from 'react';
+import type { PhoneNumberDto, ChildDto } from '../../api/types';
 
 const { Panel } = Collapse;
 
-interface EditApplicantDrawerProps {
+interface CreateApplicantDrawerProps {
   open: boolean;
   onClose: () => void;
-  applicant: ApplicantDto;
 }
 
 interface FormValues {
@@ -70,54 +69,10 @@ const US_STATES = [
   'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY',
 ].map(s => ({ value: s, label: s }));
 
-const EditApplicantDrawer = ({ open, onClose, applicant }: EditApplicantDrawerProps) => {
+const CreateApplicantDrawer = ({ open, onClose }: CreateApplicantDrawerProps) => {
   const [form] = Form.useForm<FormValues>();
   const queryClient = useQueryClient();
-
-  // Populate form with existing data when opened
-  useEffect(() => {
-    if (open && applicant) {
-      form.setFieldsValue({
-        husband: {
-          firstName: applicant.husband.firstName,
-          lastName: applicant.husband.lastName,
-          fatherName: applicant.husband.fatherName,
-          email: applicant.husband.email,
-          phoneNumbers: applicant.husband.phoneNumbers?.map(p => ({
-            number: p.number,
-            type: p.type,
-            isPrimary: p.isPrimary,
-          })) || [{ number: '', type: 'Mobile', isPrimary: true }],
-          occupation: applicant.husband.occupation,
-          employerName: applicant.husband.employerName,
-        },
-        wife: applicant.wife ? {
-          firstName: applicant.wife.firstName,
-          maidenName: applicant.wife.maidenName,
-          fatherName: applicant.wife.fatherName,
-          email: applicant.wife.email,
-          phoneNumbers: applicant.wife.phoneNumbers?.map(p => ({
-            number: p.number,
-            type: p.type,
-            isPrimary: p.isPrimary,
-          })) || [],
-          occupation: applicant.wife.occupation,
-          employerName: applicant.wife.employerName,
-          highSchool: applicant.wife.highSchool,
-        } : undefined,
-        address: applicant.address ? {
-          street: applicant.address.street,
-          street2: applicant.address.street2,
-          city: applicant.address.city,
-          state: applicant.address.state,
-          zipCode: applicant.address.zipCode,
-        } : undefined,
-        children: applicant.children || [],
-        currentKehila: applicant.currentKehila,
-        shabbosShul: applicant.shabbosShul,
-      });
-    }
-  }, [open, applicant, form]);
+  const navigate = useNavigate();
 
   const mutation = useMutation({
     mutationFn: (values: FormValues) => {
@@ -132,8 +87,7 @@ const EditApplicantDrawer = ({ open, onClose, applicant }: EditApplicantDrawerPr
         return filtered;
       };
 
-      return applicantsApi.update(applicant.id, {
-        id: applicant.id,
+      return applicantsApi.create({
         husband: {
           ...values.husband,
           phoneNumbers: cleanPhones(values.husband.phoneNumbers as PhoneNumberDto[]),
@@ -146,16 +100,20 @@ const EditApplicantDrawer = ({ open, onClose, applicant }: EditApplicantDrawerPr
         children: values.children?.filter(c => c.age !== undefined),
         currentKehila: values.currentKehila,
         shabbosShul: values.shabbosShul,
-      } as ApplicantDto);
+      });
     },
-    onSuccess: () => {
-      message.success('Applicant updated successfully');
-      queryClient.invalidateQueries({ queryKey: ['applicant', applicant.id] });
+    onSuccess: (data) => {
+      message.success('Applicant created successfully');
       queryClient.invalidateQueries({ queryKey: ['applicants'] });
+      form.resetFields();
       onClose();
+      // Navigate to the new applicant's detail page
+      if (data?.applicantId) {
+        navigate(`/applicants/${data.applicantId}`);
+      }
     },
     onError: () => {
-      message.error('Failed to update applicant');
+      message.error('Failed to create applicant');
     },
   });
 
@@ -175,7 +133,7 @@ const EditApplicantDrawer = ({ open, onClose, applicant }: EditApplicantDrawerPr
 
   return (
     <Drawer
-      title={`Edit: ${applicant.husband.lastName} Family`}
+      title="Add New Applicant"
       placement="right"
       width={600}
       open={open}
@@ -184,12 +142,20 @@ const EditApplicantDrawer = ({ open, onClose, applicant }: EditApplicantDrawerPr
         <Space>
           <Button onClick={handleCancel}>Cancel</Button>
           <Button type="primary" onClick={handleSubmit} loading={mutation.isPending}>
-            Save Changes
+            Create Applicant
           </Button>
         </Space>
       }
     >
-      <Form form={form} layout="vertical">
+      <Form
+        form={form}
+        layout="vertical"
+        initialValues={{
+          husband: {
+            phoneNumbers: [{ type: 'Mobile', number: '', isPrimary: true }],
+          },
+        }}
+      >
         <Collapse defaultActiveKey={['husband', 'wife']} ghost>
           {/* Husband Section */}
           <Panel header="Husband Information" key="husband">
@@ -460,4 +426,4 @@ const EditApplicantDrawer = ({ open, onClose, applicant }: EditApplicantDrawerPr
   );
 };
 
-export default EditApplicantDrawer;
+export default CreateApplicantDrawer;

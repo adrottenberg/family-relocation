@@ -111,8 +111,8 @@ Content-Type: application/json
 @applicantId = paste-applicant-id-here
 
 ### Create Applicant (Anonymous - no auth required)
-# Creates a new applicant AND a HousingSearch for board approval
-# Response includes both applicantId and housingSearchId
+# Creates a new applicant in Submitted status (no HousingSearch yet)
+# HousingSearch is created automatically when board approves
 POST {{baseUrl}}/api/applicants
 Content-Type: application/json
 
@@ -185,7 +185,6 @@ Content-Type: application/json
 }
 
 ### Create Applicant (Minimal - husband only)
-# HousingSearch still created with default preferences
 POST {{baseUrl}}/api/applicants
 Content-Type: application/json
 
@@ -213,13 +212,9 @@ GET {{baseUrl}}/api/applicants?boardDecision=Pending&city=Brooklyn&sortBy=family
 Authorization: Bearer {{accessToken}}
 
 ### List Applicants by Stage (for Pipeline/Kanban)
-# Filter by housing search stage: Submitted, HouseHunting, UnderContract, Closed, Paused, Rejected
-# The frontend can call this once per stage to build the Kanban board
-GET {{baseUrl}}/api/applicants?stage=Submitted
-Authorization: Bearer {{accessToken}}
-
-### List Applicants by Stage - House Hunting
-GET {{baseUrl}}/api/applicants?stage=HouseHunting
+# Filter by housing search stage: Searching, UnderContract, Closed, MovedIn, Paused
+# Note: Applicants in Submitted status have no HousingSearch - filter by boardDecision instead
+GET {{baseUrl}}/api/applicants?stage=Searching
 Authorization: Bearer {{accessToken}}
 
 ### List Applicants by Stage - Under Contract
@@ -304,22 +299,52 @@ Authorization: Bearer {{accessToken}}
 }
 
 ###############################################################################
-# HOUSING SEARCH STAGE CHANGES
+# BOARD REVIEW (Application-level decision)
+# Sets board decision and automatically creates HousingSearch if approved
 ###############################################################################
 
-### Change Stage - Start House Hunting
-# Transitions: Submitted → HouseHunting
-# Requirements: Board approval AND both agreements signed (broker + takanos)
-PUT {{baseUrl}}/api/applicants/{{applicantId}}/stage
+### Set Board Decision - Approved
+# Records decision, sets Applicant.Status = Approved, and creates HousingSearch in Searching stage
+PUT {{baseUrl}}/api/applicants/{{applicantId}}/board-review
 Content-Type: application/json
 Authorization: Bearer {{accessToken}}
 
 {
-    "newStage": "HouseHunting"
+    "decision": "Approved",
+    "notes": "Strong references from Rabbi Cohen. Family is well-suited."
 }
 
+### Set Board Decision - Rejected
+# Records decision and sets Applicant.Status = Rejected
+PUT {{baseUrl}}/api/applicants/{{applicantId}}/board-review
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "decision": "Rejected",
+    "notes": "Does not meet community requirements."
+}
+
+### Set Board Decision - Deferred
+# Records decision. No status change - remains in Submitted for future review.
+PUT {{baseUrl}}/api/applicants/{{applicantId}}/board-review
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "decision": "Deferred",
+    "reviewDate": "2026-02-01",
+    "notes": "Waiting for additional references."
+}
+
+###############################################################################
+# HOUSING SEARCH STAGE CHANGES
+# Only available after board approval (when HousingSearch exists)
+# Stages: Searching, UnderContract, Closed, MovedIn, Paused
+###############################################################################
+
 ### Change Stage - Put Under Contract
-# Transitions: HouseHunting → UnderContract
+# Transitions: Searching → UnderContract
 # Required: contract with price
 PUT {{baseUrl}}/api/applicants/{{applicantId}}/stage
 Content-Type: application/json
@@ -358,7 +383,7 @@ Authorization: Bearer {{accessToken}}
 }
 
 ### Change Stage - Pause Search
-# Transitions: HouseHunting → Paused
+# Transitions: Searching → Paused
 PUT {{baseUrl}}/api/applicants/{{applicantId}}/stage
 Content-Type: application/json
 Authorization: Bearer {{accessToken}}
@@ -369,61 +394,24 @@ Authorization: Bearer {{accessToken}}
 }
 
 ### Change Stage - Resume Search
-# Transitions: Paused → HouseHunting
+# Transitions: Paused → Searching
 PUT {{baseUrl}}/api/applicants/{{applicantId}}/stage
 Content-Type: application/json
 Authorization: Bearer {{accessToken}}
 
 {
-    "newStage": "HouseHunting"
+    "newStage": "Searching"
 }
 
 ### Change Stage - Contract Fell Through
-# Transitions: UnderContract/Closed → HouseHunting
+# Transitions: UnderContract/Closed → Searching
 PUT {{baseUrl}}/api/applicants/{{applicantId}}/stage
 Content-Type: application/json
 Authorization: Bearer {{accessToken}}
 
 {
-    "newStage": "HouseHunting",
+    "newStage": "Searching",
     "reason": "Financing fell through"
-}
-
-### Change Stage - Reject Application
-# Transitions: Submitted → Rejected
-PUT {{baseUrl}}/api/applicants/{{applicantId}}/stage
-Content-Type: application/json
-Authorization: Bearer {{accessToken}}
-
-{
-    "newStage": "Rejected",
-    "reason": "Did not meet community requirements"
-}
-
-###############################################################################
-# REQUIRED AGREEMENTS
-# Both agreements must be signed before transitioning to HouseHunting
-###############################################################################
-
-### Record Broker Agreement Signed
-# Upload the signed document first, then call this with the document URL
-POST {{baseUrl}}/api/applicants/{{applicantId}}/agreements
-Content-Type: application/json
-Authorization: Bearer {{accessToken}}
-
-{
-    "agreementType": "BrokerAgreement",
-    "documentUrl": "https://s3.amazonaws.com/family-relocation/agreements/broker-agreement-12345.pdf"
-}
-
-### Record Community Takanos Signed
-POST {{baseUrl}}/api/applicants/{{applicantId}}/agreements
-Content-Type: application/json
-Authorization: Bearer {{accessToken}}
-
-{
-    "agreementType": "CommunityTakanos",
-    "documentUrl": "https://s3.amazonaws.com/family-relocation/agreements/takanos-12345.pdf"
 }
 
 ###############################################################################
@@ -488,46 +476,6 @@ GET {{baseUrl}}/api/audit-logs/applicant/{{applicantId}}
 Authorization: Bearer {{accessToken}}
 
 ###############################################################################
-# BOARD REVIEW (UV-29)
-# Set board decision - automatically transitions stage based on decision
-###############################################################################
-
-### Set Board Decision - Approved
-# Records decision AND transitions to BoardApproved stage.
-# Response includes next steps (which agreements need to be signed).
-PUT {{baseUrl}}/api/applicants/{{applicantId}}/board-review
-Content-Type: application/json
-Authorization: Bearer {{accessToken}}
-
-{
-    "decision": "Approved",
-    "notes": "Strong references from Rabbi Cohen. Family is well-suited."
-}
-
-### Set Board Decision - Rejected
-# Records decision AND transitions to Rejected stage.
-PUT {{baseUrl}}/api/applicants/{{applicantId}}/board-review
-Content-Type: application/json
-Authorization: Bearer {{accessToken}}
-
-{
-    "decision": "Rejected",
-    "notes": "Does not meet community requirements."
-}
-
-### Set Board Decision - Deferred
-# Records decision. No stage change - remains in Submitted for future review.
-PUT {{baseUrl}}/api/applicants/{{applicantId}}/board-review
-Content-Type: application/json
-Authorization: Bearer {{accessToken}}
-
-{
-    "decision": "Deferred",
-    "reviewDate": "2026-02-01",
-    "notes": "Waiting for additional references."
-}
-
-###############################################################################
 # DOCUMENT TYPES & DOCUMENTS
 # Dynamic document type system for stage transition requirements
 ###############################################################################
@@ -550,7 +498,7 @@ Authorization: Bearer {{accessToken}}
 ### Get Stage Requirements
 # Returns required documents for transitioning between stages
 # If applicantId is provided, also shows which are already uploaded
-GET {{baseUrl}}/api/stage-requirements/BoardApproved/HouseHunting?applicantId={{applicantId}}
+GET {{baseUrl}}/api/stage-requirements/Searching/UnderContract?applicantId={{applicantId}}
 Authorization: Bearer {{accessToken}}
 
 ### Upload Document
@@ -571,27 +519,6 @@ Content-Disposition: form-data; name="applicantId"
 Content-Disposition: form-data; name="documentTypeId"
 
 {{documentTypeId}}
-------WebKitFormBoundary
-Content-Disposition: form-data; name="file"; filename="document.pdf"
-Content-Type: application/pdf
-
-< ./document.pdf
-------WebKitFormBoundary--
-
-### Upload Document (Legacy)
-# Upload using document type name instead of ID
-POST {{baseUrl}}/api/documents/upload-legacy
-Authorization: Bearer {{accessToken}}
-Content-Type: multipart/form-data; boundary=----WebKitFormBoundary
-
-------WebKitFormBoundary
-Content-Disposition: form-data; name="applicantId"
-
-{{applicantId}}
-------WebKitFormBoundary
-Content-Disposition: form-data; name="documentType"
-
-BrokerAgreement
 ------WebKitFormBoundary
 Content-Disposition: form-data; name="file"; filename="document.pdf"
 Content-Type: application/pdf

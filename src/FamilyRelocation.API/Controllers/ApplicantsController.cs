@@ -139,16 +139,15 @@ public class ApplicantsController : ControllerBase
     /// </summary>
     /// <remarks>
     /// Stage transitions and required fields:
-    /// - HouseHunting: Board approval AND signed agreements required (from Submitted), reason optional (from UnderContract/Closed if contract fell through)
-    /// - Rejected: Reason optional
+    /// - Searching: Reason optional (when returning from UnderContract/Closed if contract fell through)
     /// - Paused: Reason optional
     /// - UnderContract: Contract details required (price, optional propertyId and expectedClosingDate)
     /// - Closed: ClosingDate required
     /// - MovedIn: MovedInDate required
     ///
-    /// Note: Required documents must be uploaded before starting house hunting.
-    /// Use POST /api/documents/upload to upload documents.
-    /// Use GET /api/stage-requirements/{fromStage}/{toStage} to check required documents.
+    /// Note: This only applies to approved applicants with an active HousingSearch.
+    /// Use PUT /api/applicants/{id}/board-review to set board decision (which creates HousingSearch on approval).
+    /// Use GET /api/stage-requirements/{fromStage}/{toStage} to check required documents for transitions.
     /// </remarks>
     [HttpPut("{id:guid}/stage")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -206,16 +205,17 @@ public class ApplicantsController : ControllerBase
     }
 
     /// <summary>
-    /// Sets the board's decision on an applicant and transitions the stage accordingly.
+    /// Sets the board's decision on an applicant and updates status accordingly.
     /// </summary>
     /// <remarks>
-    /// Records the board's decision and automatically transitions the housing search stage:
-    /// - Approved: Transitions to BoardApproved stage. Applicant can then sign agreements and start house hunting.
-    /// - Rejected: Transitions to Rejected stage.
-    /// - Deferred: No stage change. Applicant remains in Submitted stage for future review.
-    /// - Pending: No stage change. Resets decision to pending.
+    /// Records the board's decision and automatically updates the applicant:
+    /// - Approved: Sets ApplicationStatus to Approved and creates a HousingSearch in Searching stage.
+    ///   Returns the new housingSearchId. Applicant can now proceed through the pipeline.
+    /// - Rejected: Sets ApplicationStatus to Rejected. No HousingSearch is created. Terminal state.
+    /// - Deferred: No status change. Applicant remains in Submitted status for future review.
+    /// - Pending: No status change. Resets decision to pending.
     ///
-    /// Can only set decision when applicant is in Submitted stage.
+    /// Can only set decision when applicant has Submitted status.
     /// The 'notes' field can be used for approval notes, rejection reason, or deferral reason.
     /// </remarks>
     [HttpPut("{id:guid}/board-review")]

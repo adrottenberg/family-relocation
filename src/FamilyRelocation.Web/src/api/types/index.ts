@@ -29,6 +29,15 @@ export interface RefreshTokenResponse {
   expiresIn: number;
 }
 
+// Application status - tracks applicant's progress through approval process
+export type ApplicationStatus = 'Submitted' | 'Approved' | 'Rejected';
+
+// Housing search stage - tracks approved applicant's house hunting journey
+export type HousingSearchStage = 'AwaitingAgreements' | 'Searching' | 'UnderContract' | 'Closed' | 'MovedIn' | 'Paused';
+
+// Pipeline stage - combined view for the pipeline UI
+export type PipelineStage = 'Submitted' | 'AwaitingAgreements' | 'Searching' | 'UnderContract' | 'Closed';
+
 // Applicant list item (lightweight for list views)
 export interface ApplicantListItemDto {
   id: string;
@@ -38,13 +47,14 @@ export interface ApplicantListItemDto {
   husbandPhone?: string;
   boardDecision?: string;
   createdDate: string;
-  stage?: string;
+  stage?: string; // HousingSearchStage when approved, undefined when not
   housingSearchId?: string;
 }
 
 // Applicant full detail
 export interface ApplicantDto {
   id: string;
+  status: ApplicationStatus; // Submitted, Approved, or Rejected
   husband: HusbandInfoDto;
   wife?: SpouseInfoDto;
   address?: AddressDto;
@@ -56,7 +66,7 @@ export interface ApplicantDto {
   isPendingBoardReview: boolean;
   isSelfSubmitted: boolean;
   boardReview?: BoardReviewDto;
-  housingSearch?: HousingSearchDto;
+  housingSearch?: HousingSearchDto; // Active housing search (if approved)
   createdDate: string;
 }
 

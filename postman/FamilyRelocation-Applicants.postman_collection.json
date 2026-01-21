@@ -140,9 +140,9 @@
 								},
 								{
 									"key": "stage",
-									"value": "Submitted",
+									"value": "Searching",
 									"disabled": true,
-									"description": "Filter by housing search stage: Submitted, HouseHunting, UnderContract, Closed, Paused, Rejected"
+									"description": "Filter by housing search stage: Searching, UnderContract, Closed, MovedIn, Paused"
 								},
 								{
 									"key": "sortBy",
@@ -156,7 +156,7 @@
 								}
 							]
 						},
-						"description": "Get a paginated list of applicants.\n\n**Query Parameters:**\n- `stage`: Filter by housing search stage (Submitted, HouseHunting, UnderContract, Closed, Paused, Rejected)\n- `boardDecision`: Filter by Pending, Approved, Rejected, Deferred\n- `search`: Search by name, email, or phone\n- `city`: Filter by city"
+						"description": "Get a paginated list of applicants.\n\n**Query Parameters:**\n- `stage`: Filter by housing search stage (Searching, UnderContract, Closed, MovedIn, Paused)\n- `boardDecision`: Filter by Pending, Approved, Rejected, Deferred\n- `search`: Search by name, email, or phone\n- `city`: Filter by city"
 					}
 				},
 				{
@@ -175,7 +175,7 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{baseUrl}}/api/applicants?stage=HouseHunting",
+							"raw": "{{baseUrl}}/api/applicants?stage=Searching",
 							"host": [
 								"{{baseUrl}}"
 							],
@@ -186,11 +186,11 @@
 							"query": [
 								{
 									"key": "stage",
-									"value": "HouseHunting"
+									"value": "Searching"
 								}
 							]
 						},
-						"description": "Get applicants filtered by housing search stage.\n\nUse this to build a Kanban/pipeline view by calling once per stage:\n- Submitted\n- HouseHunting\n- UnderContract\n- Closed\n- Paused\n- Rejected"
+						"description": "Get applicants filtered by housing search stage.\n\nUse this to build a Kanban/pipeline view by calling once per stage:\n- Searching\n- UnderContract\n- Closed\n- MovedIn\n- Paused\n\nNote: Applicants in Submitted status (not yet board-approved) have no HousingSearch yet.\nUse boardDecision filter to find pending applicants."
 					}
 				},
 				{
@@ -373,45 +373,6 @@
 					}
 				},
 				{
-					"name": "Change Stage - Start House Hunting",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{accessToken}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "PUT",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"newStage\": \"HouseHunting\"\n}"
-						},
-						"url": {
-							"raw": "{{baseUrl}}/api/applicants/{{applicantId}}/stage",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"applicants",
-								"{{applicantId}}",
-								"stage"
-							]
-						},
-						"description": "Transition from Submitted to HouseHunting.\n\n**Prerequisites:**\n1. Board approval (BoardReview.Decision = Approved)\n2. Broker agreement signed\n3. Community takanos signed"
-					}
-				},
-				{
 					"name": "Change Stage - Put Under Contract",
 					"request": {
 						"auth": {
@@ -447,7 +408,7 @@
 								"stage"
 							]
 						},
-						"description": "Transition from HouseHunting to UnderContract.\n\n**Required fields:**\n- `contract.price`: Contract price (must be > 0)\n\n**Optional fields:**\n- `contract.propertyId`: Property GUID\n- `contract.expectedClosingDate`: Expected closing date"
+						"description": "Transition from Searching to UnderContract.\n\n**Required fields:**\n- `contract.price`: Contract price (must be > 0)\n\n**Optional fields:**\n- `contract.propertyId`: Property GUID\n- `contract.expectedClosingDate`: Expected closing date"
 					}
 				},
 				{
@@ -589,7 +550,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"newStage\": \"HouseHunting\"\n}"
+							"raw": "{\n    \"newStage\": \"Searching\"\n}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/api/applicants/{{applicantId}}/stage",
@@ -603,7 +564,7 @@
 								"stage"
 							]
 						},
-						"description": "Resume house hunting from Paused state."
+						"description": "Resume searching from Paused state."
 					}
 				},
 				{
@@ -628,7 +589,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"newStage\": \"HouseHunting\",\n    \"reason\": \"Inspection revealed foundation issues\"\n}"
+							"raw": "{\n    \"newStage\": \"Searching\",\n    \"reason\": \"Inspection revealed foundation issues\"\n}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/api/applicants/{{applicantId}}/stage",
@@ -642,46 +603,7 @@
 								"stage"
 							]
 						},
-						"description": "Return to HouseHunting when contract falls through.\n\nValid from: UnderContract, Closed\n\n**Optional fields:**\n- `reason`: Why the contract fell through\n\nThe failed contract is preserved in history."
-					}
-				},
-				{
-					"name": "Change Stage - Reject Application",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{accessToken}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "PUT",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"newStage\": \"Rejected\",\n    \"reason\": \"Did not meet community requirements\"\n}"
-						},
-						"url": {
-							"raw": "{{baseUrl}}/api/applicants/{{applicantId}}/stage",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"applicants",
-								"{{applicantId}}",
-								"stage"
-							]
-						},
-						"description": "Reject the application.\n\nValid from: Submitted\n\n**Optional fields:**\n- `reason`: Rejection reason\n\nThis is a terminal state - no further transitions allowed."
+						"description": "Return to Searching when contract falls through.\n\nValid from: UnderContract, Closed\n\n**Optional fields:**\n- `reason`: Why the contract fell through\n\nThe failed contract is preserved in history."
 					}
 				}
 			]
@@ -1216,15 +1138,15 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{baseUrl}}/api/stage-requirements/BoardApproved/HouseHunting?applicantId={{applicantId}}",
+							"raw": "{{baseUrl}}/api/stage-requirements/Searching/UnderContract?applicantId={{applicantId}}",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
 								"api",
 								"stage-requirements",
-								"BoardApproved",
-								"HouseHunting"
+								"Searching",
+								"UnderContract"
 							],
 							"query": [
 								{
@@ -1234,7 +1156,7 @@
 								}
 							]
 						},
-						"description": "Get document requirements for a stage transition.\n\n**Parameters:**\n- `fromStage`: The current stage (e.g., BoardApproved)\n- `toStage`: The target stage (e.g., HouseHunting)\n- `applicantId` (optional): Check which documents are already uploaded\n\n**Response includes:**\n- `fromStage`: Current stage\n- `toStage`: Target stage\n- `requirements`: List of required documents with:\n  - `documentTypeId`: Document type ID\n  - `documentTypeName`: Document type name\n  - `isRequired`: Whether the document is required\n  - `isUploaded`: Whether the document has been uploaded (if applicantId provided)"
+						"description": "Get document requirements for a stage transition.\n\n**Parameters:**\n- `fromStage`: The current stage (e.g., Searching)\n- `toStage`: The target stage (e.g., UnderContract)\n- `applicantId` (optional): Check which documents are already uploaded\n\n**Response includes:**\n- `fromStage`: Current stage\n- `toStage`: Target stage\n- `requirements`: List of required documents with:\n  - `documentTypeId`: Document type ID\n  - `documentTypeName`: Document type name\n  - `isRequired`: Whether the document is required\n  - `isUploaded`: Whether the document has been uploaded (if applicantId provided)\n\n**Valid transitions:**\n- Searching → UnderContract\n- UnderContract → Closed\n- Closed → MovedIn\n- Searching → Paused\n- UnderContract → Searching (contract fell through)\n- Paused → Searching"
 					}
 				}
 			],
@@ -1279,7 +1201,7 @@
 								"board-review"
 							]
 						},
-						"description": "Records the board's approval decision. Does NOT automatically change the stage - use POST /approve after this to transition to BoardApproved stage."
+						"description": "Records the board's approval decision and sets Applicant.Status to Approved.\n\n**Automatic behavior:**\n- Sets ApplicationStatus to Approved\n- Creates a HousingSearch in Searching stage\n- Returns the new housingSearchId\n\nNo additional stage transition needed after this."
 					}
 				},
 				{
@@ -1318,7 +1240,7 @@
 								"board-review"
 							]
 						},
-						"description": "Records the board's rejection decision. Does NOT automatically change the stage - use POST /reject after this to transition to Rejected stage."
+						"description": "Records the board's rejection decision and sets Applicant.Status to Rejected.\n\n**Automatic behavior:**\n- Sets ApplicationStatus to Rejected\n- No HousingSearch is created\n\nRejection is a terminal state."
 					}
 				},
 				{
@@ -1357,50 +1279,11 @@
 								"board-review"
 							]
 						},
-						"description": "Records that the board deferred their decision. Applicant remains in Submitted stage for future review."
-					}
-				},
-				{
-					"name": "Reject Applicant",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{accessToken}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"reason\": \"Did not meet community requirements.\"\n}"
-						},
-						"url": {
-							"raw": "{{baseUrl}}/api/applicants/{{applicantId}}/reject",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"applicants",
-								"{{applicantId}}",
-								"reject"
-							]
-						},
-						"description": "Transitions the housing search from Submitted to Rejected stage.\n\n**Prerequisite:** Board decision must be set to \"Rejected\" first via PUT /board-review."
+						"description": "Records that the board deferred their decision. Applicant remains in Submitted status with Pending board decision for future review."
 					}
 				}
 			],
-			"description": "Board review workflow endpoints.\n\n**Workflow:**\n1. Board reviews application at meeting\n2. Coordinator records decision via PUT /board-review\n3. If Approved: Use POST /approve (UV-30) to transition to BoardApproved\n4. If Rejected: Use POST /reject to transition to Rejected\n5. If Deferred: No stage change, review again at future meeting\n\n**Stage Flow:**\n- Submitted → BoardApproved (on approval) → HouseHunting (after agreements)\n- Submitted → Rejected (on rejection)"
+			"description": "Board review workflow endpoints.\n\n**Workflow:**\n1. Board reviews application at meeting\n2. Coordinator records decision via PUT /board-review\n3. If Approved: ApplicationStatus changes to Approved, HousingSearch created in Searching stage\n4. If Rejected: ApplicationStatus changes to Rejected (no HousingSearch created)\n5. If Deferred: No status change, review again at future meeting\n\n**Application Status Flow:**\n- Submitted → Approved (creates HousingSearch) → Searching → UnderContract → Closed → MovedIn\n- Submitted → Rejected (terminal)"
 		}
 	],
 	"variable": [

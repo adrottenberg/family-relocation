@@ -10,6 +10,7 @@ namespace FamilyRelocation.Application.Applicants.Commands.SetBoardDecision;
 
 /// <summary>
 /// Handles the SetBoardDecisionCommand to record the board's decision on an applicant.
+/// If approved, the domain automatically creates the first HousingSearch in Searching stage.
 /// </summary>
 public class SetBoardDecisionCommandHandler : IRequestHandler<SetBoardDecisionCommand, SetBoardDecisionResponse>
 {
@@ -29,58 +30,39 @@ public class SetBoardDecisionCommandHandler : IRequestHandler<SetBoardDecisionCo
         CancellationToken cancellationToken)
     {
         var applicant = await _context.Set<Applicant>()
-            .Include(a => a.HousingSearch)
+            .Include(a => a.HousingSearches)
             .Include(a => a.Documents)
             .FirstOrDefaultAsync(a => a.Id == command.ApplicantId, cancellationToken)
             ?? throw new NotFoundException("Applicant", command.ApplicantId);
 
-        var housingSearch = applicant.HousingSearch
-            ?? throw new InvalidOperationException("Applicant has no HousingSearch");
-
-        // Validate: Can only set board decision when in Submitted stage
-        if (housingSearch.Stage != HousingSearchStage.Submitted)
+        // Validate: Can only set board decision when in Submitted status
+        if (applicant.Status != ApplicationStatus.Submitted)
             throw new ValidationException(
-                $"Can only set board decision for applicants in Submitted stage. " +
-                $"Current stage: {housingSearch.Stage}");
+                $"Can only set board decision for applicants in Submitted status. " +
+                $"Current status: {applicant.Status}");
 
         var userId = _currentUserService.UserId
             ?? throw new UnauthorizedAccessException("User must be authenticated to set board decision.");
 
         var request = command.Request;
-        var previousStage = housingSearch.Stage;
+        var previousStatus = applicant.Status;
 
-        // Check if required documents are uploaded
-        var hasRequiredDocuments = HasRequiredDocuments(applicant.Documents);
-
-        // Set the board decision
+        // Set the board decision - domain handles creating HousingSearch if approved
         applicant.SetBoardDecision(
             decision: request.Decision,
             notes: request.Notes,
             reviewedByUserId: userId,
             reviewDate: request.ReviewDate);
 
-        // Transition stage based on decision
-        NextStepsInfo? nextSteps = null;
-        switch (request.Decision)
-        {
-            case BoardDecision.Approved:
-                housingSearch.ApproveBoardReview(userId, hasRequiredDocuments);
-                nextSteps = BuildNextStepsInfo(applicant.Documents);
-                break;
-
-            case BoardDecision.Rejected:
-                housingSearch.Reject(request.Notes, userId);
-                break;
-
-            // Deferred and Pending don't change stage
-        }
-
         await _context.SaveChangesAsync(cancellationToken);
+
+        // Get the housing search (created by domain if approved)
+        var housingSearch = applicant.ActiveHousingSearch;
 
         return new SetBoardDecisionResponse
         {
             ApplicantId = applicant.Id,
-            HousingSearchId = housingSearch.Id,
+            HousingSearchId = housingSearch?.Id,
             BoardReview = new BoardReviewDto
             {
                 Decision = applicant.BoardReview!.Decision.ToString(),
@@ -88,18 +70,23 @@ public class SetBoardDecisionCommandHandler : IRequestHandler<SetBoardDecisionCo
                 Notes = applicant.BoardReview.Notes,
                 ReviewedBy = applicant.BoardReview.ReviewedByUserId
             },
-            PreviousStage = previousStage.ToString(),
-            NewStage = housingSearch.Stage.ToString(),
-            Message = GetNextStepMessage(request.Decision, housingSearch.Stage),
-            NextSteps = nextSteps
+            PreviousStage = previousStatus.ToString(),
+            NewStage = GetDisplayStage(applicant),
+            Message = GetNextStepMessage(request.Decision, applicant),
+            NextSteps = BuildNextStepsInfo(applicant.Documents)
         };
     }
 
-    private static bool HasRequiredDocuments(IReadOnlyCollection<ApplicantDocument> documents)
+    private static string GetDisplayStage(Applicant applicant)
     {
-        var hasBroker = documents.Any(d => d.DocumentTypeId == WellKnownIds.BrokerAgreementDocumentTypeId);
-        var hasTakanos = documents.Any(d => d.DocumentTypeId == WellKnownIds.CommunityTakanosDocumentTypeId);
-        return hasBroker && hasTakanos;
+        // Return combined stage for display
+        if (applicant.Status == ApplicationStatus.Submitted)
+            return "Submitted";
+        if (applicant.Status == ApplicationStatus.Rejected)
+            return "Rejected";
+
+        // Approved - return housing search stage
+        return applicant.ActiveHousingSearch?.Stage.ToString() ?? "Searching";
     }
 
     private static NextStepsInfo BuildNextStepsInfo(IReadOnlyCollection<ApplicantDocument> documents)
@@ -115,16 +102,14 @@ public class SetBoardDecisionCommandHandler : IRequestHandler<SetBoardDecisionCo
         };
     }
 
-    private static string GetNextStepMessage(BoardDecision decision, HousingSearchStage finalStage) => decision switch
+    private static string GetNextStepMessage(BoardDecision decision, Applicant applicant) => decision switch
     {
-        BoardDecision.Approved when finalStage == HousingSearchStage.HouseHunting =>
-            "Board approved. All agreements were already signed. Now actively house hunting.",
         BoardDecision.Approved =>
-            "Board approved. Awaiting signed broker agreement and community takanos before house hunting can begin.",
+            "Board approved. Applicant can now begin house hunting.",
         BoardDecision.Rejected =>
             "Application rejected.",
         BoardDecision.Deferred =>
-            "Decision deferred. Applicant remains in Submitted stage for future review.",
+            "Decision deferred. Applicant remains in Submitted status for future review.",
         BoardDecision.Pending =>
             "Decision set to pending.",
         _ => "Decision recorded."

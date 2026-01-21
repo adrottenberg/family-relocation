@@ -7,10 +7,9 @@ import {
   CloudUploadOutlined,
   EyeOutlined,
   SwapOutlined,
-  ArrowRightOutlined,
 } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { documentsApi, applicantsApi, getDocumentTypes } from '../../api';
+import { documentsApi, getDocumentTypes } from '../../api';
 import type { ApplicantDto, DocumentTypeDto, ApplicantDocumentDto } from '../../api/types';
 import type { UploadFile } from 'antd/es/upload/interface';
 
@@ -29,7 +28,6 @@ interface DocumentUploadState {
 
 const DocumentUploadModal = ({ open, onClose, applicant }: DocumentUploadModalProps) => {
   const queryClient = useQueryClient();
-  const housingSearch = applicant.housingSearch;
 
   // Track upload state per document type
   const [uploadStates, setUploadStates] = useState<Record<string, DocumentUploadState>>({});
@@ -117,20 +115,6 @@ const DocumentUploadModal = ({ open, onClose, applicant }: DocumentUploadModalPr
     },
   });
 
-  const startHouseHuntingMutation = useMutation({
-    mutationFn: () => applicantsApi.startHouseHunting(applicant.id),
-    onSuccess: () => {
-      message.success('House hunting started!');
-      queryClient.invalidateQueries({ queryKey: ['applicant', applicant.id] });
-      queryClient.invalidateQueries({ queryKey: ['applicants'] });
-      queryClient.invalidateQueries({ queryKey: ['pipeline'] });
-      onClose();
-    },
-    onError: () => {
-      message.error('Failed to start house hunting');
-    },
-  });
-
   const handleUpload = (documentTypeId: string) => {
     const state = uploadStates[documentTypeId];
     if (state?.file) {
@@ -175,7 +159,6 @@ const DocumentUploadModal = ({ open, onClose, applicant }: DocumentUploadModalPr
   };
 
   const allUploaded = getAllRequiredUploaded();
-  const canStartHouseHunting = allUploaded && housingSearch?.stage === 'BoardApproved';
 
   const renderDocumentCard = (docType: DocumentTypeDto) => {
     const uploadedDoc = isDocumentUploaded(docType.id);
@@ -252,7 +235,7 @@ const DocumentUploadModal = ({ open, onClose, applicant }: DocumentUploadModalPr
               onRemove={() => setUploadState(docType.id, { file: null })}
               maxCount={1}
             >
-              <Button icon={<UploadOutlined />}>Select File (PDF, JPEG, PNG)</Button>
+              <Button type="primary" icon={<UploadOutlined />}>Select File (PDF, JPEG, PNG)</Button>
             </Upload>
 
             {state.uploading && <Progress percent={state.progress} size="small" />}
@@ -280,27 +263,15 @@ const DocumentUploadModal = ({ open, onClose, applicant }: DocumentUploadModalPr
       title="Upload Signed Agreements"
       open={open}
       onCancel={onClose}
-      footer={[
+      footer={
         <Button key="close" onClick={onClose}>
           {allUploaded ? 'Done' : 'Close'}
-        </Button>,
-        canStartHouseHunting && (
-          <Button
-            key="start-hunting"
-            type="primary"
-            icon={<ArrowRightOutlined />}
-            onClick={() => startHouseHuntingMutation.mutate()}
-            loading={startHouseHuntingMutation.isPending}
-          >
-            Move to House Hunting
-          </Button>
-        ),
-      ].filter(Boolean)}
+        </Button>
+      }
       width={520}
     >
       <div style={{ marginBottom: 16, padding: 12, background: '#f5f5f5', borderRadius: 6 }}>
-        <strong>{applicant.husband.lastName} Family</strong> - Upload signed agreements to proceed
-        with house hunting.
+        <strong>{applicant.husband.lastName} Family</strong> - Upload required documents.
       </div>
 
       {isLoading ? (
@@ -318,18 +289,14 @@ const DocumentUploadModal = ({ open, onClose, applicant }: DocumentUploadModalPr
             <div
               style={{
                 padding: 12,
-                background: canStartHouseHunting ? '#f6ffed' : '#fff7e6',
-                border: `1px solid ${canStartHouseHunting ? '#b7eb8f' : '#ffd591'}`,
+                background: '#f6ffed',
+                border: '1px solid #b7eb8f',
                 borderRadius: 6,
                 textAlign: 'center',
               }}
             >
-              <CheckCircleOutlined
-                style={{ color: canStartHouseHunting ? '#52c41a' : '#faad14', marginRight: 8 }}
-              />
-              {canStartHouseHunting
-                ? 'All agreements signed! Click "Move to House Hunting" to proceed.'
-                : 'All agreements signed! Ready to start house hunting.'}
+              <CheckCircleOutlined style={{ color: '#52c41a', marginRight: 8 }} />
+              All required documents uploaded!
             </div>
           )}
         </Space>

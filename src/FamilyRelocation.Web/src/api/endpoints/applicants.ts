@@ -67,7 +67,7 @@ export const applicantsApi = {
   // Housing Search
   changeStage: async (applicantId: string, request: ChangeStageRequest): Promise<HousingSearchDto> => {
     const response = await apiClient.put(
-      `/applicants/${applicantId}/housing-search/stage`,
+      `/applicants/${applicantId}/stage`,
       request
     );
     return response.data;
@@ -78,7 +78,7 @@ export const applicantsApi = {
     preferences: UpdatePreferencesRequest
   ): Promise<HousingSearchDto> => {
     const response = await apiClient.put(
-      `/applicants/${applicantId}/housing-search/preferences`,
+      `/applicants/${applicantId}/preferences`,
       preferences
     );
     return response.data;
@@ -90,20 +90,18 @@ export const applicantsApi = {
     request: SetBoardDecisionRequest
   ): Promise<{
     applicantId: string;
-    housingSearchId: string;
+    housingSearchId?: string; // Only set when approved
+    boardReview: {
+      decision: string;
+      reviewDate: string;
+      notes?: string;
+      reviewedBy: string;
+    };
     previousStage: string;
     newStage: string;
     message: string;
   }> => {
     const response = await apiClient.put(`/applicants/${applicantId}/board-review`, request);
-    return response.data;
-  },
-
-  startHouseHunting: async (applicantId: string): Promise<HousingSearchDto> => {
-    const response = await apiClient.put(
-      `/applicants/${applicantId}/stage`,
-      { newStage: 'HouseHunting' }
-    );
     return response.data;
   },
 

@@ -6,26 +6,27 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { applicantsApi } from '../../api';
 import type { ApplicantListItemDto } from '../../api/types';
 import { colors } from '../../theme/antd-theme';
-import { validateTransition, type Stage, type TransitionType } from './transitionRules';
+import { validateTransition, getPipelineStage, type Stage, type TransitionType } from './transitionRules';
 import { useAuthStore } from '../../store/authStore';
 import {
   TransitionBlockedModal,
   BoardApprovalRequiredModal,
+  AgreementsRequiredModal,
   ContractInfoModal,
   ClosingConfirmModal,
   ContractFailedModal,
-  AgreementsRequiredModal,
 } from './modals';
 import './PipelinePage.css';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
 
-// Stage configuration
+// Stage configuration for pipeline columns
+// Note: With the refactored model, we show 5 columns: Submitted, AwaitingAgreements, Searching, UnderContract, Closed
 const stageConfig: Record<string, { color: string; bg: string; label: string }> = {
   Submitted: { color: '#3b82f6', bg: '#dbeafe', label: 'Submitted' },
-  BoardApproved: { color: '#8b5cf6', bg: '#ede9fe', label: 'Board Approved' },
-  HouseHunting: { color: '#f59e0b', bg: '#fef3c7', label: 'House Hunting' },
+  AwaitingAgreements: { color: '#06b6d4', bg: '#cffafe', label: 'Awaiting Agreements' },
+  Searching: { color: '#f59e0b', bg: '#fef3c7', label: 'Searching' },
   UnderContract: { color: '#8b5cf6', bg: '#ede9fe', label: 'Under Contract' },
   Closed: { color: '#10b981', bg: '#d1fae5', label: 'Closed' },
 };
@@ -92,14 +93,21 @@ const PipelinePage = () => {
   });
 
   // Transform flat applicant list into pipeline stages
+  // Uses getPipelineStage to determine the correct column based on board decision and housing search stage
   const data = useMemo(() => {
     if (!rawData?.items) return null;
 
-    const stageOrder = ['Submitted', 'BoardApproved', 'HouseHunting', 'UnderContract', 'Closed'];
+    // Pipeline stages: Submitted, AwaitingAgreements, Searching, UnderContract, Closed
+    const stageOrder = ['Submitted', 'AwaitingAgreements', 'Searching', 'UnderContract', 'Closed'];
 
     const stages: PipelineStage[] = stageOrder.map((stageName) => {
       const stageItems = rawData.items
-        .filter((a: ApplicantListItemDto) => (a.stage || 'Submitted') === stageName)
+        .filter((a: ApplicantListItemDto) => {
+          // Determine pipeline stage from board decision and housing search stage
+          // Returns null for rejected applicants (filtered out)
+          const pipelineStage = getPipelineStage(a.boardDecision, a.stage);
+          return pipelineStage === stageName;
+        })
         .map((a: ApplicantListItemDto): PipelineItem => {
           const nameParts = a.husbandFullName.split(' ');
           const familyName = nameParts.pop() || a.husbandFullName;
@@ -115,7 +123,7 @@ const PipelinePage = () => {
             wifeFirstName: a.wifeMaidenName,
             childrenCount: 0, // Not available in list view
             boardDecision: a.boardDecision || 'Pending',
-            stage: a.stage || 'Submitted',
+            stage: stageName, // Use the stage we're filtering for (already validated by filter)
             daysInStage,
             budget: undefined, // Not available in list view
             preferredCities: undefined, // Not available in list view
@@ -305,6 +313,10 @@ const PipelinePage = () => {
         familyName={modalState.familyName}
         fromStage={modalState.fromStage}
         toStage={modalState.toStage}
+        onTransitionComplete={() => {
+          queryClient.invalidateQueries({ queryKey: ['pipeline'] });
+          closeModal();
+        }}
       />
 
       <ContractInfoModal

@@ -1,4 +1,5 @@
 using FamilyRelocation.Domain.Entities;
+using FamilyRelocation.Domain.Enums;
 using FamilyRelocation.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -26,6 +27,12 @@ public class ApplicantConfiguration : IEntityTypeConfiguration<Applicant>
 
         // Ignore the ApplicantId alias property
         builder.Ignore(a => a.ApplicantId);
+
+        // Application Status (Submitted, Approved, Rejected)
+        builder.Property(a => a.Status)
+            .HasConversion<string>()
+            .HasMaxLength(20)
+            .IsRequired();
 
         // Husband Info - stored as JSONB
         // Using OwnsOne + ToJson() (handles nested collections like PhoneNumbers better)
@@ -129,11 +136,20 @@ public class ApplicantConfiguration : IEntityTypeConfiguration<Applicant>
         // Ignore domain events (not persisted)
         builder.Ignore(a => a.DomainEvents);
 
-        // Relationship - one housing search per applicant
-        builder.HasOne(a => a.HousingSearch)
+        // Relationship - one-to-many housing searches per applicant
+        // Using the public property name with field access mode configured
+        builder.HasMany(a => a.HousingSearches)
             .WithOne(hs => hs.Applicant)
-            .HasForeignKey<HousingSearch>(hs => hs.ApplicantId)
+            .HasForeignKey(hs => hs.ApplicantId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // Configure navigation to use the backing field for access
+        builder.Navigation(a => a.HousingSearches)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        // Ignore computed properties for housing searches
+        builder.Ignore(a => a.ActiveHousingSearch);
+        builder.Ignore(a => a.LatestHousingSearch);
 
         // Relationship - documents collection (configured via ApplicantDocumentConfiguration)
         // The backing field _documents is used automatically by EF Core
@@ -146,5 +162,6 @@ public class ApplicantConfiguration : IEntityTypeConfiguration<Applicant>
         // Indexes
         builder.HasIndex(a => a.IsDeleted);
         builder.HasIndex(a => a.CreatedDate);
+        builder.HasIndex(a => a.Status);
     }
 }

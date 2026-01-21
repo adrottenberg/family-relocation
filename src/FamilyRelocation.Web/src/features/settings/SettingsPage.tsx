@@ -43,14 +43,12 @@ const { Title, Text } = Typography;
 type SettingsSection = 'documentTypes' | 'stageRequirements';
 
 const STAGES = [
-  { value: 'Submitted', label: 'Submitted' },
-  { value: 'BoardApproved', label: 'Board Approved' },
-  { value: 'HouseHunting', label: 'House Hunting' },
+  { value: 'AwaitingAgreements', label: 'Awaiting Agreements' },
+  { value: 'Searching', label: 'Searching' },
   { value: 'UnderContract', label: 'Under Contract' },
   { value: 'Closed', label: 'Closed' },
   { value: 'MovedIn', label: 'Moved In' },
   { value: 'Paused', label: 'Paused' },
-  { value: 'Rejected', label: 'Rejected' },
 ];
 
 const SettingsPage = () => {

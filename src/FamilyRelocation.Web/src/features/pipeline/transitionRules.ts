@@ -1,14 +1,24 @@
 // Stage transition rules and validation
+// Updated for the separated ApplicationStatus / HousingSearchStage model
 
-export type Stage = 'Submitted' | 'BoardApproved' | 'HouseHunting' | 'UnderContract' | 'Closed';
+// Pipeline stages combine ApplicationStatus and HousingSearchStage for display
+// - Submitted: No housing search (ApplicationStatus = Submitted)
+// - AwaitingAgreements: Board approved, waiting for agreements to be signed
+// - Searching: Has housing search in Searching stage (actively searching)
+// - UnderContract: Has housing search in UnderContract stage
+// - Closed: Has housing search in Closed stage
+export type PipelineStage = 'Submitted' | 'AwaitingAgreements' | 'Searching' | 'UnderContract' | 'Closed';
+
+// Legacy alias for backward compatibility
+export type Stage = PipelineStage;
 
 export type TransitionType =
-  | 'direct'          // Can transition directly without modal
-  | 'needsBoardApproval'  // Needs board approval first
-  | 'needsAgreements'     // Needs signed agreements
-  | 'needsContractInfo'   // Needs contract details
-  | 'needsClosingInfo'    // Needs closing confirmation
-  | 'contractFailed'      // Contract fell through
+  | 'direct'              // Can transition directly without modal
+  | 'needsBoardApproval'  // Needs board approval first (Submitted -> AwaitingAgreements)
+  | 'needsAgreements'     // Needs agreements signed (AwaitingAgreements -> Searching)
+  | 'needsContractInfo'   // Needs contract details (Searching -> UnderContract)
+  | 'needsClosingInfo'    // Needs closing confirmation (UnderContract -> Closed)
+  | 'contractFailed'      // Contract fell through (UnderContract -> Searching)
   | 'blocked';            // Transition not allowed
 
 export interface TransitionResult {
@@ -17,22 +27,25 @@ export interface TransitionResult {
 }
 
 export interface ApplicantContext {
-  boardDecision: string;
+  boardDecision?: string;
+  hasSignedAgreements?: boolean;
 }
 
 // Valid transitions map
-const validTransitions: Record<Stage, Stage[]> = {
-  Submitted: ['BoardApproved'],  // Can only go to BoardApproved via board decision
-  BoardApproved: ['HouseHunting'],
-  HouseHunting: ['UnderContract'],
-  UnderContract: ['HouseHunting', 'Closed'],
+// Note: Submitted -> AwaitingAgreements happens via board approval (which auto-creates HousingSearch)
+// Note: AwaitingAgreements -> Searching happens when required agreements are signed
+const validTransitions: Record<PipelineStage, PipelineStage[]> = {
+  Submitted: ['AwaitingAgreements'],      // Via board approval
+  AwaitingAgreements: ['Searching'],      // When agreements are signed
+  Searching: ['UnderContract'],           // When contract is signed
+  UnderContract: ['Searching', 'Closed'], // Contract failed or closed
   Closed: [], // Terminal state
 };
 
 export function validateTransition(
-  fromStage: Stage,
-  toStage: Stage,
-  context: ApplicantContext
+  fromStage: PipelineStage,
+  toStage: PipelineStage,
+  _context: ApplicantContext
 ): TransitionResult {
   // Same stage - no change needed
   if (fromStage === toStage) {
@@ -41,40 +54,31 @@ export function validateTransition(
 
   // Check if transition is valid
   if (!validTransitions[fromStage]?.includes(toStage)) {
-    // Special case: Submitted -> HouseHunting requires board approval
-    if (fromStage === 'Submitted' && toStage === 'HouseHunting') {
-      if (context.boardDecision !== 'Approved') {
-        return {
-          type: 'needsBoardApproval',
-          message: 'Board approval is required before moving to House Hunting',
-        };
-      }
-    }
-
     return {
       type: 'blocked',
       message: `Cannot move from ${formatStage(fromStage)} to ${formatStage(toStage)}`,
     };
   }
 
-  // Submitted -> BoardApproved: Needs board approval
-  if (fromStage === 'Submitted' && toStage === 'BoardApproved') {
+  // Submitted -> AwaitingAgreements: Needs board approval
+  // This transition happens via SetBoardDecision which auto-creates HousingSearch in AwaitingAgreements stage
+  if (fromStage === 'Submitted' && toStage === 'AwaitingAgreements') {
     return {
       type: 'needsBoardApproval',
       message: 'Board approval is required to move this applicant forward',
     };
   }
 
-  // BoardApproved -> HouseHunting: Need signed agreements (checked dynamically by modal)
-  if (fromStage === 'BoardApproved' && toStage === 'HouseHunting') {
+  // AwaitingAgreements -> Searching: Needs agreements signed
+  if (fromStage === 'AwaitingAgreements' && toStage === 'Searching') {
     return {
       type: 'needsAgreements',
-      message: 'Signed agreements are required before starting House Hunting',
+      message: 'Required agreements must be signed before searching can begin',
     };
   }
 
-  // HouseHunting -> UnderContract: Need contract info
-  if (fromStage === 'HouseHunting' && toStage === 'UnderContract') {
+  // Searching -> UnderContract: Need contract info
+  if (fromStage === 'Searching' && toStage === 'UnderContract') {
     return {
       type: 'needsContractInfo',
       message: 'Please provide contract details',
@@ -89,8 +93,8 @@ export function validateTransition(
     };
   }
 
-  // UnderContract -> HouseHunting: Contract failed
-  if (fromStage === 'UnderContract' && toStage === 'HouseHunting') {
+  // UnderContract -> Searching: Contract failed
+  if (fromStage === 'UnderContract' && toStage === 'Searching') {
     return {
       type: 'contractFailed',
       message: 'Please provide the reason the contract fell through',
@@ -103,10 +107,54 @@ export function validateTransition(
 export function formatStage(stage: string): string {
   const names: Record<string, string> = {
     Submitted: 'Submitted',
-    BoardApproved: 'Board Approved',
-    HouseHunting: 'House Hunting',
+    AwaitingAgreements: 'Awaiting Agreements',
+    Searching: 'Searching',
     UnderContract: 'Under Contract',
     Closed: 'Closed',
+    MovedIn: 'Moved In',
+    Paused: 'Paused',
+    // Legacy names for backward compatibility
+    BoardApproved: 'Awaiting Agreements',
+    HouseHunting: 'Searching',
   };
   return names[stage] || stage;
+}
+
+// Helper to determine the pipeline stage from applicant data
+// Returns null for rejected applicants (they should not appear in pipeline)
+export function getPipelineStage(
+  boardDecision?: string,
+  housingSearchStage?: string
+): PipelineStage | null {
+  // Rejected applicants don't appear in the pipeline
+  if (boardDecision === 'Rejected') {
+    return null;
+  }
+
+  // If no board decision or pending, they're in Submitted
+  if (!boardDecision || boardDecision === 'Pending' || boardDecision === 'Deferred') {
+    return 'Submitted';
+  }
+
+  // Approved - check housing search stage
+  if (!housingSearchStage) {
+    // Approved but no housing search - shouldn't happen, but treat as AwaitingAgreements
+    return 'AwaitingAgreements';
+  }
+
+  // Map housing search stage to pipeline stage
+  switch (housingSearchStage) {
+    case 'AwaitingAgreements':
+      return 'AwaitingAgreements';
+    case 'Searching':
+    case 'Paused':
+      return 'Searching';
+    case 'UnderContract':
+      return 'UnderContract';
+    case 'Closed':
+    case 'MovedIn':
+      return 'Closed';
+    default:
+      return 'AwaitingAgreements';
+  }
 }

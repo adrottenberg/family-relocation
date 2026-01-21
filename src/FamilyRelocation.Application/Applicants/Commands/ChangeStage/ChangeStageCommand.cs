@@ -17,13 +17,14 @@ public record ChangeStageCommand(
 public class ChangeStageRequest
 {
     /// <summary>
-    /// Target stage: HouseHunting, Rejected, Paused, UnderContract, Closed, MovedIn.
+    /// Target stage: Searching, Paused, UnderContract, Closed, MovedIn.
+    /// Note: AwaitingAgreements is the initial stage after board approval; transition to Searching requires agreements.
     /// </summary>
     public required string NewStage { get; init; }
 
     /// <summary>
-    /// Reason for rejection, pause, or contract falling through.
-    /// Required for: Rejected, Paused. Optional for returning to HouseHunting from UnderContract/Closed.
+    /// Reason for pause or contract falling through.
+    /// Required for: Paused. Optional for returning to Searching from UnderContract/Closed.
     /// </summary>
     public string? Reason { get; init; }
 

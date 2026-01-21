@@ -19,6 +19,7 @@ public static class ApplicantMapper
         return new ApplicantDto
         {
             Id = applicant.Id,
+            Status = applicant.Status.ToString(),
             Husband = applicant.Husband.ToDto(),
             Wife = applicant.Wife?.ToDto(),
             Address = applicant.Address?.ToDto(),
@@ -31,7 +32,7 @@ public static class ApplicantMapper
             IsSelfSubmitted = applicant.IsSelfSubmitted,
             CreatedDate = applicant.CreatedDate,
             BoardReview = applicant.BoardReview?.ToDto(),
-            HousingSearch = applicant.HousingSearch?.ToDto()
+            HousingSearch = applicant.ActiveHousingSearch?.ToDto()
         };
     }
 
@@ -204,8 +205,8 @@ public static class ApplicantMapper
                            ?? applicant.Husband.PhoneNumbers.FirstOrDefault()?.Formatted,
             BoardDecision = applicant.BoardReview?.Decision.ToString(),
             CreatedDate = applicant.CreatedDate,
-            Stage = applicant.HousingSearch?.Stage.ToString(),
-            HousingSearchId = applicant.HousingSearch?.Id
+            Stage = applicant.ActiveHousingSearch?.Stage.ToString(),
+            HousingSearchId = applicant.ActiveHousingSearch?.Id
         };
     }
 

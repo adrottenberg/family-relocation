@@ -42,9 +42,9 @@ public class SetBoardDecisionResponse
     public required Guid ApplicantId { get; init; }
 
     /// <summary>
-    /// The housing search ID.
+    /// The housing search ID (only set if approved).
     /// </summary>
-    public required Guid HousingSearchId { get; init; }
+    public Guid? HousingSearchId { get; init; }
 
     /// <summary>
     /// The board review details.

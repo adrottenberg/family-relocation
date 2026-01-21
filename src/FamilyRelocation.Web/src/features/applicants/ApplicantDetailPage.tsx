@@ -24,7 +24,7 @@ import {
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { applicantsApi, documentsApi } from '../../api';
-import type { ApplicantDto, ChildDto, AuditLogDto, ApplicantDocumentDto } from '../../api/types';
+import type { ApplicantDto, AuditLogDto } from '../../api/types';
 import { colors, statusTagStyles, stageTagStyles } from '../../theme/antd-theme';
 import { useAuthStore } from '../../store/authStore';
 import BoardReviewSection from './BoardReviewSection';
@@ -82,7 +82,8 @@ const ApplicantDetailPage = () => {
   const getStageTagStyle = (stageName: string) => {
     const stageMap: Record<string, keyof typeof stageTagStyles> = {
       'Submitted': 'submitted',
-      'HouseHunting': 'houseHunting',
+      'AwaitingAgreements': 'submitted', // Reuse submitted style for AwaitingAgreements
+      'Searching': 'houseHunting', // Reuse houseHunting style for Searching
       'UnderContract': 'underContract',
       'Closed': 'closed',
     };
@@ -92,13 +93,11 @@ const ApplicantDetailPage = () => {
 
   const formatStageName = (stage: string) => {
     const names: Record<string, string> = {
-      'Submitted': 'Submitted',
-      'BoardApproved': 'Board Approved',
-      'HouseHunting': 'House Hunting',
+      'AwaitingAgreements': 'Awaiting Agreements',
+      'Searching': 'Searching',
       'UnderContract': 'Under Contract',
       'Closed': 'Closed',
       'Paused': 'Paused',
-      'Rejected': 'Rejected',
       'MovedIn': 'Moved In',
     };
     return names[stage] || stage;
