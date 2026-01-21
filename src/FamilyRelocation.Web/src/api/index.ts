@@ -8,4 +8,5 @@ export * from './endpoints/documentTypes';
 export * from './endpoints/stageRequirements';
 export * from './endpoints/properties';
 export * from './endpoints/dashboard';
+export * from './endpoints/reminders';
 export * from './types';

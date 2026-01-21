@@ -304,3 +304,59 @@ export interface ActivityDto {
   userName?: string;
   timestamp: string;
 }
+
+// Reminder types
+export type ReminderPriority = 'Low' | 'Normal' | 'High' | 'Urgent';
+export type ReminderStatus = 'Open' | 'Completed' | 'Snoozed' | 'Dismissed';
+
+export interface ReminderDto {
+  id: string;
+  title: string;
+  notes?: string;
+  dueDate: string;
+  dueTime?: string;
+  priority: ReminderPriority;
+  entityType: string;
+  entityId: string;
+  entityDisplayName?: string;
+  assignedToUserId?: string;
+  assignedToUserName?: string;
+  status: ReminderStatus;
+  sendEmailNotification: boolean;
+  snoozedUntil?: string;
+  snoozeCount: number;
+  createdAt: string;
+  createdBy: string;
+  createdByName?: string;
+  completedAt?: string;
+  completedBy?: string;
+  completedByName?: string;
+  isOverdue: boolean;
+  isDueToday: boolean;
+}
+
+export interface ReminderListDto {
+  id: string;
+  title: string;
+  dueDate: string;
+  dueTime?: string;
+  priority: ReminderPriority;
+  status: ReminderStatus;
+  entityType: string;
+  entityId: string;
+  entityDisplayName?: string;
+  isOverdue: boolean;
+  isDueToday: boolean;
+  snoozeCount: number;
+}
+
+export interface DueRemindersReportDto {
+  asOfDate: string;
+  overdue: ReminderListDto[];
+  dueToday: ReminderListDto[];
+  upcoming: ReminderListDto[];
+  overdueCount: number;
+  dueTodayCount: number;
+  upcomingCount: number;
+  totalOpenCount: number;
+}

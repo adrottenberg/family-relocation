@@ -6,6 +6,7 @@ import {
   SettingOutlined,
   LogoutOutlined,
   HomeOutlined,
+  BellOutlined,
 } from '@ant-design/icons';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
@@ -26,6 +27,7 @@ const Sidebar = () => {
     if (path.startsWith('/applicants')) return 'applicants';
     if (path.startsWith('/pipeline')) return 'pipeline';
     if (path.startsWith('/properties')) return 'properties';
+    if (path.startsWith('/reminders')) return 'reminders';
     if (path.startsWith('/settings')) return 'settings';
     return 'dashboard';
   };
@@ -59,6 +61,11 @@ const Sidebar = () => {
       key: 'properties',
       icon: <HomeOutlined />,
       label: 'Properties',
+    },
+    {
+      key: 'reminders',
+      icon: <BellOutlined />,
+      label: 'Reminders',
     },
     {
       key: 'settings',

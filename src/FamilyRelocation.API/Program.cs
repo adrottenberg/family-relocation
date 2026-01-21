@@ -88,9 +88,23 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         {
             ValidateIssuerSigningKey = true,
             ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidAudience = cognitoClientId,
-            ValidateLifetime = true
+            ValidateLifetime = true,
+            // Disable default audience validation - we'll validate client_id in OnTokenValidated
+            ValidateAudience = false
+        };
+
+        // Validate Cognito's client_id claim after token is validated
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = context =>
+            {
+                var clientIdClaim = context.Principal?.FindFirst("client_id");
+                if (clientIdClaim == null || clientIdClaim.Value != cognitoClientId)
+                {
+                    context.Fail("Invalid client_id claim");
+                }
+                return Task.CompletedTask;
+            }
         };
     });
 

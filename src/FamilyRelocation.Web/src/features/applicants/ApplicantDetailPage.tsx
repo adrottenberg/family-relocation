@@ -25,10 +25,13 @@ import {
   UserOutlined,
   PrinterOutlined,
   SwapOutlined,
+  BellOutlined,
+  CheckOutlined,
+  ClockCircleOutlined,
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { applicantsApi, documentsApi, getStageRequirements, housingSearchesApi } from '../../api';
-import type { ApplicantDto, AuditLogDto } from '../../api/types';
+import { applicantsApi, documentsApi, getStageRequirements, housingSearchesApi, remindersApi } from '../../api';
+import type { ApplicantDto, AuditLogDto, ReminderListDto } from '../../api/types';
 import { colors, statusTagStyles, stageTagStyles } from '../../theme/antd-theme';
 import { useAuthStore } from '../../store/authStore';
 import BoardReviewSection from './BoardReviewSection';
@@ -46,6 +49,7 @@ import AgreementsRequiredModal from '../pipeline/modals/AgreementsRequiredModal'
 import ContractInfoModal from '../pipeline/modals/ContractInfoModal';
 import ContractFailedModal from '../pipeline/modals/ContractFailedModal';
 import ClosingConfirmModal from '../pipeline/modals/ClosingConfirmModal';
+import { CreateReminderModal } from '../reminders';
 import './ApplicantDetailPage.css';
 
 const { Title, Text } = Typography;
@@ -58,6 +62,7 @@ const ApplicantDetailPage = () => {
   const [boardDecisionModalOpen, setBoardDecisionModalOpen] = useState(false);
   const [editDrawerOpen, setEditDrawerOpen] = useState(false);
   const [documentUploadModalOpen, setDocumentUploadModalOpen] = useState(false);
+  const [reminderModalOpen, setReminderModalOpen] = useState(false);
 
   // Stage transition modal state
   const [activeTransitionModal, setActiveTransitionModal] = useState<TransitionType | null>(null);
@@ -374,6 +379,11 @@ const ApplicantDetailPage = () => {
       children: <DocumentsTab applicantId={applicant.id} onUploadDocuments={() => setDocumentUploadModalOpen(true)} />,
     },
     {
+      key: 'reminders',
+      label: 'Reminders',
+      children: <RemindersTab applicantId={applicant.id} onAddReminder={() => setReminderModalOpen(true)} />,
+    },
+    {
       key: 'activity',
       label: 'Activity',
       children: <ActivityTab auditLogs={auditLogs?.items || []} />,
@@ -416,6 +426,9 @@ const ApplicantDetailPage = () => {
             </div>
           </div>
           <div className="header-actions">
+            <Button icon={<BellOutlined />} onClick={() => setReminderModalOpen(true)}>
+              Add Reminder
+            </Button>
             <Button icon={<PrinterOutlined />} onClick={handlePrint}>
               Print
             </Button>
@@ -450,6 +463,19 @@ const ApplicantDetailPage = () => {
         open={documentUploadModalOpen}
         onClose={() => setDocumentUploadModalOpen(false)}
         applicant={applicant}
+      />
+
+      {/* Create Reminder Modal */}
+      <CreateReminderModal
+        open={reminderModalOpen}
+        onClose={() => setReminderModalOpen(false)}
+        onSuccess={() => {
+          setReminderModalOpen(false);
+          queryClient.invalidateQueries({ queryKey: ['applicantReminders', applicant.id] });
+        }}
+        entityType="Applicant"
+        entityId={applicant.id}
+        entityDisplayName={`${applicant.husband.lastName} Family`}
       />
 
       {/* Stage Transition Modals */}
@@ -771,6 +797,140 @@ const DocumentsTab = ({ applicantId, onUploadDocuments }: DocumentsTabProps) => 
         />
       ) : (
         <Empty description="No documents uploaded yet" />
+      )}
+    </div>
+  );
+};
+
+// Reminders Tab
+interface RemindersTabProps {
+  applicantId: string;
+  onAddReminder: () => void;
+}
+
+const RemindersTab = ({ applicantId, onAddReminder }: RemindersTabProps) => {
+  const queryClient = useQueryClient();
+
+  const { data: reminders, isLoading } = useQuery({
+    queryKey: ['applicantReminders', applicantId],
+    queryFn: () => remindersApi.getByEntity('Applicant', applicantId, 'Open'),
+  });
+
+  const completeMutation = useMutation({
+    mutationFn: (reminderId: string) => remindersApi.complete(reminderId),
+    onSuccess: () => {
+      message.success('Reminder completed');
+      queryClient.invalidateQueries({ queryKey: ['applicantReminders', applicantId] });
+    },
+    onError: () => {
+      message.error('Failed to complete reminder');
+    },
+  });
+
+  const getPriorityColor = (priority: string) => {
+    const colors: Record<string, string> = {
+      Urgent: 'red',
+      High: 'orange',
+      Normal: 'blue',
+      Low: 'default',
+    };
+    return colors[priority] || 'default';
+  };
+
+  const isOverdue = (dueDate: string) => {
+    return new Date(dueDate) < new Date();
+  };
+
+  const isDueToday = (dueDate: string) => {
+    const today = new Date();
+    const due = new Date(dueDate);
+    return (
+      due.getFullYear() === today.getFullYear() &&
+      due.getMonth() === today.getMonth() &&
+      due.getDate() === today.getDate()
+    );
+  };
+
+  const columns = [
+    {
+      title: 'Title',
+      dataIndex: 'title',
+      key: 'title',
+      render: (text: string, record: ReminderListDto) => (
+        <Space>
+          <Text strong>{text}</Text>
+          {isOverdue(record.dueDate) && <Tag color="red">Overdue</Tag>}
+          {!isOverdue(record.dueDate) && isDueToday(record.dueDate) && (
+            <Tag color="orange">Due Today</Tag>
+          )}
+        </Space>
+      ),
+    },
+    {
+      title: 'Due Date',
+      dataIndex: 'dueDate',
+      key: 'dueDate',
+      width: 120,
+      render: (date: string) => new Date(date).toLocaleDateString(),
+    },
+    {
+      title: 'Priority',
+      dataIndex: 'priority',
+      key: 'priority',
+      width: 100,
+      render: (priority: string) => <Tag color={getPriorityColor(priority)}>{priority}</Tag>,
+    },
+    {
+      title: 'Actions',
+      key: 'actions',
+      width: 100,
+      render: (_: unknown, record: ReminderListDto) => (
+        <Button
+          type="link"
+          size="small"
+          icon={<CheckOutlined />}
+          onClick={() => completeMutation.mutate(record.id)}
+          loading={completeMutation.isPending}
+        >
+          Complete
+        </Button>
+      ),
+    },
+  ];
+
+  if (isLoading) {
+    return (
+      <div style={{ textAlign: 'center', padding: 40 }}>
+        <Spin />
+      </div>
+    );
+  }
+
+  return (
+    <div className="tab-content">
+      <div style={{ marginBottom: 16 }}>
+        <Button type="primary" icon={<BellOutlined />} onClick={onAddReminder}>
+          Add Reminder
+        </Button>
+      </div>
+      {reminders && reminders.length > 0 ? (
+        <Table
+          dataSource={reminders}
+          columns={columns}
+          rowKey="id"
+          pagination={false}
+          size="middle"
+          rowClassName={(record) => {
+            if (isOverdue(record.dueDate)) return 'reminder-overdue';
+            if (isDueToday(record.dueDate)) return 'reminder-due-today';
+            return '';
+          }}
+        />
+      ) : (
+        <Empty
+          description="No outstanding reminders"
+          image={<ClockCircleOutlined style={{ fontSize: 48, color: '#d9d9d9' }} />}
+        />
       )}
     </div>
   );

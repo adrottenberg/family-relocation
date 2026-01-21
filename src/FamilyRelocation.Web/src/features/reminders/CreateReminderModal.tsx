@@ -1,0 +1,228 @@
+import { useState } from 'react';
+import {
+  Modal,
+  Form,
+  Input,
+  DatePicker,
+  TimePicker,
+  Select,
+  Switch,
+  message,
+  Space,
+} from 'antd';
+import dayjs from 'dayjs';
+import { remindersApi, CreateReminderRequest, ReminderPriority } from '../../api';
+
+const { TextArea } = Input;
+const { Option } = Select;
+
+interface CreateReminderModalProps {
+  open: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+  // Optional: pre-fill entity context when opened from a detail page
+  entityType?: string;
+  entityId?: string;
+  entityDisplayName?: string;
+}
+
+const priorityOptions: { value: ReminderPriority; label: string; color: string }[] = [
+  { value: 'Urgent', label: 'Urgent', color: '#ff4d4f' },
+  { value: 'High', label: 'High', color: '#fa8c16' },
+  { value: 'Normal', label: 'Normal', color: '#1890ff' },
+  { value: 'Low', label: 'Low', color: '#8c8c8c' },
+];
+
+const CreateReminderModal = ({
+  open,
+  onClose,
+  onSuccess,
+  entityType: prefilledEntityType,
+  entityId: prefilledEntityId,
+  entityDisplayName,
+}: CreateReminderModalProps) => {
+  const [form] = Form.useForm();
+  const [loading, setLoading] = useState(false);
+  const [selectedEntityType, setSelectedEntityType] = useState<string>(prefilledEntityType || '');
+
+  const handleSubmit = async () => {
+    try {
+      const values = await form.validateFields();
+      setLoading(true);
+
+      const request: CreateReminderRequest = {
+        title: values.title,
+        dueDate: values.dueDate.format('YYYY-MM-DD'),
+        dueTime: values.dueTime ? values.dueTime.format('HH:mm:ss') : undefined,
+        priority: values.priority || 'Normal',
+        entityType: values.entityType,
+        entityId: values.entityId,
+        notes: values.notes || undefined,
+        sendEmailNotification: values.sendEmailNotification || false,
+      };
+
+      await remindersApi.create(request);
+      message.success('Reminder created successfully');
+      form.resetFields();
+      onSuccess();
+    } catch (error) {
+      if (error instanceof Error && 'errorFields' in error) {
+        // Validation error, handled by form
+        return;
+      }
+      console.error('Failed to create reminder:', error);
+      message.error('Failed to create reminder');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleClose = () => {
+    form.resetFields();
+    onClose();
+  };
+
+  // Set initial values when modal opens with prefilled entity
+  const initialValues = {
+    priority: 'Normal',
+    sendEmailNotification: false,
+    entityType: prefilledEntityType,
+    entityId: prefilledEntityId,
+  };
+
+  return (
+    <Modal
+      title="Create Reminder"
+      open={open}
+      onCancel={handleClose}
+      onOk={handleSubmit}
+      okText="Create"
+      confirmLoading={loading}
+      width={600}
+      destroyOnClose
+    >
+      <Form
+        form={form}
+        layout="vertical"
+        initialValues={initialValues}
+        preserve={false}
+      >
+        <Form.Item
+          name="title"
+          label="Title"
+          rules={[
+            { required: true, message: 'Please enter a title' },
+            { max: 200, message: 'Title must be 200 characters or less' },
+          ]}
+        >
+          <Input placeholder="e.g., Follow up with Cohen family about documents" />
+        </Form.Item>
+
+        <Space style={{ width: '100%' }} size="middle">
+          <Form.Item
+            name="dueDate"
+            label="Due Date"
+            rules={[{ required: true, message: 'Please select a due date' }]}
+            style={{ flex: 1 }}
+          >
+            <DatePicker
+              style={{ width: '100%' }}
+              disabledDate={(current) => current && current < dayjs().startOf('day')}
+              format="MMMM D, YYYY"
+            />
+          </Form.Item>
+
+          <Form.Item name="dueTime" label="Due Time (optional)" style={{ flex: 1 }}>
+            <TimePicker
+              style={{ width: '100%' }}
+              format="h:mm A"
+              use12Hours
+              minuteStep={15}
+            />
+          </Form.Item>
+        </Space>
+
+        <Form.Item name="priority" label="Priority">
+          <Select placeholder="Select priority">
+            {priorityOptions.map((opt) => (
+              <Option key={opt.value} value={opt.value}>
+                <span style={{ color: opt.color }}>{opt.label}</span>
+              </Option>
+            ))}
+          </Select>
+        </Form.Item>
+
+        <Space style={{ width: '100%' }} size="middle">
+          <Form.Item
+            name="entityType"
+            label="Related To"
+            rules={[{ required: true, message: 'Please select entity type' }]}
+            style={{ flex: 1 }}
+          >
+            <Select
+              placeholder="Select type"
+              onChange={(value) => {
+                setSelectedEntityType(value);
+                if (value === 'General') {
+                  // For general reminders, set a placeholder entityId
+                  form.setFieldValue('entityId', '00000000-0000-0000-0000-000000000000');
+                } else {
+                  form.setFieldValue('entityId', '');
+                }
+              }}
+              disabled={!!prefilledEntityType}
+            >
+              <Option value="Applicant">Applicant</Option>
+              <Option value="HousingSearch">Housing Search</Option>
+              <Option value="Property">Property</Option>
+              <Option value="General">General (No specific entity)</Option>
+            </Select>
+          </Form.Item>
+
+          {selectedEntityType && selectedEntityType !== 'General' && !prefilledEntityId && (
+            <Form.Item
+              name="entityId"
+              label="Entity ID"
+              rules={[{ required: true, message: 'Please enter entity ID' }]}
+              style={{ flex: 1 }}
+              tooltip="Copy the ID from the detail page URL"
+            >
+              <Input placeholder="Enter entity ID (GUID)" />
+            </Form.Item>
+          )}
+
+          {prefilledEntityId && entityDisplayName && (
+            <Form.Item label="Entity" style={{ flex: 1 }}>
+              <Input value={entityDisplayName} disabled />
+              <Form.Item name="entityId" hidden>
+                <Input />
+              </Form.Item>
+            </Form.Item>
+          )}
+        </Space>
+
+        <Form.Item name="notes" label="Notes (optional)">
+          <TextArea
+            rows={3}
+            placeholder="Additional notes or context..."
+            maxLength={2000}
+            showCount
+          />
+        </Form.Item>
+
+        <Form.Item
+          name="sendEmailNotification"
+          label="Email Notification"
+          valuePropName="checked"
+        >
+          <Switch />
+          <span style={{ marginLeft: 8, color: '#888' }}>
+            Send email notification when reminder is due
+          </span>
+        </Form.Item>
+      </Form>
+    </Modal>
+  );
+};
+
+export default CreateReminderModal;
