@@ -9,21 +9,26 @@ namespace FamilyRelocation.Application.Properties.Commands.CreateProperty;
 public class CreatePropertyCommandHandler : IRequestHandler<CreatePropertyCommand, PropertyDto>
 {
     private readonly IApplicationDbContext _context;
+    private readonly ICurrentUserService _currentUserService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IActivityLogger _activityLogger;
 
     public CreatePropertyCommandHandler(
         IApplicationDbContext context,
+        ICurrentUserService currentUserService,
         IUnitOfWork unitOfWork,
         IActivityLogger activityLogger)
     {
         _context = context;
+        _currentUserService = currentUserService;
         _unitOfWork = unitOfWork;
         _activityLogger = activityLogger;
     }
 
     public async Task<PropertyDto> Handle(CreatePropertyCommand request, CancellationToken ct)
     {
+        var userId = _currentUserService.UserId ?? throw new UnauthorizedAccessException("User not authenticated");
+
         var address = new Address(
             request.Street,
             request.City,
@@ -38,7 +43,7 @@ public class CreatePropertyCommandHandler : IRequestHandler<CreatePropertyComman
             price: price,
             bedrooms: request.Bedrooms,
             bathrooms: request.Bathrooms,
-            createdBy: Guid.Empty, // TODO: Get from current user context
+            createdBy: userId,
             squareFeet: request.SquareFeet,
             lotSize: request.LotSize,
             yearBuilt: request.YearBuilt,

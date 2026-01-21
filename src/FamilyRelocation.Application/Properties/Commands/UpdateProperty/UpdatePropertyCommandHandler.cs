@@ -11,21 +11,26 @@ namespace FamilyRelocation.Application.Properties.Commands.UpdateProperty;
 public class UpdatePropertyCommandHandler : IRequestHandler<UpdatePropertyCommand, PropertyDto>
 {
     private readonly IApplicationDbContext _context;
+    private readonly ICurrentUserService _currentUserService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IActivityLogger _activityLogger;
 
     public UpdatePropertyCommandHandler(
         IApplicationDbContext context,
+        ICurrentUserService currentUserService,
         IUnitOfWork unitOfWork,
         IActivityLogger activityLogger)
     {
         _context = context;
+        _currentUserService = currentUserService;
         _unitOfWork = unitOfWork;
         _activityLogger = activityLogger;
     }
 
     public async Task<PropertyDto> Handle(UpdatePropertyCommand request, CancellationToken ct)
     {
+        var userId = _currentUserService.UserId ?? throw new UnauthorizedAccessException("User not authenticated");
+
         var property = await _context.Set<Property>()
             .FirstOrDefaultAsync(p => p.Id == request.Id && !p.IsDeleted, ct);
 
@@ -46,7 +51,7 @@ public class UpdatePropertyCommandHandler : IRequestHandler<UpdatePropertyComman
             price: price,
             bedrooms: request.Bedrooms,
             bathrooms: request.Bathrooms,
-            modifiedBy: Guid.Empty, // TODO: Get from current user context
+            modifiedBy: userId,
             squareFeet: request.SquareFeet,
             lotSize: request.LotSize,
             yearBuilt: request.YearBuilt,

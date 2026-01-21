@@ -11,21 +11,26 @@ namespace FamilyRelocation.Application.Properties.Commands.UpdatePropertyStatus;
 public class UpdatePropertyStatusCommandHandler : IRequestHandler<UpdatePropertyStatusCommand, PropertyDto>
 {
     private readonly IApplicationDbContext _context;
+    private readonly ICurrentUserService _currentUserService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IActivityLogger _activityLogger;
 
     public UpdatePropertyStatusCommandHandler(
         IApplicationDbContext context,
+        ICurrentUserService currentUserService,
         IUnitOfWork unitOfWork,
         IActivityLogger activityLogger)
     {
         _context = context;
+        _currentUserService = currentUserService;
         _unitOfWork = unitOfWork;
         _activityLogger = activityLogger;
     }
 
     public async Task<PropertyDto> Handle(UpdatePropertyStatusCommand request, CancellationToken ct)
     {
+        var userId = _currentUserService.UserId ?? throw new UnauthorizedAccessException("User not authenticated");
+
         var property = await _context.Set<Property>()
             .FirstOrDefaultAsync(p => p.Id == request.Id && !p.IsDeleted, ct);
 
@@ -36,7 +41,7 @@ public class UpdatePropertyStatusCommandHandler : IRequestHandler<UpdateProperty
             throw new ValidationException($"Invalid status: {request.Status}");
 
         var oldStatus = property.Status;
-        property.UpdateStatus(newStatus, Guid.Empty); // TODO: Get from current user context
+        property.UpdateStatus(newStatus, userId);
 
         await _unitOfWork.SaveChangesAsync(ct);
 
