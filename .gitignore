@@ -484,3 +484,10 @@ $RECYCLE.BIN/
 # Claude Code local settings
 .claude/settings.local.json
 .mcp.json
+
+# Vite cache
+.vite/
+
+# Temp files
+*temp-swagger.json
+*.bat
