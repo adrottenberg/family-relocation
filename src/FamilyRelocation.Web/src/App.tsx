@@ -14,6 +14,7 @@ const ApplicantDetailPage = lazy(() => import('./features/applicants/ApplicantDe
 const PipelinePage = lazy(() => import('./features/pipeline/PipelinePage'));
 const PropertiesListPage = lazy(() => import('./features/properties/PropertiesListPage'));
 const PropertyDetailPage = lazy(() => import('./features/properties/PropertyDetailPage'));
+const RemindersPage = lazy(() => import('./features/reminders/RemindersPage'));
 const SettingsPage = lazy(() => import('./features/settings/SettingsPage'));
 
 const LoadingFallback = () => (
@@ -57,6 +58,7 @@ function App() {
           <Route path="pipeline" element={<PipelinePage />} />
           <Route path="properties" element={<PropertiesListPage />} />
           <Route path="properties/:id" element={<PropertyDetailPage />} />
+          <Route path="reminders" element={<RemindersPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
 

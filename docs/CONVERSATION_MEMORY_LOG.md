@@ -2702,27 +2702,119 @@ New stories added:
 
 ---
 
+## SESSION: January 21, 2026 - Sprint 4 Implementation (Reminders & Code Review Fixes)
+
+### Summary
+
+Implemented the Follow-up Reminders feature (UV-65) and all critical code review fixes. PR #23 merged to master.
+
+### Features Implemented (PR #23 - Merged)
+
+#### 1. Follow-up Reminders (US-037 through US-040) - COMPLETE
+
+**Domain Layer:**
+- `Domain/Entities/FollowUpReminder.cs` - Full entity with state machine (Open → Completed/Snoozed/Dismissed)
+- `Domain/Enums/ReminderPriority.cs` - Low, Normal, High, Urgent
+- `Domain/Enums/ReminderStatus.cs` - Open, Completed, Snoozed, Dismissed
+
+**Application Layer:**
+- `CreateReminderCommand/Handler/Validator` - Create reminders with validation
+- `UpdateReminderCommand/Handler/Validator` - Update reminder details
+- `CompleteReminderCommand/Handler` - Mark as completed
+- `SnoozeReminderCommand/Handler/Validator` - Snooze until future date
+- `DismissReminderCommand/Handler` - Soft delete
+- `ReopenReminderCommand/Handler` - Reopen completed/dismissed
+- `GetRemindersQuery/Handler` - List with filters, pagination
+- `GetReminderByIdQuery/Handler` - Single reminder
+- `GetDueRemindersQuery/Handler` - Dashboard due report
+
+**API Layer:**
+- `RemindersController` with endpoints:
+  - `POST /api/reminders` - Create
+  - `GET /api/reminders` - List with filters
+  - `GET /api/reminders/{id}` - Get by ID
+  - `GET /api/reminders/entity/{entityType}/{entityId}` - Get by entity
+  - `GET /api/reminders/due-report` - Dashboard widget
+  - `PUT /api/reminders/{id}` - Update
+  - `POST /api/reminders/{id}/complete` - Complete
+  - `POST /api/reminders/{id}/snooze` - Snooze
+  - `POST /api/reminders/{id}/dismiss` - Dismiss
+  - `POST /api/reminders/{id}/reopen` - Reopen
+
+**Tests:**
+- 32 domain unit tests (`FollowUpReminderTests.cs`)
+- 17 integration tests (`RemindersEndpointsTests.cs`)
+
+**Documentation:**
+- Updated `.http` file with Reminders endpoints
+- Created `postman/FamilyRelocation-Reminders.postman_collection.json`
+
+#### 2. Code Review Fixes (CR-001 through CR-007) - COMPLETE
+
+| ID | Fix | Status |
+|----|-----|--------|
+| CR-001 | Global Exception Handler Middleware | ✅ |
+| CR-002 | MediatR Validation Pipeline | ✅ |
+| CR-003 | CORS Configuration | ✅ |
+| CR-004 | Cryptographic Password Generation | ✅ |
+| CR-005 | JWT Audience Validation | ✅ |
+| CR-006 | Swagger Security Definition | ✅ |
+| CR-007 | Missing Command Validators | ✅ |
+
+### Database Changes
+
+- Migration `AddFollowUpReminders` applied
+- New `FollowUpReminders` table with indexes on Status, DueDate, AssignedTo, Entity, Priority
+
+### Test Results
+
+All 351 tests passing:
+- 230 domain tests
+- 84 API tests
+- 37 integration tests
+
+### Jira Updates
+
+- UV-65 (Follow-up Reminders) transitioned to Done
+
+---
+
 ## FOR NEXT SESSION
 
 ### To Quickly Re-Establish Context
 
 **Just say:**
-> "I'm the developer building the Family Relocation CRM for the Jewish community in Union County. Sprint 3 is merged, working on Sprint 4."
+> "I'm the developer building the Family Relocation CRM for the Jewish community in Union County. Sprint 4 in progress."
 
 **I'll know:**
-- Complete domain model (Applicant, HousingSearch, Property, ActivityLog)
+- Complete domain model (Applicant, HousingSearch, Property, ActivityLog, FollowUpReminder)
 - Tech stack (.NET 10, React + Ant Design, AWS)
 - **Sprint 3 merged** (PR #21) - includes all MVP features
-- **Pipeline has 5 columns:** Submitted, AwaitingAgreements, Searching, UnderContract, Closed (MovedIn combined with Closed for now)
-- **Sprint 4 planned** (~76 points) - Reminders, User Management, RBAC, Communication Logging, Reports
+- **Sprint 4 partially complete** (PR #23 merged) - Reminders backend done, Code Review fixes done
+- **Pipeline has 5 columns:** Submitted, AwaitingAgreements, Searching, UnderContract, Closed
 - Query object pattern, all handlers in Application layer
 - EF Core ToJson() for JSON columns
+- Global exception handler and validation pipeline in place
 
-### Sprint 4 Priority Stories
+### Sprint 4 Remaining Stories
 
-- US-037-040: Follow-up Reminders
-- US-047: Communication Logging (phone calls, notes)
-- US-F21: MovedIn column + 10-item limits for Closed/MovedIn
+**Backend (30 points):**
+- US-041: Audit log viewer API enhancements (2 pts)
+- US-042-045: User Management APIs (10 pts)
+- US-046: RBAC Review (4 pts)
+- US-047: Communication Logging (4 pts)
+- US-048-049: SES Email features (5 pts)
+- US-050: Board Approval Report (3 pts)
+- US-051: Broker Role (2 pts)
+- US-052: Expand Activity Logging (2 pts)
+
+**Frontend (30 points):**
+- US-F12-F15: Reminders UI (12 pts)
+- US-F16: Audit history tab (4 pts)
+- US-F17-F18: User management UI (6 pts)
+- US-F19: Log Activity Modal (3 pts)
+- US-F20: Board Report Print View (2 pts)
+- US-F21: Pipeline MovedIn Column (3 pts)
 
 **And we can pick up exactly where we left off.**
 
