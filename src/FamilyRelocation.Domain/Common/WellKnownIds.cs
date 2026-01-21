@@ -13,6 +13,12 @@ public static class WellKnownIds
     /// </summary>
     public static readonly Guid SelfSubmittedUserId = new("AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA");
 
+    /// <summary>
+    /// Used for system-initiated actions (seeding, migrations, background jobs).
+    /// Pattern: All 0's except last digit - structurally invalid as UUID v4.
+    /// </summary>
+    public static readonly Guid SystemUserId = new("00000000-0000-0000-0000-000000000001");
+
     // Document Type IDs (system types - cannot be deleted)
     // Pattern: All B's prefix for document types
 

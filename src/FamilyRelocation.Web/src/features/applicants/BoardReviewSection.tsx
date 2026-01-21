@@ -1,4 +1,5 @@
-import { Card, Button, Descriptions, Tag, Space, Alert, Spin } from 'antd';
+import { useEffect, useRef } from 'react';
+import { Card, Button, Descriptions, Tag, Space, Alert, Spin, message } from 'antd';
 import {
   CheckCircleOutlined,
   CloseCircleOutlined,
@@ -6,8 +7,8 @@ import {
   EditOutlined,
   UploadOutlined,
 } from '@ant-design/icons';
-import { useQuery } from '@tanstack/react-query';
-import { documentsApi, getDocumentTypes } from '../../api';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { documentsApi, getDocumentTypes, housingSearchesApi } from '../../api';
 import type { ApplicantDto } from '../../api/types';
 
 interface BoardReviewSectionProps {
@@ -51,24 +52,45 @@ const getDecisionConfig = (decision: string) => {
 };
 
 const BoardReviewSection = ({ applicant, onRecordDecision, onUploadDocuments, canApprove = false }: BoardReviewSectionProps) => {
+  const queryClient = useQueryClient();
   const boardReview = applicant.boardReview;
   const decision = boardReview?.decision || 'Pending';
   const config = getDecisionConfig(decision);
+  const housingSearch = applicant.housingSearch;
 
   const isPending = decision === 'Pending';
   const isApproved = decision === 'Approved';
+  const isAwaitingAgreements = housingSearch?.stage === 'AwaitingAgreements';
 
-  // Fetch document types and applicant documents
+  // Track if we've already triggered auto-transition to prevent loops
+  const hasTriggeredTransition = useRef(false);
+
+  // Fetch document types and applicant documents (only when in AwaitingAgreements)
   const { data: documentTypes, isLoading: typesLoading } = useQuery({
     queryKey: ['documentTypes'],
     queryFn: () => getDocumentTypes(true),
-    enabled: isApproved,
+    enabled: isApproved && isAwaitingAgreements,
   });
 
   const { data: applicantDocuments, isLoading: docsLoading } = useQuery({
     queryKey: ['applicantDocuments', applicant.id],
     queryFn: () => documentsApi.getApplicantDocuments(applicant.id),
-    enabled: isApproved,
+    enabled: isApproved && isAwaitingAgreements,
+  });
+
+  // Auto-transition mutation
+  const autoTransitionMutation = useMutation({
+    mutationFn: () => housingSearchesApi.changeStage(housingSearch!.id, { newStage: 'Searching' }),
+    onSuccess: () => {
+      message.success('All documents uploaded! Automatically moved to Searching stage.');
+      queryClient.invalidateQueries({ queryKey: ['applicant', applicant.id] });
+      queryClient.invalidateQueries({ queryKey: ['applicants'] });
+      queryClient.invalidateQueries({ queryKey: ['pipeline'] });
+    },
+    onError: () => {
+      message.error('Failed to auto-transition to Searching stage');
+      hasTriggeredTransition.current = false; // Allow retry
+    },
   });
 
   // Check which documents are missing
@@ -82,6 +104,20 @@ const BoardReviewSection = ({ applicant, onRecordDecision, onUploadDocuments, ca
   const missingDocuments = getMissingDocuments();
   const allDocumentsUploaded = documentTypes && applicantDocuments && missingDocuments.length === 0;
   const isLoading = typesLoading || docsLoading;
+
+  // Auto-transition to Searching when all documents are uploaded
+  useEffect(() => {
+    if (
+      isAwaitingAgreements &&
+      allDocumentsUploaded &&
+      housingSearch &&
+      !hasTriggeredTransition.current &&
+      !autoTransitionMutation.isPending
+    ) {
+      hasTriggeredTransition.current = true;
+      autoTransitionMutation.mutate();
+    }
+  }, [isAwaitingAgreements, allDocumentsUploaded, housingSearch, autoTransitionMutation]);
 
   return (
     <Card
@@ -138,14 +174,14 @@ const BoardReviewSection = ({ applicant, onRecordDecision, onUploadDocuments, ca
           </Descriptions>
         )}
 
-        {/* Next Steps Alert for Approved */}
-        {isApproved && isLoading && (
+        {/* Next Steps Alert for Approved applicants in AwaitingAgreements */}
+        {isApproved && isAwaitingAgreements && isLoading && (
           <div style={{ textAlign: 'center', padding: 16 }}>
             <Spin size="small" />
           </div>
         )}
 
-        {isApproved && !isLoading && missingDocuments.length > 0 && (
+        {isApproved && isAwaitingAgreements && !isLoading && missingDocuments.length > 0 && (
           <Alert
             type="info"
             showIcon
@@ -169,12 +205,12 @@ const BoardReviewSection = ({ applicant, onRecordDecision, onUploadDocuments, ca
           />
         )}
 
-        {isApproved && !isLoading && allDocumentsUploaded && (
+        {isApproved && isAwaitingAgreements && !isLoading && allDocumentsUploaded && (
           <Alert
-            type="success"
+            type="info"
             showIcon
-            message="Ready for House Hunting"
-            description="All required agreements have been signed. The applicant can proceed to house hunting."
+            message="Transitioning to Searching..."
+            description="All required agreements have been uploaded. Automatically moving to Searching stage."
           />
         )}
       </Space>

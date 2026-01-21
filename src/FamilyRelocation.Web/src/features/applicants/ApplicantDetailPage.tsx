@@ -12,7 +12,9 @@ import {
   Empty,
   Timeline,
   Table,
+  Dropdown,
 } from 'antd';
+import type { MenuProps } from 'antd';
 import {
   ArrowLeftOutlined,
   EditOutlined,
@@ -21,6 +23,7 @@ import {
   HomeOutlined,
   UserOutlined,
   PrinterOutlined,
+  SwapOutlined,
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { applicantsApi, documentsApi } from '../../api';
@@ -31,6 +34,17 @@ import BoardReviewSection from './BoardReviewSection';
 import SetBoardDecisionModal from './SetBoardDecisionModal';
 import EditApplicantDrawer from './EditApplicantDrawer';
 import DocumentUploadModal from './DocumentUploadModal';
+import {
+  validateTransition,
+  formatStage,
+  getPipelineStage,
+  type PipelineStage,
+  type TransitionType,
+} from '../pipeline/transitionRules';
+import AgreementsRequiredModal from '../pipeline/modals/AgreementsRequiredModal';
+import ContractInfoModal from '../pipeline/modals/ContractInfoModal';
+import ContractFailedModal from '../pipeline/modals/ContractFailedModal';
+import ClosingConfirmModal from '../pipeline/modals/ClosingConfirmModal';
 import './ApplicantDetailPage.css';
 
 const { Title, Text } = Typography;
@@ -42,6 +56,9 @@ const ApplicantDetailPage = () => {
   const [boardDecisionModalOpen, setBoardDecisionModalOpen] = useState(false);
   const [editDrawerOpen, setEditDrawerOpen] = useState(false);
   const [documentUploadModalOpen, setDocumentUploadModalOpen] = useState(false);
+
+  // Stage transition modal state
+  const [activeTransitionModal, setActiveTransitionModal] = useState<TransitionType | null>(null);
 
   const { data: applicant, isLoading, error } = useQuery({
     queryKey: ['applicant', id],
@@ -106,6 +123,71 @@ const ApplicantDetailPage = () => {
   const hs = applicant.housingSearch;
   const boardDecision = applicant.boardReview?.decision || 'Pending';
   const stage = hs?.stage || 'N/A';
+
+  // Get the current pipeline stage
+  const currentPipelineStage = getPipelineStage(boardDecision, stage);
+
+  // Build the stage change dropdown menu
+  const getStageChangeMenuItems = (): MenuProps['items'] => {
+    if (!currentPipelineStage || currentPipelineStage === 'Closed') {
+      return [];
+    }
+
+    const allStages: PipelineStage[] = ['Submitted', 'AwaitingAgreements', 'Searching', 'UnderContract', 'Closed'];
+    const items: MenuProps['items'] = [];
+
+    for (const targetStage of allStages) {
+      if (targetStage === currentPipelineStage) continue;
+
+      const transition = validateTransition(currentPipelineStage, targetStage, {
+        boardDecision,
+      });
+
+      if (transition.type !== 'blocked') {
+        items.push({
+          key: targetStage,
+          label: formatStage(targetStage),
+          onClick: () => handleStageChange(targetStage),
+        });
+      }
+    }
+
+    return items;
+  };
+
+  const handleStageChange = (toStage: PipelineStage) => {
+    if (!currentPipelineStage) return;
+
+    const transition = validateTransition(currentPipelineStage, toStage, {
+      boardDecision,
+    });
+
+    switch (transition.type) {
+      case 'needsBoardApproval':
+        setBoardDecisionModalOpen(true);
+        break;
+      case 'needsAgreements':
+        setActiveTransitionModal('needsAgreements');
+        break;
+      case 'needsContractInfo':
+        setActiveTransitionModal('needsContractInfo');
+        break;
+      case 'needsClosingInfo':
+        setActiveTransitionModal('needsClosingInfo');
+        break;
+      case 'contractFailed':
+        setActiveTransitionModal('contractFailed');
+        break;
+      default:
+        break;
+    }
+  };
+
+  const closeTransitionModal = () => {
+    setActiveTransitionModal(null);
+  };
+
+  const stageChangeMenuItems = getStageChangeMenuItems();
 
   const handlePrint = () => {
     const printWindow = window.open('', '_blank');
@@ -291,6 +373,13 @@ const ApplicantDetailPage = () => {
               <div className="header-tags">
                 <Tag style={getStatusTagStyle(boardDecision)}>{boardDecision}</Tag>
                 <Tag style={getStageTagStyle(stage)}>{formatStageName(stage)}</Tag>
+                {stageChangeMenuItems && stageChangeMenuItems.length > 0 && (
+                  <Dropdown menu={{ items: stageChangeMenuItems }} trigger={['click']}>
+                    <Button size="small" icon={<SwapOutlined />}>
+                      Change Stage
+                    </Button>
+                  </Dropdown>
+                )}
               </div>
             </div>
           </div>
@@ -330,6 +419,42 @@ const ApplicantDetailPage = () => {
         onClose={() => setDocumentUploadModalOpen(false)}
         applicant={applicant}
       />
+
+      {/* Stage Transition Modals */}
+      {hs && (
+        <>
+          <AgreementsRequiredModal
+            open={activeTransitionModal === 'needsAgreements'}
+            onClose={closeTransitionModal}
+            applicantId={applicant.id}
+            housingSearchId={hs.id}
+            familyName={applicant.husband.lastName}
+            fromStage={currentPipelineStage || 'AwaitingAgreements'}
+            toStage="Searching"
+          />
+
+          <ContractInfoModal
+            open={activeTransitionModal === 'needsContractInfo'}
+            onClose={closeTransitionModal}
+            housingSearchId={hs.id}
+            familyName={applicant.husband.lastName}
+          />
+
+          <ContractFailedModal
+            open={activeTransitionModal === 'contractFailed'}
+            onClose={closeTransitionModal}
+            housingSearchId={hs.id}
+            familyName={applicant.husband.lastName}
+          />
+
+          <ClosingConfirmModal
+            open={activeTransitionModal === 'needsClosingInfo'}
+            onClose={closeTransitionModal}
+            housingSearchId={hs.id}
+            familyName={applicant.husband.lastName}
+          />
+        </>
+      )}
     </div>
   );
 };
@@ -352,16 +477,29 @@ interface OverviewTabProps {
 const OverviewTab = ({ applicant, onRecordBoardDecision, onUploadDocuments, canApprove }: OverviewTabProps) => {
   const { husband, wife, address } = applicant;
 
+  // Determine if board review section should be shown
+  // Hide once they're past AwaitingAgreements (i.e., in Searching, UnderContract, Closed, etc.)
+  const boardDecision = applicant.boardReview?.decision || 'Pending';
+  const housingSearchStage = applicant.housingSearch?.stage;
+  const showBoardReview =
+    boardDecision === 'Pending' ||
+    boardDecision === 'Deferred' ||
+    boardDecision === 'Rejected' ||
+    housingSearchStage === 'AwaitingAgreements' ||
+    !housingSearchStage;
+
   return (
     <div className="tab-content">
       <div className="info-grid">
-        {/* Board Review - First card for visibility */}
-        <BoardReviewSection
-          applicant={applicant}
-          onRecordDecision={onRecordBoardDecision}
-          onUploadDocuments={onUploadDocuments}
-          canApprove={canApprove}
-        />
+        {/* Board Review - Show only for pending/awaiting stages */}
+        {showBoardReview && (
+          <BoardReviewSection
+            applicant={applicant}
+            onRecordDecision={onRecordBoardDecision}
+            onUploadDocuments={onUploadDocuments}
+            canApprove={canApprove}
+          />
+        )}
 
         {/* Husband Info */}
         <Card title="Husband" size="small" className="info-card">

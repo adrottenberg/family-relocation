@@ -201,6 +201,7 @@ const LoginPage = () => {
               <Form.Item
                 name="email"
                 label="Email"
+                validateTrigger="onBlur"
                 rules={[
                   { required: true, message: 'Please enter your email' },
                   { type: 'email', message: 'Please enter a valid email' },
@@ -485,6 +486,7 @@ const LoginPage = () => {
             <Form.Item
               name="email"
               label="Email"
+              validateTrigger="onBlur"
               rules={[
                 { required: true, message: 'Please enter your email' },
                 { type: 'email', message: 'Please enter a valid email' },

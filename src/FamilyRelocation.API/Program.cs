@@ -3,6 +3,7 @@ using FamilyRelocation.API.Services;
 using FamilyRelocation.Application;
 using FamilyRelocation.Application.Common.Interfaces;
 using FamilyRelocation.Infrastructure;
+using FamilyRelocation.Infrastructure.Persistence.Seeders;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 
@@ -76,6 +77,30 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
+
+// Handle seed command: dotnet run -- --seed-properties "path1.csv" "path2.csv"
+if (args.Length > 0 && args[0] == "--seed-properties")
+{
+    var csvPaths = args.Skip(1).ToArray();
+    if (csvPaths.Length == 0)
+    {
+        Console.WriteLine("Usage: dotnet run -- --seed-properties \"path1.csv\" \"path2.csv\"");
+        return;
+    }
+
+    using var scope = app.Services.CreateScope();
+    var seeder = scope.ServiceProvider.GetRequiredService<RedfnPropertySeeder>();
+
+    Console.WriteLine($"Seeding properties from {csvPaths.Length} CSV file(s)...");
+    foreach (var path in csvPaths)
+    {
+        Console.WriteLine($"  - {path}");
+    }
+
+    await seeder.SeedFromMultipleCsvsAsync(csvPaths);
+    Console.WriteLine("Seeding complete!");
+    return;
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

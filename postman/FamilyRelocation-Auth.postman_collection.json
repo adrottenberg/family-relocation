@@ -365,6 +365,60 @@
 				},
 				"description": "Verify email address with confirmation code.\n\n**Required Variables:**\n- `confirmationCode`: Code received via email (set manually)\n\n**Error Responses:**\n- 400: Invalid/expired code or already verified"
 			}
+		},
+		{
+			"name": "Register User (Admin Only)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('User registered successfully', function() {",
+							"    pm.response.to.have.status(200);",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.message).to.include('created successfully');",
+							"});",
+							"console.log('User created. They will receive a temporary password via email.');"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{accessToken}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"email\": \"newuser@example.com\",\n    \"temporaryPassword\": \"TempPass123!\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/auth/register",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"auth",
+						"register"
+					]
+				},
+				"description": "Admin-only endpoint to register a new user in Cognito.\n\n**Authorization:**\nRequires Admin role.\n\n**Request Body:**\n- `email`: Email address for the new user\n- `temporaryPassword`: Temporary password (user will be required to change on first login)\n\n**Password Requirements:**\nMust meet Cognito password policy (8+ chars, uppercase, lowercase, number, special char).\n\n**Success Response (200):**\n- `message`: Confirmation message\n- `cognitoUserId`: The Cognito user ID (sub)\n\n**Error Responses:**\n- 400: Email already exists or password doesn't meet requirements\n- 401: Not authenticated\n- 403: Not authorized (not Admin role)"
+			}
 		}
 	],
 	"variable": [

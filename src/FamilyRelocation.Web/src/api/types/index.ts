@@ -32,7 +32,7 @@ export interface RefreshTokenResponse {
 // Application status - tracks applicant's progress through approval process
 export type ApplicationStatus = 'Submitted' | 'Approved' | 'Rejected';
 
-// Housing search stage - tracks approved applicant's house hunting journey
+// Housing search stage - tracks approved applicant's searching journey
 export type HousingSearchStage = 'AwaitingAgreements' | 'Searching' | 'UnderContract' | 'Closed' | 'MovedIn' | 'Paused';
 
 // Pipeline stage - combined view for the pipeline UI

@@ -26,9 +26,13 @@ public class GetDashboardStatsQueryHandler : IRequestHandler<GetDashboardStatsQu
             .GroupBy(a => a.BoardReview?.Decision.ToString() ?? "Pending")
             .ToDictionary(g => g.Key.ToLower(), g => g.Count());
 
-        // Get housing searches for stage counts
+        // Get housing searches for stage counts (use active search, or most recent if multiple exist)
         var housingSearches = await _context.Set<HousingSearch>().ToListAsync(ct);
-        var searchByApplicant = housingSearches.ToDictionary(h => h.ApplicantId, h => h.Stage);
+        var searchByApplicant = housingSearches
+            .GroupBy(h => h.ApplicantId)
+            .ToDictionary(
+                g => g.Key,
+                g => g.FirstOrDefault(h => h.IsActive)?.Stage ?? g.First().Stage);
 
         var byStage = new Dictionary<string, int>
         {
