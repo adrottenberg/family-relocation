@@ -2661,29 +2661,68 @@ curl.exe -k -s -X POST "https://adrottenberg.atlassian.net/rest/api/3/issue" \
 
 ---
 
+## SESSION: January 21, 2026 - Stage Change Improvements & Sprint 4 Planning
+
+### Summary
+
+Implemented stage change improvements, fixed bugs, and expanded Sprint 4 planning with new stories.
+
+### Features Implemented (PR #21 - Merged)
+
+1. **Stage Change from Detail Page** - Dropdown button to change pipeline stage from applicant detail
+2. **Auto-Transition** - Automatically move to Searching when all documents uploaded
+3. **Skip Modal** - Don't show modal when no additional input required (check docs first)
+4. **Activity Logging** - Added IActivityLogger to ChangeHousingSearchStageCommandHandler
+5. **Bug Fixes:**
+   - Dashboard 500 error (duplicate key in ToDictionary)
+   - Email validation trigger on blur instead of while typing
+
+### Sprint 4 Expanded (~76 points)
+
+New stories added:
+- US-047: Communication Logging via Activity Log (4 pts)
+- US-048: SES Email Verification (2 pts)
+- US-049: Automated Agreement Follow-up Emails (3 pts)
+- US-050: Board Approval Report (3 pts)
+- US-051: Broker Role (2 pts)
+- US-052: Expand Activity Logging Coverage (2 pts)
+- US-F19: Log Activity Modal (3 pts)
+- US-F20: Board Approval Report Print View (2 pts)
+- US-F21: Pipeline MovedIn Column and Limits (3 pts)
+
+### Deferred Items
+
+- **Property seeding from CSV** - Not ready yet, deferred
+- **MovedIn separate column** - Added as US-F21 for Sprint 4
+
+### Key Decisions
+
+- **Unified communication logging** - Phone calls, notes integrated with activity log (not separate entity)
+- **No Claude attribution in PRs** - Don't include "Generated with Claude Code" in PR descriptions
+
+---
+
 ## FOR NEXT SESSION
 
 ### To Quickly Re-Establish Context
 
 **Just say:**
-> "I'm the developer building the Family Relocation CRM for the Jewish community in Union County. Sprint 3 with all additions is complete."
+> "I'm the developer building the Family Relocation CRM for the Jewish community in Union County. Sprint 3 is merged, working on Sprint 4."
 
 **I'll know:**
 - Complete domain model (Applicant, HousingSearch, Property, ActivityLog)
 - Tech stack (.NET 10, React + Ant Design, AWS)
-- **Sprint 3 complete** - includes Property, Dashboard, Email, Activity features
-- **Pipeline has 5 columns:** Submitted, AwaitingAgreements, Searching, UnderContract, Closed
-- **Jira integration** - curl.exe with -k flag on Windows, JSON files for bodies
+- **Sprint 3 merged** (PR #21) - includes all MVP features
+- **Pipeline has 5 columns:** Submitted, AwaitingAgreements, Searching, UnderContract, Closed (MovedIn combined with Closed for now)
+- **Sprint 4 planned** (~76 points) - Reminders, User Management, RBAC, Communication Logging, Reports
 - Query object pattern, all handlers in Application layer
 - EF Core ToJson() for JSON columns
-- ApplicantMapper extension methods
 
-### Remaining MVP Work
+### Sprint 4 Priority Stories
 
-**Sprint 4 (~15 points):**
-- Property Detail Page (frontend) - ~3 pts
-- Property Photos Upload (S3) - ~5 pts
-- Follow-Up Reminders - ~7 pts
+- US-037-040: Follow-up Reminders
+- US-047: Communication Logging (phone calls, notes)
+- US-F21: MovedIn column + 10-item limits for Closed/MovedIn
 
 **And we can pick up exactly where we left off.**
 
