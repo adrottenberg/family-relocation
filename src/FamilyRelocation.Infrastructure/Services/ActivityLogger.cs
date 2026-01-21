@@ -1,15 +1,14 @@
 using FamilyRelocation.Application.Common.Interfaces;
 using FamilyRelocation.Domain.Entities;
-using FamilyRelocation.Infrastructure.Persistence;
 
 namespace FamilyRelocation.Infrastructure.Services;
 
 public class ActivityLogger : IActivityLogger
 {
-    private readonly ApplicationDbContext _context;
+    private readonly IApplicationDbContext _context;
     private readonly ICurrentUserService _currentUserService;
 
-    public ActivityLogger(ApplicationDbContext context, ICurrentUserService currentUserService)
+    public ActivityLogger(IApplicationDbContext context, ICurrentUserService currentUserService)
     {
         _context = context;
         _currentUserService = currentUserService;
@@ -26,7 +25,7 @@ public class ActivityLogger : IActivityLogger
             userName: _currentUserService.UserName
         );
 
-        _context.ActivityLogs.Add(activity);
+        _context.Add(activity);
         await _context.SaveChangesAsync(ct);
     }
 }
