@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Modal, Button, List, Tag, Upload, Progress, Space, message, Divider, Spin, Empty } from 'antd';
 import {
   FileTextOutlined,
@@ -165,6 +165,31 @@ const AgreementsRequiredModal = ({
     requirements?.requirements.every(
       (req) => !req.isRequired || localUploadedStatus[req.documentTypeId]
     ) ?? false;
+
+  // Auto-transition if modal is opened and all required documents are already uploaded
+  // (or if there are no requirements at all)
+  const hasAutoTransitioned = useRef(false);
+
+  useEffect(() => {
+    if (
+      open &&
+      requirements &&
+      !isLoading &&
+      allRequiredUploaded &&
+      !hasAutoTransitioned.current &&
+      !transitionMutation.isPending
+    ) {
+      hasAutoTransitioned.current = true;
+      transitionMutation.mutate();
+    }
+  }, [open, requirements, isLoading, allRequiredUploaded, transitionMutation]);
+
+  // Reset auto-transition flag when modal closes
+  useEffect(() => {
+    if (!open) {
+      hasAutoTransitioned.current = false;
+    }
+  }, [open]);
 
   const renderRequirementItem = (req: DocumentRequirementDto) => {
     const isUploaded = localUploadedStatus[req.documentTypeId];

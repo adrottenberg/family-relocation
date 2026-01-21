@@ -476,6 +476,54 @@ GET {{baseUrl}}/api/audit-logs/applicant/{{applicantId}}
 Authorization: Bearer {{accessToken}}
 
 ###############################################################################
+# USER MANAGEMENT (Admin Only)
+# Manage system users and their roles
+###############################################################################
+
+# Variables for User Management
+@userId = paste-user-id-here
+
+### Register New User (Admin Only)
+# Creates a new user in Cognito with a temporary password
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "email": "newuser@example.com",
+    "temporaryPassword": "TempPass123!"
+}
+
+### List Users (Sprint 4 - Not Yet Implemented)
+# Returns paginated list of all users
+# GET {{baseUrl}}/api/users?page=1&pageSize=20&role=Coordinator&status=active
+# Authorization: Bearer {{accessToken}}
+
+### Get User Details (Sprint 4 - Not Yet Implemented)
+# Returns detailed information about a specific user
+# GET {{baseUrl}}/api/users/{{userId}}
+# Authorization: Bearer {{accessToken}}
+
+### Update User Roles (Sprint 4 - Not Yet Implemented)
+# Assigns new roles to a user
+# PUT {{baseUrl}}/api/users/{{userId}}/roles
+# Content-Type: application/json
+# Authorization: Bearer {{accessToken}}
+# {
+#     "roles": ["Coordinator", "BoardMember"]
+# }
+
+### Deactivate User (Sprint 4 - Not Yet Implemented)
+# Disables a user account (prevents login)
+# POST {{baseUrl}}/api/users/{{userId}}/deactivate
+# Authorization: Bearer {{accessToken}}
+
+### Reactivate User (Sprint 4 - Not Yet Implemented)
+# Re-enables a disabled user account
+# POST {{baseUrl}}/api/users/{{userId}}/reactivate
+# Authorization: Bearer {{accessToken}}
+
+###############################################################################
 # DOCUMENT TYPES & DOCUMENTS
 # Dynamic document type system for stage transition requirements
 ###############################################################################

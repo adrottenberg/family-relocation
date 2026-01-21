@@ -17,15 +17,18 @@ public class ChangeHousingSearchStageCommandHandler : IRequestHandler<ChangeHous
     private readonly IApplicationDbContext _context;
     private readonly ICurrentUserService _currentUserService;
     private readonly IEmailService _emailService;
+    private readonly IActivityLogger _activityLogger;
 
     public ChangeHousingSearchStageCommandHandler(
         IApplicationDbContext context,
         ICurrentUserService currentUserService,
-        IEmailService emailService)
+        IEmailService emailService,
+        IActivityLogger activityLogger)
     {
         _context = context;
         _currentUserService = currentUserService;
         _emailService = emailService;
+        _activityLogger = activityLogger;
     }
 
     public async Task<ChangeHousingSearchStageResponse> Handle(
@@ -73,8 +76,17 @@ public class ChangeHousingSearchStageCommandHandler : IRequestHandler<ChangeHous
 
         await _context.SaveChangesAsync(cancellationToken);
 
-        // Send notification email for significant stage changes
+        // Log the stage change activity
         var applicant = housingSearch.Applicant;
+        var familyName = applicant?.Husband?.LastName ?? "Unknown";
+        await _activityLogger.LogAsync(
+            entityType: "HousingSearch",
+            entityId: housingSearch.Id,
+            action: "StageChanged",
+            description: $"Stage changed to {FormatStageName(targetStage)} for {familyName} family",
+            cancellationToken);
+
+        // Send notification email for significant stage changes
         var email = applicant?.Husband?.Email;
         if (!string.IsNullOrEmpty(email) && ShouldSendStageEmail(targetStage))
         {

@@ -158,6 +158,10 @@
 - Make informed decisions with complete information
 - Doesn't rush - takes time to review properly
 
+**Git/PR Preferences:**
+- Do NOT include "Generated with Claude Code" or similar AI attribution in PR descriptions
+- Keep commit messages and PR descriptions professional and focused on the changes
+
 ---
 
 ## 3. KEY DECISIONS MADE

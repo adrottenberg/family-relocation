@@ -74,7 +74,7 @@ const ContractFailedModal = ({
       open={open}
       onOk={handleSubmit}
       onCancel={handleCancel}
-      okText="Move to House Hunting"
+      okText="Move to Searching"
       confirmLoading={mutation.isPending}
       destroyOnClose
     >

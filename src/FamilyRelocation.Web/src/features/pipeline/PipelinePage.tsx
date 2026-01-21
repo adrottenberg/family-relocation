@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card, Input, Select, Typography, Spin, Empty, message } from 'antd';
 import { SearchOutlined, UserOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { applicantsApi, housingSearchesApi } from '../../api';
+import { applicantsApi, housingSearchesApi, getStageRequirements } from '../../api';
 import type { ApplicantListItemDto } from '../../api/types';
 import { colors } from '../../theme/antd-theme';
 import { validateTransition, getPipelineStage, type Stage, type TransitionType } from './transitionRules';
@@ -171,7 +171,7 @@ const PipelinePage = () => {
     e.dataTransfer.dropEffect = 'move';
   };
 
-  const handleDrop = (e: React.DragEvent, targetStage: string) => {
+  const handleDrop = async (e: React.DragEvent, targetStage: string) => {
     e.preventDefault();
     const applicantId = e.dataTransfer.getData('applicantId');
     const housingSearchId = e.dataTransfer.getData('housingSearchId');
@@ -193,6 +193,40 @@ const PipelinePage = () => {
     if (result.type === 'direct') {
       // Direct transition allowed
       changeStage.mutate({ housingSearchId, newStage: targetStage });
+    } else if (result.type === 'needsAgreements') {
+      // Check if all required documents are already uploaded
+      try {
+        const requirements = await getStageRequirements(currentStage, targetStage, applicantId);
+        const allRequiredUploaded = requirements.requirements.every(
+          (req) => !req.isRequired || req.isUploaded
+        );
+        if (allRequiredUploaded) {
+          // All docs uploaded - transition directly
+          changeStage.mutate({ housingSearchId, newStage: targetStage });
+        } else {
+          // Show modal for missing documents
+          setModalState({
+            type: result.type,
+            applicantId,
+            housingSearchId,
+            familyName,
+            fromStage: currentStage,
+            toStage: targetStage,
+            message: result.message || '',
+          });
+        }
+      } catch {
+        // On error, show modal anyway
+        setModalState({
+          type: result.type,
+          applicantId,
+          housingSearchId,
+          familyName,
+          fromStage: currentStage,
+          toStage: targetStage,
+          message: result.message || '',
+        });
+      }
     } else {
       // Show appropriate modal
       setModalState({
