@@ -256,9 +256,10 @@ public class TestAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
+        // Use a valid GUID for NameIdentifier so CurrentUserService.UserId returns a proper value
         var claims = new[]
         {
-            new Claim(ClaimTypes.NameIdentifier, "test-user-id"),
+            new Claim(ClaimTypes.NameIdentifier, "11111111-1111-1111-1111-111111111111"),
             new Claim(ClaimTypes.Name, "test@example.com"),
             new Claim(ClaimTypes.Email, "test@example.com"),
             new Claim(ClaimTypes.Role, "Admin")

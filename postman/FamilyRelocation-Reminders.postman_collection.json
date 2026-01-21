@@ -1,0 +1,499 @@
+{
+	"info": {
+		"_postman_id": "family-relocation-reminders-collection",
+		"name": "FamilyRelocation Reminders API",
+		"description": "Collection for testing Follow-up Reminders endpoints in the FamilyRelocation API.\n\n## Setup\n1. Import the Auth collection first and login to get an access token\n2. Set the `baseUrl` variable to your API URL (default: https://localhost:7267)\n\n## Endpoints\n- **List Reminders**: Get reminders with filters (status, priority, due date, entity)\n- **Get by ID**: Get a specific reminder\n- **Get by Entity**: Get reminders for a specific entity (Applicant, HousingSearch)\n- **Due Report**: Dashboard widget data (overdue, due today, upcoming)\n- **Create**: Create new reminder\n- **Update**: Update reminder details\n- **Complete/Snooze/Dismiss/Reopen**: State transitions\n\n## Test Flow\n1. Login via Auth collection to get tokens\n2. Create an applicant (from Applicants collection)\n3. Create a reminder for that applicant\n4. Complete, snooze, or dismiss the reminder\n5. View due report for dashboard",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "List & Query",
+			"item": [
+				{
+					"name": "Get All Reminders",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/reminders?skip=0&take=50",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"reminders"
+							],
+							"query": [
+								{
+									"key": "skip",
+									"value": "0"
+								},
+								{
+									"key": "take",
+									"value": "50"
+								},
+								{
+									"key": "status",
+									"value": "Open",
+									"disabled": true
+								},
+								{
+									"key": "priority",
+									"value": "High",
+									"disabled": true
+								},
+								{
+									"key": "entityType",
+									"value": "Applicant",
+									"disabled": true
+								},
+								{
+									"key": "entityId",
+									"value": "",
+									"disabled": true
+								},
+								{
+									"key": "assignedToUserId",
+									"value": "",
+									"disabled": true
+								},
+								{
+									"key": "dueDateFrom",
+									"value": "2026-01-01",
+									"disabled": true
+								},
+								{
+									"key": "dueDateTo",
+									"value": "2026-12-31",
+									"disabled": true
+								},
+								{
+									"key": "overdueOnly",
+									"value": "true",
+									"disabled": true
+								},
+								{
+									"key": "dueTodayOnly",
+									"value": "true",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Get paginated list of reminders with optional filters.\n\n**Query Parameters:**\n- `skip`: Number of items to skip (default: 0)\n- `take`: Number of items to return (default: 50)\n- `status`: Open, Completed, Snoozed, Dismissed\n- `priority`: Low, Normal, High, Urgent\n- `entityType`: Applicant, HousingSearch, etc.\n- `entityId`: Specific entity GUID\n- `assignedToUserId`: User assigned to the reminder\n- `dueDateFrom`/`dueDateTo`: Date range filter\n- `overdueOnly`: Only overdue reminders\n- `dueTodayOnly`: Only due today reminders"
+					}
+				},
+				{
+					"name": "Get Reminder by ID",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/reminders/{{reminderId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"reminders",
+								"{{reminderId}}"
+							]
+						},
+						"description": "Get a specific reminder by ID."
+					}
+				},
+				{
+					"name": "Get Reminders by Entity",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/reminders/entity/Applicant/{{applicantId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"reminders",
+								"entity",
+								"Applicant",
+								"{{applicantId}}"
+							],
+							"query": [
+								{
+									"key": "status",
+									"value": "Open",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Get all reminders for a specific entity.\n\n**Path Parameters:**\n- `entityType`: Applicant, HousingSearch, etc.\n- `entityId`: The entity's GUID\n\n**Optional Query Parameters:**\n- `status`: Filter by reminder status"
+					}
+				},
+				{
+					"name": "Get Due Report (Dashboard)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/reminders/due-report?upcomingDays=7",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"reminders",
+								"due-report"
+							],
+							"query": [
+								{
+									"key": "upcomingDays",
+									"value": "7",
+									"description": "Number of days to look ahead (default: 7)"
+								},
+								{
+									"key": "assignedToUserId",
+									"value": "",
+									"disabled": true,
+									"description": "Filter by assigned user"
+								}
+							]
+						},
+						"description": "Get due reminders report for dashboard widget.\n\n**Response includes:**\n- `overdue`: Reminders past due date\n- `dueToday`: Reminders due today\n- `upcoming`: Reminders due in the next N days\n- Counts for each category\n- Total open count"
+					}
+				}
+			]
+		},
+		{
+			"name": "Create & Update",
+			"item": [
+				{
+					"name": "Create Reminder",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.collectionVariables.set('reminderId', jsonData.id);",
+									"    pm.test('Reminder created - ID saved', function() {",
+									"        pm.expect(jsonData.id).to.be.a('string');",
+									"    });",
+									"    console.log('Created reminder ID: ' + jsonData.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Follow up with Cohen family\",\n    \"dueDate\": \"2026-01-25\",\n    \"entityType\": \"Applicant\",\n    \"entityId\": \"{{applicantId}}\",\n    \"notes\": \"Check on document submission status\",\n    \"dueTime\": \"14:30:00\",\n    \"priority\": \"Normal\",\n    \"sendEmailNotification\": false\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/reminders",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"reminders"
+							]
+						},
+						"description": "Create a new follow-up reminder.\n\n**Required fields:**\n- `title`: Reminder title (max 200 chars)\n- `dueDate`: Due date (cannot be in the past)\n- `entityType`: Type of entity (Applicant, HousingSearch, etc.)\n- `entityId`: GUID of the entity\n\n**Optional fields:**\n- `notes`: Additional notes (max 2000 chars)\n- `dueTime`: Specific time (HH:mm:ss)\n- `priority`: Low, Normal (default), High, Urgent\n- `assignedToUserId`: User to assign\n- `sendEmailNotification`: Send email when due"
+					}
+				},
+				{
+					"name": "Create Urgent Reminder",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"URGENT: Contract expires tomorrow\",\n    \"dueDate\": \"2026-01-22\",\n    \"entityType\": \"Applicant\",\n    \"entityId\": \"{{applicantId}}\",\n    \"priority\": \"Urgent\",\n    \"sendEmailNotification\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/reminders",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"reminders"
+							]
+						},
+						"description": "Create an urgent reminder with email notification."
+					}
+				},
+				{
+					"name": "Update Reminder",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Updated: Follow up with Cohen family\",\n    \"dueDate\": \"2026-01-28\",\n    \"priority\": \"High\",\n    \"notes\": \"Updated notes - need to call before end of week\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/reminders/{{reminderId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"reminders",
+								"{{reminderId}}"
+							]
+						},
+						"description": "Update an existing reminder.\n\n**All fields are optional** - only provided fields will be updated."
+					}
+				}
+			]
+		},
+		{
+			"name": "State Transitions",
+			"item": [
+				{
+					"name": "Complete Reminder",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/reminders/{{reminderId}}/complete",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"reminders",
+								"{{reminderId}}",
+								"complete"
+							]
+						},
+						"description": "Mark a reminder as completed.\n\n**Valid from:** Open, Snoozed\n\n**Records:**\n- CompletedAt timestamp\n- CompletedBy user"
+					}
+				},
+				{
+					"name": "Snooze Reminder",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"snoozeUntil\": \"2026-01-28\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/reminders/{{reminderId}}/snooze",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"reminders",
+								"{{reminderId}}",
+								"snooze"
+							]
+						},
+						"description": "Snooze a reminder until a future date.\n\n**Valid from:** Open, Snoozed\n\n**Required fields:**\n- `snoozeUntil`: Date to snooze until (cannot be in the past)\n\n**Increments:** SnoozeCount"
+					}
+				},
+				{
+					"name": "Dismiss Reminder",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/reminders/{{reminderId}}/dismiss",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"reminders",
+								"{{reminderId}}",
+								"dismiss"
+							]
+						},
+						"description": "Dismiss a reminder (soft delete).\n\n**Valid from:** Open, Snoozed\n\n**Records:**\n- CompletedAt timestamp\n- CompletedBy user\n\nCan be reopened later if needed."
+					}
+				},
+				{
+					"name": "Reopen Reminder",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/reminders/{{reminderId}}/reopen",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"reminders",
+								"{{reminderId}}",
+								"reopen"
+							]
+						},
+						"description": "Reopen a completed or dismissed reminder.\n\n**Valid from:** Completed, Dismissed\n\n**Clears:**\n- CompletedAt\n- CompletedBy\n- SnoozedUntil"
+					}
+				}
+			],
+			"description": "Reminder state transitions.\n\n**State Machine:**\n```\nOpen ──────► Completed\n  │              │\n  │              ▼\n  ├──────► Dismissed ◄───┐\n  │              │       │\n  │              ▼       │\n  └──────► Snoozed ──────┘\n              │\n              ▼\n           (back to Open when snooze expires)\n```\n\n**From Open:** Complete, Snooze, Dismiss\n**From Snoozed:** Complete, Snooze again, Dismiss\n**From Completed/Dismissed:** Reopen (returns to Open)"
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "https://localhost:7267",
+			"type": "string"
+		},
+		{
+			"key": "accessToken",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "applicantId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "reminderId",
+			"value": "",
+			"type": "string"
+		}
+	]
+}
