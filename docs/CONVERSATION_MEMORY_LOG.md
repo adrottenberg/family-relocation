@@ -2531,6 +2531,160 @@ PR #18 squash merged to master
 
 ---
 
+## SESSION: January 20, 2026 - Sprint 3 Additions (Property, Dashboard, Email, Activity)
+
+### Context
+Added all remaining MVP features into Sprint 3: Property Management, Email Notifications, Dashboard, and Activity Tracking.
+
+### Jira Integration Learnings
+
+**Working Method for Jira API on Windows:**
+
+1. **Use `curl.exe` with `-k` flag** (ignore SSL certificate issues on Windows)
+2. **Use `-u` for basic auth** with `email:api_token` format
+3. **Use JSON files** for request body with `-d @"path\to\file.json"` syntax
+4. **PowerShell's curl alias causes issues** - always use `curl.exe` explicitly
+
+**Example working command:**
+```bash
+curl.exe -k -s -X POST "https://adrottenberg.atlassian.net/rest/api/3/issue" \
+  -u "adrottenberg@gmail.com:API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d @"path\to\ticket.json"
+```
+
+**JSON body structure for creating Story:**
+```json
+{
+  "fields": {
+    "project": { "key": "UV" },
+    "summary": "US-XXX: Story Title",
+    "description": {
+      "type": "doc",
+      "version": 1,
+      "content": [{
+        "type": "paragraph",
+        "content": [{ "type": "text", "text": "Description here..." }]
+      }]
+    },
+    "issuetype": { "id": "10004" }
+  }
+}
+```
+
+**Issue Type IDs for project UV:**
+- Epic: 10001
+- Subtask: 10002
+- Task: 10003
+- Story: 10004
+- Bug: 10005
+
+### Jira Tickets Created (Sprint 3 Additions)
+
+| Ticket | Story | Description |
+|--------|-------|-------------|
+| UV-39 | US-024 | Create Property Entity and API |
+| UV-40 | US-025 | Update Property API |
+| UV-41 | US-026 | List Properties with Search/Filter |
+| UV-42 | US-027 | Property List Page (Frontend) |
+| UV-43 | US-028 | Property Detail Page (Frontend) |
+| UV-44 | US-029 | Property Photos Upload |
+| UV-45 | US-030 | AWS SES Configuration |
+| UV-46 | US-031 | Application Received Email |
+| UV-47 | US-032 | Board Decision Email |
+| UV-48 | US-033 | Stage Change Email |
+| UV-49 | US-034 | Dashboard API Endpoints |
+| UV-50 | US-035 | Dashboard Page (Frontend) |
+| UV-51 | US-036 | Activity Log Entity and API |
+
+### Implementation Summary
+
+**Property Management (UV-39 to UV-44):**
+- Property entity with soft delete pattern
+- CRUD API endpoints in PropertiesController
+- PropertyListDto/PropertyDetailDto for list vs detail views
+- Frontend PropertiesListPage with search/filter
+
+**Email Notifications (UV-45 to UV-48):**
+- IEmailService interface in Application layer
+- SesEmailService implementation using AWS SDK
+- Email templates for: ApplicationReceived, BoardDecision, StageChange
+- Integrated into CreateApplicant, SetBoardDecision, ChangeStage handlers
+
+**Dashboard (UV-49 to UV-50):**
+- DashboardController with /api/dashboard/stats endpoint
+- Returns applicant counts by stage and property counts by status
+- Frontend DashboardPage with Ant Design stat cards and activity feed
+
+**Activity Tracking (UV-51):**
+- ActivityLog entity (EntityType, EntityId, Action, Description, UserId, Timestamp)
+- IActivityLogger interface and ActivityLogger service
+- ActivitiesController with GetRecent and GetByEntity endpoints
+- Auto-logs on: Applicant created, Board decision, Stage change, Property created
+
+### Key Files Created
+
+**Domain Layer:**
+- `Domain/Entities/Property.cs` - Property aggregate with soft delete
+- `Domain/Entities/ActivityLog.cs` - Activity tracking entity
+- `Domain/Enums/ListingStatus.cs` - Active, UnderContract, Sold, OffMarket
+- `Domain/Common/AuditableEntity.cs` - Base class with audit fields
+
+**Application Layer:**
+- `Application/Properties/Commands/` - Create, Update, Delete
+- `Application/Properties/Queries/` - GetById, GetAll with pagination
+- `Application/Dashboard/Queries/GetDashboardStatsQuery.cs`
+- `Application/Activities/Queries/` - GetRecent, GetByEntity
+- `Application/Common/Interfaces/IEmailService.cs`
+- `Application/Common/Interfaces/IActivityLogger.cs`
+
+**Infrastructure Layer:**
+- `Infrastructure/Services/SesEmailService.cs` - AWS SES integration
+- `Infrastructure/Services/ActivityLogger.cs` - Activity logging
+- `Infrastructure/Persistence/Configurations/PropertyConfiguration.cs`
+
+**API Layer:**
+- `API/Controllers/PropertiesController.cs` - Full CRUD
+- `API/Controllers/DashboardController.cs` - Stats endpoint
+- `API/Controllers/ActivitiesController.cs` - Recent and by-entity
+
+**Frontend:**
+- `Web/src/features/properties/PropertiesListPage.tsx`
+- `Web/src/features/dashboard/DashboardPage.tsx` - Updated with real data
+- `Web/src/api/endpoints/properties.ts`
+- `Web/src/api/endpoints/dashboard.ts`
+- `Web/src/api/types/index.ts` - Property, Dashboard, Activity types
+
+---
+
+## FOR NEXT SESSION
+
+### To Quickly Re-Establish Context
+
+**Just say:**
+> "I'm the developer building the Family Relocation CRM for the Jewish community in Union County. Sprint 3 with all additions is complete."
+
+**I'll know:**
+- Complete domain model (Applicant, HousingSearch, Property, ActivityLog)
+- Tech stack (.NET 10, React + Ant Design, AWS)
+- **Sprint 3 complete** - includes Property, Dashboard, Email, Activity features
+- **Pipeline has 5 columns:** Submitted, AwaitingAgreements, Searching, UnderContract, Closed
+- **Jira integration** - curl.exe with -k flag on Windows, JSON files for bodies
+- Query object pattern, all handlers in Application layer
+- EF Core ToJson() for JSON columns
+- ApplicantMapper extension methods
+
+### Remaining MVP Work
+
+**Sprint 4 (~15 points):**
+- Property Detail Page (frontend) - ~3 pts
+- Property Photos Upload (S3) - ~5 pts
+- Follow-Up Reminders - ~7 pts
+
+**And we can pick up exactly where we left off.**
+
+---
+
 **END OF CONVERSATION MEMORY LOG**
 
 This document captures our complete collaboration. Use it to quickly re-establish context in future sessions.

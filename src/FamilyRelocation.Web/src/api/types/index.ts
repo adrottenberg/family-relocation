@@ -223,3 +223,84 @@ export interface PaginatedList<T> {
   hasPreviousPage: boolean;
   hasNextPage: boolean;
 }
+
+// Property types
+export type ListingStatus = 'Active' | 'UnderContract' | 'Sold' | 'OffMarket';
+
+export interface PropertyDto {
+  id: string;
+  address: PropertyAddressDto;
+  price: number;
+  bedrooms: number;
+  bathrooms: number;
+  squareFeet?: number;
+  lotSize?: number;
+  yearBuilt?: number;
+  annualTaxes?: number;
+  features: string[];
+  status: string;
+  mlsNumber?: string;
+  notes?: string;
+  photos: PropertyPhotoDto[];
+  createdAt: string;
+  modifiedAt?: string;
+}
+
+export interface PropertyListDto {
+  id: string;
+  street: string;
+  city: string;
+  price: number;
+  bedrooms: number;
+  bathrooms: number;
+  squareFeet?: number;
+  status: string;
+  mlsNumber?: string;
+  primaryPhotoUrl?: string;
+}
+
+export interface PropertyAddressDto {
+  street: string;
+  street2?: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  fullAddress?: string;
+}
+
+export interface PropertyPhotoDto {
+  id: string;
+  url: string;
+  description?: string;
+  displayOrder: number;
+  uploadedAt: string;
+}
+
+// Dashboard types
+export interface DashboardStatsDto {
+  applicants: ApplicantStatsDto;
+  properties: PropertyStatsDto;
+}
+
+export interface ApplicantStatsDto {
+  total: number;
+  byBoardDecision: Record<string, number>;
+  byStage: Record<string, number>;
+}
+
+export interface PropertyStatsDto {
+  total: number;
+  byStatus: Record<string, number>;
+}
+
+// Activity types
+export interface ActivityDto {
+  id: string;
+  entityType: string;
+  entityId: string;
+  action: string;
+  description: string;
+  userId?: string;
+  userName?: string;
+  timestamp: string;
+}

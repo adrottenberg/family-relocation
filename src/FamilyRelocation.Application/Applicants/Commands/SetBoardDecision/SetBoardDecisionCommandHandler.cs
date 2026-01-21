@@ -16,13 +16,16 @@ public class SetBoardDecisionCommandHandler : IRequestHandler<SetBoardDecisionCo
 {
     private readonly IApplicationDbContext _context;
     private readonly ICurrentUserService _currentUserService;
+    private readonly IEmailService _emailService;
 
     public SetBoardDecisionCommandHandler(
         IApplicationDbContext context,
-        ICurrentUserService currentUserService)
+        ICurrentUserService currentUserService,
+        IEmailService emailService)
     {
         _context = context;
         _currentUserService = currentUserService;
+        _emailService = emailService;
     }
 
     public async Task<SetBoardDecisionResponse> Handle(
@@ -55,6 +58,32 @@ public class SetBoardDecisionCommandHandler : IRequestHandler<SetBoardDecisionCo
             reviewDate: request.ReviewDate);
 
         await _context.SaveChangesAsync(cancellationToken);
+
+        // Send notification email based on decision
+        var email = applicant.Husband?.Email;
+        if (!string.IsNullOrEmpty(email))
+        {
+            var templateName = request.Decision switch
+            {
+                BoardDecision.Approved => "BoardDecisionApproved",
+                BoardDecision.Rejected => "BoardDecisionRejected",
+                BoardDecision.Deferred => "BoardDecisionDeferred",
+                _ => null
+            };
+
+            if (templateName != null)
+            {
+                await _emailService.SendTemplatedEmailAsync(
+                    email,
+                    templateName,
+                    new Dictionary<string, string>
+                    {
+                        ["HusbandFirstName"] = applicant.Husband.FirstName,
+                        ["HusbandLastName"] = applicant.Husband.LastName
+                    },
+                    cancellationToken);
+            }
+        }
 
         // Get the housing search (created by domain if approved)
         var housingSearch = applicant.ActiveHousingSearch;

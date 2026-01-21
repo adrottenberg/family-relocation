@@ -17,16 +17,19 @@ public class ChangeStageCommandHandler : IRequestHandler<ChangeStageCommand, Cha
 {
     private readonly IApplicationDbContext _context;
     private readonly ICurrentUserService _currentUserService;
+    private readonly IEmailService _emailService;
 
     /// <summary>
     /// Initializes a new instance of the handler.
     /// </summary>
     public ChangeStageCommandHandler(
         IApplicationDbContext context,
-        ICurrentUserService currentUserService)
+        ICurrentUserService currentUserService,
+        IEmailService emailService)
     {
         _context = context;
         _currentUserService = currentUserService;
+        _emailService = emailService;
     }
 
     /// <inheritdoc />
@@ -76,12 +79,46 @@ public class ChangeStageCommandHandler : IRequestHandler<ChangeStageCommand, Cha
 
         await _context.SaveChangesAsync(cancellationToken);
 
+        // Send notification email for significant stage changes
+        var email = applicant.Husband?.Email;
+        if (!string.IsNullOrEmpty(email) && ShouldSendStageEmail(targetStage))
+        {
+            await _emailService.SendTemplatedEmailAsync(
+                email,
+                "StageChanged",
+                new Dictionary<string, string>
+                {
+                    ["HusbandFirstName"] = applicant.Husband.FirstName,
+                    ["HusbandLastName"] = applicant.Husband.LastName,
+                    ["NewStage"] = FormatStageName(targetStage)
+                },
+                cancellationToken);
+        }
+
         return new ChangeStageResponse
         {
             Stage = housingSearch.Stage.ToString(),
             StageChangedDate = housingSearch.StageChangedDate
         };
     }
+
+    private static bool ShouldSendStageEmail(HousingSearchStage stage)
+    {
+        // Only send emails for major milestones
+        return stage is HousingSearchStage.Searching
+            or HousingSearchStage.UnderContract
+            or HousingSearchStage.Closed
+            or HousingSearchStage.MovedIn;
+    }
+
+    private static string FormatStageName(HousingSearchStage stage) => stage switch
+    {
+        HousingSearchStage.Searching => "Searching",
+        HousingSearchStage.UnderContract => "Under Contract",
+        HousingSearchStage.Closed => "Closed",
+        HousingSearchStage.MovedIn => "Moved In",
+        _ => stage.ToString()
+    };
 
     private static void TransitionToSearching(
         HousingSearch housingSearch,

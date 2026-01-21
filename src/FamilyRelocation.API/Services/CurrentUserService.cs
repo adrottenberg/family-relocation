@@ -36,5 +36,10 @@ public class CurrentUserService : ICurrentUserService
                          ?? _httpContextAccessor.HttpContext?.User?.FindFirstValue("email");
 
     /// <inheritdoc />
+    public string? UserName => _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.Name)
+                            ?? _httpContextAccessor.HttpContext?.User?.FindFirstValue("name")
+                            ?? Email;
+
+    /// <inheritdoc />
     public bool IsAuthenticated => _httpContextAccessor.HttpContext?.User?.Identity?.IsAuthenticated ?? false;
 }

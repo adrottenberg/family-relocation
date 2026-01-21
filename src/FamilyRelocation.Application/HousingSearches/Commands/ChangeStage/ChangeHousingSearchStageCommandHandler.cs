@@ -83,7 +83,8 @@ public class ChangeHousingSearchStageCommandHandler : IRequestHandler<ChangeHous
                 "StageChanged",
                 new Dictionary<string, string>
                 {
-                    ["FamilyName"] = applicant!.FamilyName,
+                    ["HusbandFirstName"] = applicant!.Husband.FirstName,
+                    ["HusbandLastName"] = applicant.Husband.LastName,
                     ["NewStage"] = FormatStageName(targetStage)
                 },
                 cancellationToken);

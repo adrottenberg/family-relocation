@@ -17,6 +17,11 @@ public interface ICurrentUserService
     string? Email { get; }
 
     /// <summary>
+    /// The current user's display name, or null if not authenticated.
+    /// </summary>
+    string? UserName { get; }
+
+    /// <summary>
     /// Indicates whether the current request is authenticated.
     /// </summary>
     bool IsAuthenticated { get; }

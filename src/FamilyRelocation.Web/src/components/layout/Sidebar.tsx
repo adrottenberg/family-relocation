@@ -5,6 +5,7 @@ import {
   AppstoreOutlined,
   SettingOutlined,
   LogoutOutlined,
+  HomeOutlined,
 } from '@ant-design/icons';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
@@ -24,6 +25,7 @@ const Sidebar = () => {
     const path = location.pathname;
     if (path.startsWith('/applicants')) return 'applicants';
     if (path.startsWith('/pipeline')) return 'pipeline';
+    if (path.startsWith('/properties')) return 'properties';
     if (path.startsWith('/settings')) return 'settings';
     return 'dashboard';
   };
@@ -52,6 +54,11 @@ const Sidebar = () => {
       key: 'pipeline',
       icon: <AppstoreOutlined />,
       label: 'Pipeline',
+    },
+    {
+      key: 'properties',
+      icon: <HomeOutlined />,
+      label: 'Properties',
     },
     {
       key: 'settings',

@@ -22,6 +22,51 @@ namespace FamilyRelocation.Infrastructure.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("FamilyRelocation.Domain.Entities.ActivityLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid>("EntityId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("EntityType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("UserName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EntityType");
+
+                    b.HasIndex("Timestamp");
+
+                    b.HasIndex("EntityType", "EntityId");
+
+                    b.ToTable("ActivityLogs", (string)null);
+                });
+
             modelBuilder.Entity("FamilyRelocation.Domain.Entities.Applicant", b =>
                 {
                     b.Property<Guid>("Id")
@@ -291,6 +336,110 @@ namespace FamilyRelocation.Infrastructure.Migrations
                     b.ToTable("HousingSearches", (string)null);
                 });
 
+            modelBuilder.Entity("FamilyRelocation.Domain.Entities.Property", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("AnnualTaxes")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("Bathrooms")
+                        .HasColumnType("decimal(3,1)");
+
+                    b.Property<int>("Bedrooms")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.PrimitiveCollection<string>("Features")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValueSql("'[]'::jsonb");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
+                    b.Property<decimal?>("LotSize")
+                        .HasColumnType("decimal(10,4)");
+
+                    b.Property<string>("MlsNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<int?>("SquareFeet")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<int?>("YearBuilt")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MlsNumber");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("IsDeleted", "Status");
+
+                    b.ToTable("Properties", (string)null);
+                });
+
+            modelBuilder.Entity("FamilyRelocation.Domain.Entities.PropertyPhoto", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("DisplayOrder")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
+                    b.Property<Guid>("PropertyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UploadedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PropertyId", "DisplayOrder");
+
+                    b.ToTable("PropertyPhotos", (string)null);
+                });
+
             modelBuilder.Entity("FamilyRelocation.Domain.Entities.StageTransitionRequirement", b =>
                 {
                     b.Property<Guid>("Id")
@@ -364,6 +513,73 @@ namespace FamilyRelocation.Infrastructure.Migrations
 
                             b1.WithOwner()
                                 .HasForeignKey("ApplicantId");
+                        });
+
+                    b.OwnsOne("FamilyRelocation.Domain.ValueObjects.HousingPreferences", "Preferences", b1 =>
+                        {
+                            b1.Property<Guid>("ApplicantId");
+
+                            b1.Property<decimal?>("MinBathrooms");
+
+                            b1.Property<int?>("MinBedrooms");
+
+                            b1.Property<int?>("MoveTimeline");
+
+                            b1.PrimitiveCollection<string>("RequiredFeatures")
+                                .IsRequired();
+
+                            b1.HasKey("ApplicantId");
+
+                            b1.ToTable("Applicants");
+
+                            b1
+                                .ToJson("Preferences")
+                                .HasColumnType("jsonb");
+
+                            b1.WithOwner()
+                                .HasForeignKey("ApplicantId");
+
+                            b1.OwnsOne("FamilyRelocation.Domain.ValueObjects.Money", "Budget", b2 =>
+                                {
+                                    b2.Property<Guid>("HousingPreferencesApplicantId");
+
+                                    b2.Property<decimal>("Amount");
+
+                                    b2.Property<string>("Currency")
+                                        .IsRequired();
+
+                                    b2.HasKey("HousingPreferencesApplicantId");
+
+                                    b2.ToTable("Applicants");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("HousingPreferencesApplicantId");
+                                });
+
+                            b1.OwnsOne("FamilyRelocation.Domain.ValueObjects.ShulProximityPreference", "ShulProximity", b2 =>
+                                {
+                                    b2.Property<Guid>("HousingPreferencesApplicantId");
+
+                                    b2.Property<bool>("AnyShulAcceptable");
+
+                                    b2.Property<double?>("MaxWalkingDistanceMiles");
+
+                                    b2.Property<int?>("MaxWalkingTimeMinutes");
+
+                                    b2.PrimitiveCollection<string>("PreferredShulIds")
+                                        .IsRequired();
+
+                                    b2.HasKey("HousingPreferencesApplicantId");
+
+                                    b2.ToTable("Applicants");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("HousingPreferencesApplicantId");
+                                });
+
+                            b1.Navigation("Budget");
+
+                            b1.Navigation("ShulProximity");
                         });
 
                     b.OwnsOne("FamilyRelocation.Domain.ValueObjects.BoardReview", "BoardReview", b1 =>
@@ -541,6 +757,8 @@ namespace FamilyRelocation.Infrastructure.Migrations
                     b.Navigation("Husband")
                         .IsRequired();
 
+                    b.Navigation("Preferences");
+
                     b.Navigation("Wife");
                 });
 
@@ -615,6 +833,73 @@ namespace FamilyRelocation.Infrastructure.Migrations
                                 .IsRequired();
                         });
 
+                    b.OwnsOne("FamilyRelocation.Domain.ValueObjects.HousingPreferences", "Preferences", b1 =>
+                        {
+                            b1.Property<Guid>("HousingSearchId");
+
+                            b1.Property<decimal?>("MinBathrooms");
+
+                            b1.Property<int?>("MinBedrooms");
+
+                            b1.Property<int?>("MoveTimeline");
+
+                            b1.PrimitiveCollection<string>("RequiredFeatures")
+                                .IsRequired();
+
+                            b1.HasKey("HousingSearchId");
+
+                            b1.ToTable("HousingSearches");
+
+                            b1
+                                .ToJson("Preferences")
+                                .HasColumnType("jsonb");
+
+                            b1.WithOwner()
+                                .HasForeignKey("HousingSearchId");
+
+                            b1.OwnsOne("FamilyRelocation.Domain.ValueObjects.Money", "Budget", b2 =>
+                                {
+                                    b2.Property<Guid>("HousingPreferencesHousingSearchId");
+
+                                    b2.Property<decimal>("Amount");
+
+                                    b2.Property<string>("Currency")
+                                        .IsRequired();
+
+                                    b2.HasKey("HousingPreferencesHousingSearchId");
+
+                                    b2.ToTable("HousingSearches");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("HousingPreferencesHousingSearchId");
+                                });
+
+                            b1.OwnsOne("FamilyRelocation.Domain.ValueObjects.ShulProximityPreference", "ShulProximity", b2 =>
+                                {
+                                    b2.Property<Guid>("HousingPreferencesHousingSearchId");
+
+                                    b2.Property<bool>("AnyShulAcceptable");
+
+                                    b2.Property<double?>("MaxWalkingDistanceMiles");
+
+                                    b2.Property<int?>("MaxWalkingTimeMinutes");
+
+                                    b2.PrimitiveCollection<string>("PreferredShulIds")
+                                        .IsRequired();
+
+                                    b2.HasKey("HousingPreferencesHousingSearchId");
+
+                                    b2.ToTable("HousingSearches");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("HousingPreferencesHousingSearchId");
+                                });
+
+                            b1.Navigation("Budget");
+
+                            b1.Navigation("ShulProximity");
+                        });
+
                     b.OwnsMany("FamilyRelocation.Domain.ValueObjects.FailedContractAttempt", "_failedContracts", b1 =>
                         {
                             b1.Property<Guid>("HousingSearchId");
@@ -685,73 +970,6 @@ namespace FamilyRelocation.Infrastructure.Migrations
                                 .IsRequired();
                         });
 
-                    b.OwnsOne("FamilyRelocation.Domain.ValueObjects.HousingPreferences", "Preferences", b1 =>
-                        {
-                            b1.Property<Guid>("HousingSearchId");
-
-                            b1.Property<decimal?>("MinBathrooms");
-
-                            b1.Property<int?>("MinBedrooms");
-
-                            b1.Property<int?>("MoveTimeline");
-
-                            b1.PrimitiveCollection<string>("RequiredFeatures")
-                                .IsRequired();
-
-                            b1.HasKey("HousingSearchId");
-
-                            b1.ToTable("HousingSearches");
-
-                            b1
-                                .ToJson("Preferences")
-                                .HasColumnType("jsonb");
-
-                            b1.WithOwner()
-                                .HasForeignKey("HousingSearchId");
-
-                            b1.OwnsOne("FamilyRelocation.Domain.ValueObjects.Money", "Budget", b2 =>
-                                {
-                                    b2.Property<Guid>("HousingPreferencesHousingSearchId");
-
-                                    b2.Property<decimal>("Amount");
-
-                                    b2.Property<string>("Currency")
-                                        .IsRequired();
-
-                                    b2.HasKey("HousingPreferencesHousingSearchId");
-
-                                    b2.ToTable("HousingSearches");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("HousingPreferencesHousingSearchId");
-                                });
-
-                            b1.OwnsOne("FamilyRelocation.Domain.ValueObjects.ShulProximityPreference", "ShulProximity", b2 =>
-                                {
-                                    b2.Property<Guid>("HousingPreferencesHousingSearchId");
-
-                                    b2.Property<bool>("AnyShulAcceptable");
-
-                                    b2.Property<double?>("MaxWalkingDistanceMiles");
-
-                                    b2.Property<int?>("MaxWalkingTimeMinutes");
-
-                                    b2.PrimitiveCollection<string>("PreferredShulIds")
-                                        .IsRequired();
-
-                                    b2.HasKey("HousingPreferencesHousingSearchId");
-
-                                    b2.ToTable("HousingSearches");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("HousingPreferencesHousingSearchId");
-                                });
-
-                            b1.Navigation("Budget");
-
-                            b1.Navigation("ShulProximity");
-                        });
-
                     b.Navigation("Applicant");
 
                     b.Navigation("CurrentContract");
@@ -759,6 +977,91 @@ namespace FamilyRelocation.Infrastructure.Migrations
                     b.Navigation("Preferences");
 
                     b.Navigation("_failedContracts");
+                });
+
+            modelBuilder.Entity("FamilyRelocation.Domain.Entities.Property", b =>
+                {
+                    b.OwnsOne("FamilyRelocation.Domain.ValueObjects.Address", "Address", b1 =>
+                        {
+                            b1.Property<Guid>("PropertyId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<string>("City")
+                                .IsRequired()
+                                .HasMaxLength(100)
+                                .HasColumnType("character varying(100)")
+                                .HasColumnName("City");
+
+                            b1.Property<string>("State")
+                                .IsRequired()
+                                .HasMaxLength(2)
+                                .HasColumnType("character varying(2)")
+                                .HasColumnName("State");
+
+                            b1.Property<string>("Street")
+                                .IsRequired()
+                                .HasMaxLength(200)
+                                .HasColumnType("character varying(200)")
+                                .HasColumnName("Street");
+
+                            b1.Property<string>("Street2")
+                                .HasMaxLength(100)
+                                .HasColumnType("character varying(100)")
+                                .HasColumnName("Street2");
+
+                            b1.Property<string>("ZipCode")
+                                .IsRequired()
+                                .HasMaxLength(10)
+                                .HasColumnType("character varying(10)")
+                                .HasColumnName("ZipCode");
+
+                            b1.HasKey("PropertyId");
+
+                            b1.ToTable("Properties");
+
+                            b1.WithOwner()
+                                .HasForeignKey("PropertyId");
+                        });
+
+                    b.OwnsOne("FamilyRelocation.Domain.ValueObjects.Money", "Price", b1 =>
+                        {
+                            b1.Property<Guid>("PropertyId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<decimal>("Amount")
+                                .HasColumnType("decimal(18,2)")
+                                .HasColumnName("Price");
+
+                            b1.Property<string>("Currency")
+                                .IsRequired()
+                                .ValueGeneratedOnAdd()
+                                .HasMaxLength(3)
+                                .HasColumnType("character varying(3)")
+                                .HasDefaultValue("USD")
+                                .HasColumnName("PriceCurrency");
+
+                            b1.HasKey("PropertyId");
+
+                            b1.ToTable("Properties");
+
+                            b1.WithOwner()
+                                .HasForeignKey("PropertyId");
+                        });
+
+                    b.Navigation("Address")
+                        .IsRequired();
+
+                    b.Navigation("Price")
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FamilyRelocation.Domain.Entities.PropertyPhoto", b =>
+                {
+                    b.HasOne("FamilyRelocation.Domain.Entities.Property", null)
+                        .WithMany("Photos")
+                        .HasForeignKey("PropertyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("FamilyRelocation.Domain.Entities.StageTransitionRequirement", b =>
@@ -777,6 +1080,11 @@ namespace FamilyRelocation.Infrastructure.Migrations
                     b.Navigation("Documents");
 
                     b.Navigation("HousingSearches");
+                });
+
+            modelBuilder.Entity("FamilyRelocation.Domain.Entities.Property", b =>
+                {
+                    b.Navigation("Photos");
                 });
 #pragma warning restore 612, 618
         }
