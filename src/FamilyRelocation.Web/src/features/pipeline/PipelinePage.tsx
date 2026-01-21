@@ -104,6 +104,7 @@ const PipelinePage = () => {
       const stageItems = rawData.items
         .filter((a: ApplicantListItemDto) => {
           // Determine pipeline stage from board decision and housing search stage
+          // Returns null for rejected applicants (filtered out)
           const pipelineStage = getPipelineStage(a.boardDecision, a.stage);
           return pipelineStage === stageName;
         })
@@ -114,9 +115,6 @@ const PipelinePage = () => {
           const createdDate = new Date(a.createdDate);
           const daysInStage = Math.floor((Date.now() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
 
-          // Get the pipeline stage for display
-          const pipelineStage = getPipelineStage(a.boardDecision, a.stage);
-
           return {
             applicantId: a.id,
             housingSearchId: a.housingSearchId || '',
@@ -125,7 +123,7 @@ const PipelinePage = () => {
             wifeFirstName: a.wifeMaidenName,
             childrenCount: 0, // Not available in list view
             boardDecision: a.boardDecision || 'Pending',
-            stage: pipelineStage, // Use the computed pipeline stage
+            stage: stageName, // Use the stage we're filtering for (already validated by filter)
             daysInStage,
             budget: undefined, // Not available in list view
             preferredCities: undefined, // Not available in list view

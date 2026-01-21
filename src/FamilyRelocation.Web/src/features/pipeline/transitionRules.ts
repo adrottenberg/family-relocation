@@ -121,12 +121,18 @@ export function formatStage(stage: string): string {
 }
 
 // Helper to determine the pipeline stage from applicant data
+// Returns null for rejected applicants (they should not appear in pipeline)
 export function getPipelineStage(
   boardDecision?: string,
   housingSearchStage?: string
-): PipelineStage {
-  // If no board decision or not approved, they're in Submitted
-  if (!boardDecision || boardDecision !== 'Approved') {
+): PipelineStage | null {
+  // Rejected applicants don't appear in the pipeline
+  if (boardDecision === 'Rejected') {
+    return null;
+  }
+
+  // If no board decision or pending, they're in Submitted
+  if (!boardDecision || boardDecision === 'Pending' || boardDecision === 'Deferred') {
     return 'Submitted';
   }
 
