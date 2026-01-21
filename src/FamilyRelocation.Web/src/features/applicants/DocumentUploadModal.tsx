@@ -235,7 +235,7 @@ const DocumentUploadModal = ({ open, onClose, applicant }: DocumentUploadModalPr
               onRemove={() => setUploadState(docType.id, { file: null })}
               maxCount={1}
             >
-              <Button icon={<UploadOutlined />}>Select File (PDF, JPEG, PNG)</Button>
+              <Button type="primary" icon={<UploadOutlined />}>Select File (PDF, JPEG, PNG)</Button>
             </Upload>
 
             {state.uploading && <Progress percent={state.progress} size="small" />}

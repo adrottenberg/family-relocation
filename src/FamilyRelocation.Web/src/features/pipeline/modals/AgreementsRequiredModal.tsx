@@ -214,7 +214,7 @@ const AgreementsRequiredModal = ({
                 onRemove={() => setUploadState(req.documentTypeId, { file: null })}
                 maxCount={1}
               >
-                <Button icon={<UploadOutlined />} size="small">
+                <Button type="primary" icon={<UploadOutlined />} size="small">
                   Select File (PDF, JPEG, PNG)
                 </Button>
               </Upload>

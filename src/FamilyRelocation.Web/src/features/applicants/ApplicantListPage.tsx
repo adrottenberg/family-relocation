@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Table, Input, Select, Button, Tag, Space, Typography, Card, Empty, Tooltip } from 'antd';
+import { Table, Input, Select, Button, Tag, Space, Typography, Card, Empty } from 'antd';
 import { SearchOutlined, PlusOutlined, FilterOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { applicantsApi } from '../../api';
 import type { ApplicantListItemDto } from '../../api/types';
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
 import { colors, statusTagStyles, stageTagStyles } from '../../theme/antd-theme';
+import CreateApplicantDrawer from './CreateApplicantDrawer';
 import './ApplicantListPage.css';
 
 const { Title, Text } = Typography;
@@ -18,6 +19,7 @@ const ApplicantListPage = () => {
   const [boardDecision, setBoardDecision] = useState<string | undefined>();
   const [stage, setStage] = useState<string | undefined>();
   const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
+  const [showCreateDrawer, setShowCreateDrawer] = useState(false);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['applicants', search, boardDecision, stage, pagination.current, pagination.pageSize],
@@ -158,15 +160,13 @@ const ApplicantListPage = () => {
             <Text type="secondary">{data.totalCount} total</Text>
           )}
         </div>
-        <Tooltip title="Coming soon">
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            disabled
-          >
-            Add Applicant
-          </Button>
-        </Tooltip>
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          onClick={() => setShowCreateDrawer(true)}
+        >
+          Add Applicant
+        </Button>
       </div>
 
       {/* Filters */}
@@ -246,6 +246,11 @@ const ApplicantListPage = () => {
           }}
         />
       </Card>
+
+      <CreateApplicantDrawer
+        open={showCreateDrawer}
+        onClose={() => setShowCreateDrawer(false)}
+      />
     </div>
   );
 };
