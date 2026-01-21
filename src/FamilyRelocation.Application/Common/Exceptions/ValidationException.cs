@@ -1,3 +1,5 @@
+using FluentValidation.Results;
+
 namespace FamilyRelocation.Application.Common.Exceptions;
 
 /// <summary>
@@ -10,6 +12,7 @@ public class ValidationException : Exception
     /// </summary>
     public ValidationException(string message) : base(message)
     {
+        Errors = [message];
     }
 
     /// <summary>
@@ -22,7 +25,16 @@ public class ValidationException : Exception
     }
 
     /// <summary>
-    /// List of validation errors if multiple were provided.
+    /// Creates a new validation exception from FluentValidation failures.
+    /// </summary>
+    public ValidationException(IEnumerable<ValidationFailure> failures)
+        : base("One or more validation errors occurred.")
+    {
+        Errors = failures.Select(f => f.ErrorMessage).ToList();
+    }
+
+    /// <summary>
+    /// List of validation errors.
     /// </summary>
     public IReadOnlyList<string> Errors { get; } = [];
 }

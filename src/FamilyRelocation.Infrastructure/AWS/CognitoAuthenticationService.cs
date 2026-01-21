@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using Amazon.CognitoIdentityProvider;
 using Amazon.CognitoIdentityProvider.Model;
 using FamilyRelocation.Application.Auth;
@@ -388,30 +389,34 @@ public class CognitoAuthenticationService : IAuthenticationService
 
     private static string GenerateTemporaryPassword()
     {
-        // Generate a random password that meets Cognito requirements
+        // Generate a cryptographically secure password that meets Cognito requirements
         const string upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
         const string lower = "abcdefghijklmnopqrstuvwxyz";
         const string digits = "0123456789";
         const string special = "!@#$%^&*";
 
-        var random = new Random();
         var password = new char[12];
 
         // Ensure at least one of each required character type
-        password[0] = upper[random.Next(upper.Length)];
-        password[1] = lower[random.Next(lower.Length)];
-        password[2] = digits[random.Next(digits.Length)];
-        password[3] = special[random.Next(special.Length)];
+        password[0] = GetSecureRandomChar(upper);
+        password[1] = GetSecureRandomChar(lower);
+        password[2] = GetSecureRandomChar(digits);
+        password[3] = GetSecureRandomChar(special);
 
         // Fill the rest randomly
         var allChars = upper + lower + digits + special;
         for (int i = 4; i < password.Length; i++)
         {
-            password[i] = allChars[random.Next(allChars.Length)];
+            password[i] = GetSecureRandomChar(allChars);
         }
 
-        // Shuffle the password
-        return new string(password.OrderBy(_ => random.Next()).ToArray());
+        // Shuffle the password using cryptographically secure random
+        return new string(password.OrderBy(_ => RandomNumberGenerator.GetInt32(int.MaxValue)).ToArray());
+    }
+
+    private static char GetSecureRandomChar(string chars)
+    {
+        return chars[RandomNumberGenerator.GetInt32(chars.Length)];
     }
 
     private static AuthTokens MapToAuthTokens(AuthenticationResultType result) => new()
