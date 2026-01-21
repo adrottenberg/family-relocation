@@ -583,3 +583,109 @@ Authorization: Bearer {{accessToken}}
 # Removes the document record from the database
 DELETE {{baseUrl}}/api/documents/{{documentId}}
 Authorization: Bearer {{accessToken}}
+
+###############################################################################
+# REMINDERS API
+# Follow-up reminders for any entity (Applicant, HousingSearch, etc.)
+###############################################################################
+
+# Variables for Reminders
+@reminderId = paste-reminder-id-here
+
+### Get All Reminders
+# Returns paginated list with optional filters
+GET {{baseUrl}}/api/reminders?skip=0&take=50
+Authorization: Bearer {{accessToken}}
+
+### Get Reminders with Filters
+# Filter by status, priority, due date, entity, etc.
+GET {{baseUrl}}/api/reminders?status=Open&priority=High&dueDateFrom=2026-01-01&dueDateTo=2026-12-31
+Authorization: Bearer {{accessToken}}
+
+### Get Overdue Reminders Only
+GET {{baseUrl}}/api/reminders?overdueOnly=true
+Authorization: Bearer {{accessToken}}
+
+### Get Due Today Reminders Only
+GET {{baseUrl}}/api/reminders?dueTodayOnly=true
+Authorization: Bearer {{accessToken}}
+
+### Get Reminder by ID
+GET {{baseUrl}}/api/reminders/{{reminderId}}
+Authorization: Bearer {{accessToken}}
+
+### Get Reminders for Specific Entity
+# Get all reminders for an applicant, housing search, etc.
+GET {{baseUrl}}/api/reminders/entity/Applicant/{{applicantId}}
+Authorization: Bearer {{accessToken}}
+
+### Get Due Reminders Report (Dashboard Widget)
+# Returns overdue, due today, and upcoming reminders
+GET {{baseUrl}}/api/reminders/due-report?upcomingDays=7
+Authorization: Bearer {{accessToken}}
+
+### Create Reminder
+POST {{baseUrl}}/api/reminders
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "title": "Follow up with Cohen family",
+    "dueDate": "2026-01-25",
+    "entityType": "Applicant",
+    "entityId": "{{applicantId}}",
+    "notes": "Check on document submission status",
+    "dueTime": "14:30:00",
+    "priority": "Normal",
+    "sendEmailNotification": false
+}
+
+### Create Urgent Reminder
+POST {{baseUrl}}/api/reminders
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "title": "URGENT: Contract expires tomorrow",
+    "dueDate": "2026-01-22",
+    "entityType": "Applicant",
+    "entityId": "{{applicantId}}",
+    "priority": "Urgent",
+    "sendEmailNotification": true
+}
+
+### Update Reminder
+PUT {{baseUrl}}/api/reminders/{{reminderId}}
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "title": "Updated: Follow up with Cohen family",
+    "dueDate": "2026-01-28",
+    "priority": "High",
+    "notes": "Updated notes - need to call before end of week"
+}
+
+### Complete Reminder
+POST {{baseUrl}}/api/reminders/{{reminderId}}/complete
+Authorization: Bearer {{accessToken}}
+
+### Snooze Reminder
+# Snooze until a future date
+POST {{baseUrl}}/api/reminders/{{reminderId}}/snooze
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "snoozeUntil": "2026-01-28"
+}
+
+### Dismiss Reminder
+# Soft delete - marks as dismissed
+POST {{baseUrl}}/api/reminders/{{reminderId}}/dismiss
+Authorization: Bearer {{accessToken}}
+
+### Reopen Reminder
+# Reopen a completed or dismissed reminder
+POST {{baseUrl}}/api/reminders/{{reminderId}}/reopen
+Authorization: Bearer {{accessToken}}
