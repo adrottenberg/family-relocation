@@ -13,6 +13,7 @@ import {
   Timeline,
   Table,
   Dropdown,
+  message,
 } from 'antd';
 import type { MenuProps } from 'antd';
 import {
@@ -25,8 +26,8 @@ import {
   PrinterOutlined,
   SwapOutlined,
 } from '@ant-design/icons';
-import { useQuery } from '@tanstack/react-query';
-import { applicantsApi, documentsApi } from '../../api';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { applicantsApi, documentsApi, getStageRequirements, housingSearchesApi } from '../../api';
 import type { ApplicantDto, AuditLogDto } from '../../api/types';
 import { colors, statusTagStyles, stageTagStyles } from '../../theme/antd-theme';
 import { useAuthStore } from '../../store/authStore';
@@ -52,6 +53,7 @@ const { Title, Text } = Typography;
 const ApplicantDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const canApproveBoardDecisions = useAuthStore((state) => state.canApproveBoardDecisions);
   const [boardDecisionModalOpen, setBoardDecisionModalOpen] = useState(false);
   const [editDrawerOpen, setEditDrawerOpen] = useState(false);
@@ -70,6 +72,20 @@ const ApplicantDetailPage = () => {
     queryKey: ['applicant-audit', id],
     queryFn: () => applicantsApi.getAuditLogs(id!, { page: 1, pageSize: 20 }),
     enabled: !!id,
+  });
+
+  // Direct stage change mutation (for transitions that don't need a modal)
+  const directStageMutation = useMutation({
+    mutationFn: (newStage: string) =>
+      housingSearchesApi.changeStage(applicant?.housingSearch?.id || '', { newStage }),
+    onSuccess: () => {
+      message.success('Stage updated successfully');
+      queryClient.invalidateQueries({ queryKey: ['applicant', id] });
+      queryClient.invalidateQueries({ queryKey: ['pipeline'] });
+    },
+    onError: () => {
+      message.error('Failed to update stage');
+    },
   });
 
   if (isLoading) {
@@ -155,7 +171,7 @@ const ApplicantDetailPage = () => {
     return items;
   };
 
-  const handleStageChange = (toStage: PipelineStage) => {
+  const handleStageChange = async (toStage: PipelineStage) => {
     if (!currentPipelineStage) return;
 
     const transition = validateTransition(currentPipelineStage, toStage, {
@@ -167,7 +183,23 @@ const ApplicantDetailPage = () => {
         setBoardDecisionModalOpen(true);
         break;
       case 'needsAgreements':
-        setActiveTransitionModal('needsAgreements');
+        // Check if all required documents are already uploaded
+        try {
+          const requirements = await getStageRequirements(currentPipelineStage, toStage, applicant.id);
+          const allRequiredUploaded = requirements.requirements.every(
+            (req) => !req.isRequired || req.isUploaded
+          );
+          if (allRequiredUploaded) {
+            // All docs uploaded - transition directly
+            directStageMutation.mutate(toStage);
+          } else {
+            // Show modal for missing documents
+            setActiveTransitionModal('needsAgreements');
+          }
+        } catch {
+          // On error, show modal anyway
+          setActiveTransitionModal('needsAgreements');
+        }
         break;
       case 'needsContractInfo':
         setActiveTransitionModal('needsContractInfo');
