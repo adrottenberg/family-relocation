@@ -65,4 +65,20 @@ export const propertiesApi = {
   delete: async (id: string): Promise<void> => {
     await apiClient.delete(`/properties/${id}`);
   },
+
+  // Photo management
+  uploadPhoto: async (propertyId: string, file: File, description?: string): Promise<void> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (description) {
+      formData.append('description', description);
+    }
+    await apiClient.post(`/properties/${propertyId}/photos`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+
+  deletePhoto: async (propertyId: string, photoId: string): Promise<void> => {
+    await apiClient.delete(`/properties/${propertyId}/photos/${photoId}`);
+  },
 };

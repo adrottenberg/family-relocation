@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Typography,
   Table,
@@ -31,6 +32,7 @@ const statusColors: Record<string, string> = {
 };
 
 const PropertiesListPage = () => {
+  const navigate = useNavigate();
   const [properties, setProperties] = useState<PropertyListDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState<TablePaginationConfig>({
@@ -150,8 +152,8 @@ const PropertiesListPage = () => {
     {
       title: 'Actions',
       key: 'actions',
-      render: () => (
-        <Button type="link" size="small">
+      render: (_: unknown, record: PropertyListDto) => (
+        <Button type="link" size="small" onClick={() => navigate(`/properties/${record.id}`)}>
           View
         </Button>
       ),
@@ -227,6 +229,10 @@ const PropertiesListPage = () => {
         loading={loading}
         pagination={pagination}
         onChange={handleTableChange}
+        onRow={(record) => ({
+          onClick: () => navigate(`/properties/${record.id}`),
+          style: { cursor: 'pointer' },
+        })}
       />
     </div>
   );
