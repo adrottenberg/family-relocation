@@ -3,7 +3,7 @@
 
 **Sprint Duration:** 2 weeks
 **Sprint Goal:** Implement follow-up reminders, audit log viewer, user management, and complete role-based access control
-**Total Points:** ~52 points (30 Backend + 22 Frontend)
+**Total Points:** ~73 points (46 Backend + 27 Frontend)
 **Prerequisites:** Sprint 3 complete (PR #19 merged)
 
 ---
@@ -26,6 +26,12 @@
 | US-044 | Update user roles API | 3 | NEW | User Mgmt |
 | US-045 | Deactivate/reactivate user API | 2 | NEW | User Mgmt |
 | US-046 | Role-based access control review | 4 | NEW | RBAC |
+| US-047 | Communication Logging via Activity Log | 4 | NEW | Activity |
+| US-048 | SES Email Verification | 2 | NEW | Email |
+| US-049 | Automated Agreement Follow-up | 3 | NEW | Email |
+| US-050 | Board Approval Report | 3 | NEW | Reports |
+| US-051 | Broker Role | 2 | NEW | RBAC |
+| US-052 | Expand Activity Logging Coverage | 2 | NEW | Audit Log |
 | - | Email notification for due reminders | 2 | OPTIONAL | Reminders |
 
 #### Frontend Stories (22 points)
@@ -39,8 +45,10 @@
 | US-F16 | Audit history tab on detail pages | 4 | Audit Log |
 | US-F17 | User management page | 4 | User Mgmt |
 | US-F18 | Create/edit user modal | 2 | User Mgmt |
+| US-F19 | Log Activity Modal | 3 | Activity |
+| US-F20 | Board Approval Report Print View | 2 | Reports |
 
-**Total: 52 points (30 Backend + 22 Frontend)**
+**Total: 73 points (46 Backend + 27 Frontend)**
 
 ---
 
@@ -975,15 +983,69 @@ Body: {
 
 ---
 
+### US-052: Expand Activity Logging Coverage (2 points)
+
+**As a** coordinator
+**I want** all significant actions to be logged in the activity log
+**So that** I have a complete audit trail of what happened
+
+#### Current Coverage
+
+| Handler | Entity | Action | Status |
+|---------|--------|--------|--------|
+| `CreatePropertyCommandHandler` | Property | Created | ✅ Implemented |
+| `UpdatePropertyCommandHandler` | Property | Updated | ✅ Implemented |
+| `UpdatePropertyStatusCommandHandler` | Property | StatusChanged | ✅ Implemented |
+| `DeletePropertyCommandHandler` | Property | Deleted | ✅ Implemented |
+| `ChangeHousingSearchStageCommandHandler` | HousingSearch | StageChanged | ✅ Implemented |
+
+#### Missing (To Be Added)
+
+| Handler | Entity | Action | Priority |
+|---------|--------|--------|----------|
+| `CreateApplicantCommandHandler` | Applicant | Created | High |
+| `UpdateApplicantCommandHandler` | Applicant | Updated | High |
+| `SetBoardDecisionCommandHandler` | Applicant | BoardDecisionMade | High |
+| `DocumentsController.Upload` | Document | Uploaded | Medium |
+| `DocumentsController.Delete` | Document | Deleted | Medium |
+| `UpdateHousingPreferencesCommandHandler` | HousingSearch | PreferencesUpdated | Medium |
+
+#### Acceptance Criteria
+
+1. Add `IActivityLogger` to all handlers listed above
+2. Log appropriate action with meaningful description
+3. Include entity name/identifier in description for context
+4. Ensure all activities appear in activity feed and audit tabs
+
+#### Technical Implementation
+
+Each handler follows the same pattern:
+```csharp
+// Add to constructor
+private readonly IActivityLogger _activityLogger;
+
+// Add after SaveChangesAsync
+await _activityLogger.LogAsync(
+    entityType: "Applicant",
+    entityId: applicant.Id,
+    action: "Created",
+    description: $"Applicant {familyName} created",
+    cancellationToken);
+```
+
+---
+
 ## UPDATED STORY POINTS
 
 | Category | Original | Added | New Total |
 |----------|----------|-------|-----------|
-| Backend | 30 | 14 | 44 |
+| Backend | 30 | 16 | 46 |
 | Frontend | 22 | 5 | 27 |
-| **Total** | **52** | **19** | **71** |
+| **Total** | **52** | **21** | **73** |
 
-*Note: US-047 increased to 4 points due to unified communication logging approach*
+*Notes:*
+- *US-047 increased to 4 points due to unified communication logging approach*
+- *US-052 (2 points) added for expanding activity logging coverage*
 
 ---
 
