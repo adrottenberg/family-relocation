@@ -6,7 +6,6 @@ using FamilyRelocation.Application.Common.Interfaces;
 using FamilyRelocation.Infrastructure.AWS;
 using FamilyRelocation.Infrastructure.Persistence;
 using FamilyRelocation.Infrastructure.Persistence.Interceptors;
-using FamilyRelocation.Infrastructure.Persistence.Seeders;
 using FamilyRelocation.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -59,9 +58,6 @@ public static class DependencyInjection
 
         // Email Service
         services.AddScoped<IEmailService, SesEmailService>();
-
-        // Seeders
-        services.AddScoped<RedfnPropertySeeder>();
 
         return services;
     }
