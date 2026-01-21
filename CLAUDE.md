@@ -110,3 +110,14 @@ No raw SQL needed - queries like `a.Husband.Email.Value == email` work directly.
 - `docs/sprint-plans/SPRINT_1_DETAILED_STORIES.md` - Current sprint implementation details
 
 Before making architectural changes, check these docs for prior decisions.
+
+## After Context Compaction
+
+When resuming from a compacted session (indicated by "This session is being continued from a previous conversation"), update `docs/CONVERSATION_MEMORY_LOG.md` with:
+
+- Key decisions made in the previous session
+- Files created or significantly modified
+- Current task status and next steps
+- Any important context that should be preserved
+
+This ensures continuity across long development sessions.
