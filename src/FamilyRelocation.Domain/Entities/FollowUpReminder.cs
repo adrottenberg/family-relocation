@@ -59,7 +59,7 @@ public class FollowUpReminder
             Id = Guid.NewGuid(),
             Title = title.Trim(),
             Notes = notes?.Trim(),
-            DueDate = dueDate.Date,
+            DueDate = DateTime.SpecifyKind(dueDate.Date, DateTimeKind.Utc),
             DueTime = dueTime,
             Priority = priority,
             EntityType = entityType,
@@ -99,7 +99,7 @@ public class FollowUpReminder
             throw new ArgumentException("Snooze date cannot be in the past", nameof(snoozeUntil));
 
         Status = ReminderStatus.Snoozed;
-        SnoozedUntil = snoozeUntil.Date;
+        SnoozedUntil = DateTime.SpecifyKind(snoozeUntil.Date, DateTimeKind.Utc);
         SnoozeCount++;
     }
 
@@ -155,7 +155,7 @@ public class FollowUpReminder
         {
             if (dueDate.Value.Date < DateTime.UtcNow.Date)
                 throw new ArgumentException("Due date cannot be in the past", nameof(dueDate));
-            DueDate = dueDate.Value.Date;
+            DueDate = DateTime.SpecifyKind(dueDate.Value.Date, DateTimeKind.Utc);
         }
 
         if (dueTime.HasValue)

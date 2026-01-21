@@ -12,11 +12,14 @@ A custom CRM for managing Orthodox Jewish family relocation to Union County, NJ.
 # Build solution
 dotnet build
 
-# Run API (from solution root)
-dotnet run --project src/FamilyRelocation.API
+# Run API (from solution root) - ALWAYS use https profile for frontend compatibility
+dotnet run --project src/FamilyRelocation.API --launch-profile https
 
 # Run with watch for development
-dotnet watch run --project src/FamilyRelocation.API
+dotnet watch run --project src/FamilyRelocation.API --launch-profile https
+
+# Run frontend (from src/FamilyRelocation.Web)
+npm run dev
 
 # Apply EF Core migrations
 dotnet ef database update --project src/FamilyRelocation.Infrastructure --startup-project src/FamilyRelocation.API
