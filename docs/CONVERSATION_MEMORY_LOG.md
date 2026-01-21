@@ -2375,10 +2375,6 @@ UV-32, UV-33, UV-34, UV-35, UV-36, UV-37, UV-38
 - `src/FamilyRelocation.Web/src/components/layout/Sidebar.tsx` - Full logo image
 - `src/FamilyRelocation.Web/src/features/applicants/ApplicantDetailPage.tsx` - Print button
 
-### Upcoming: 2 Refactorings Before Sprint 4
-
-User mentioned 2 refactorings needed before starting Sprint 4 - will create new branches for those.
-
 ---
 
 ## FOR NEXT SESSION
@@ -2404,8 +2400,132 @@ User mentioned 2 refactorings needed before starting Sprint 4 - will create new 
 3. Dashboard with metrics
 4. Activity tracking API
 
-### Refactorings Pending
-User mentioned 2 refactorings needed before Sprint 4 - details TBD.
+**And we can pick up exactly where we left off.**
+
+---
+
+## SESSION: January 20, 2026 - Stage Separation Refactoring & CreateApplicantDrawer
+
+### Context
+Major refactoring to separate ApplicationStatus from HousingSearchStage, plus adding admin-initiated applicant creation.
+
+### Stage Separation Refactoring (PR #18)
+
+**Problem:** `HousingSearchStage` mixed applicant-level concerns (Submitted, BoardApproved, Rejected) with housing search concerns (HouseHunting, UnderContract, etc.). This made the domain model confusing and prevented proper separation of aggregate roots.
+
+**Solution:** Explicit separation:
+
+**ApplicationStatus on Applicant:**
+- `Submitted` - Initial state when applicant created
+- `Approved` - Board approved the family
+- `Rejected` - Board rejected the family
+
+**HousingSearchStage on HousingSearch:**
+- `AwaitingAgreements` - Approved, waiting for document signatures
+- `Searching` - Actively house hunting
+- `UnderContract` - Contract signed, awaiting closing
+- `Closed` - Closing complete
+- `MovedIn` - Family has moved in
+- `Paused` - Search temporarily paused
+
+**Key Changes:**
+1. Created `ApplicationStatus` enum in Domain
+2. Refactored `HousingSearchStage` to remove applicant-level stages
+3. Added `AwaitingAgreements` stage for document signing workflow
+4. Updated `SetBoardDecision` to auto-create HousingSearch in AwaitingAgreements stage
+5. Added `StartSearching()` method on HousingSearch
+6. Created migrations with proper integer enum values
+7. Updated all frontend components (Pipeline, transitionRules, Settings, etc.)
+
+**Pipeline Kanban Columns (5 total):**
+1. Submitted - Pending board review
+2. Awaiting Agreements - Approved, signing documents
+3. Searching - Actively house hunting
+4. Under Contract - Contract signed
+5. Closed - Complete
+
+**Bug Fixes During Refactoring:**
+- Fixed rejected applicants appearing in Submitted column (`getPipelineStage` returns null for rejected)
+- Fixed board approval modal 400 error (added `PropertyNameCaseInsensitive = true` to API JSON options)
+- Fixed TypeScript error with null pipeline stage
+
+### CreateApplicantDrawer (Admin-Initiated Applications)
+
+**Problem:** "Add Applicant" button was always disabled with "Coming soon" tooltip. Admins had no way to create applicants directly - only public self-registration via `/apply`.
+
+**Solution:** Created `CreateApplicantDrawer` component:
+- Full form with collapsible sections (Husband, Wife, Address, Children, Community)
+- Uses same form structure as EditApplicantDrawer
+- Calls `applicantsApi.create()` on submit
+- Navigates to new applicant's detail page on success
+
+**Form UX Improvements (Both Create & Edit Drawers):**
+1. Primary phone number: Changed from dropdown to checkbox
+2. Email validation: Now triggers on blur instead of every keystroke
+3. Required field indicators: Added asterisks to wife name and address fields
+
+**UI Fixes:**
+- Select File buttons now use `type="primary"` for solid blue styling (DocumentUploadModal, AgreementsRequiredModal)
+
+### Files Created/Modified
+
+**New Files:**
+- `src/FamilyRelocation.Domain/Enums/ApplicationStatus.cs`
+- `src/FamilyRelocation.Web/src/features/applicants/CreateApplicantDrawer.tsx`
+- Migrations for stage separation and AwaitingAgreements
+
+**Modified Files:**
+- `HousingSearchStage.cs` - Removed applicant stages, added AwaitingAgreements
+- `Applicant.cs` - Added Status property
+- `HousingSearch.cs` - Updated state machine, added StartSearching()
+- `ApplicantConfiguration.cs` - Added Status column
+- `Program.cs` - Added PropertyNameCaseInsensitive for JSON
+- `PipelinePage.tsx` - Updated for 5-column layout
+- `transitionRules.ts` - Updated stage logic, getPipelineStage returns null for rejected
+- `ApplicantListPage.tsx` - Enabled Add Applicant button with drawer
+- `EditApplicantDrawer.tsx` - Form UX improvements
+- `DocumentUploadModal.tsx` - Button styling
+- `AgreementsRequiredModal.tsx` - Button styling
+- `BoardApprovalRequiredModal.tsx` - Check for AwaitingAgreements stage
+
+### Test Results
+All 302 tests pass
+
+### PR Merged
+PR #18 squash merged to master
+
+---
+
+## FOR NEXT SESSION
+
+### To Quickly Re-Establish Context
+
+**Just say:**
+> "I'm the developer building the Family Relocation CRM for the Jewish community in Union County. We just completed the stage separation refactoring."
+
+**I'll know:**
+- Complete domain model (Applicant with Status, HousingSearch with Stage)
+- Tech stack (.NET 10, React + Ant Design, AWS)
+- **Stage separation complete** - ApplicationStatus vs HousingSearchStage
+- **Pipeline has 5 columns:** Submitted, AwaitingAgreements, Searching, UnderContract, Closed
+- **CreateApplicantDrawer** for admin-initiated applications
+- Query object pattern, all handlers in Application layer
+- EF Core ToJson() for JSON columns
+- ApplicantMapper extension methods
+
+### Remaining MVP Work (~55 points)
+
+**Sprint 4 (~30 points):**
+- Property Management (CRUD, Photos, List/Filter) - ~21 pts
+- Email Notifications (AWS SES) - ~8 pts
+- Dashboard - ~8 pts
+- Activity Tracking API - ~3 pts
+
+**Sprint 5 (~25 points):**
+- Activity Tracking UI - ~5 pts
+- Follow-Up Reminders - ~10 pts
+- Property Photos Upload - ~5 pts
+- Polish & Bug Fixes - ~5 pts
 
 **And we can pick up exactly where we left off.**
 
