@@ -18,6 +18,12 @@ apiClient.interceptors.request.use(
       config.headers.Authorization = `Bearer ${tokens.accessToken}`;
     }
 
+    // Send ID token in separate header for role/group extraction
+    // ID token contains cognito:groups which access token doesn't have by default
+    if (tokens?.idToken) {
+      config.headers['X-Cognito-Id-Token'] = tokens.idToken;
+    }
+
     return config;
   },
   (error) => Promise.reject(error)

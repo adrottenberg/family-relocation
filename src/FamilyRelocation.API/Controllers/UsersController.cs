@@ -30,6 +30,72 @@ public class UsersController : ControllerBase
     }
 
     /// <summary>
+    /// Creates a new user with a temporary password.
+    /// </summary>
+    /// <param name="request">User creation details.</param>
+    [HttpPost]
+    [ProducesResponseType(typeof(CreateUserResponse), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> CreateUser(
+        [FromBody] CreateUserRequest request,
+        CancellationToken ct = default)
+    {
+        // Validate email format
+        if (string.IsNullOrWhiteSpace(request.Email) || !request.Email.Contains('@'))
+        {
+            return BadRequest(new { error = "Valid email address is required" });
+        }
+
+        // Validate roles if provided
+        if (request.Roles?.Any() == true)
+        {
+            var validRoles = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                "Admin", "Coordinator", "BoardMember"
+            };
+            var invalidRoles = request.Roles.Where(r => !validRoles.Contains(r)).ToList();
+            if (invalidRoles.Any())
+            {
+                return BadRequest(new { error = $"Invalid roles: {string.Join(", ", invalidRoles)}" });
+            }
+        }
+
+        var result = await _authService.RegisterUserAsync(request.Email);
+
+        if (!result.Success)
+        {
+            if (result.ErrorType == AuthErrorType.UserAlreadyExists)
+            {
+                return BadRequest(new { error = "A user with this email already exists" });
+            }
+            return BadRequest(new { error = result.ErrorMessage });
+        }
+
+        // Assign roles if provided
+        if (request.Roles?.Any() == true)
+        {
+            await _authService.UpdateUserRolesAsync(request.Email, request.Roles, ct);
+        }
+
+        // Log activity
+        await _activityLogger.LogAsync(
+            "User",
+            Guid.Empty,
+            "Created",
+            $"User {request.Email} created with roles: {string.Join(", ", request.Roles ?? new List<string>())}",
+            ct);
+
+        return CreatedAtAction(nameof(GetUser), new { userId = request.Email }, new CreateUserResponse
+        {
+            UserId = result.UserId,
+            Email = request.Email,
+            TemporaryPassword = result.TemporaryPassword,
+            Roles = request.Roles?.ToList() ?? new List<string>(),
+            Message = "User created successfully. Share the temporary password with the user - they will be required to change it on first login."
+        });
+    }
+
+    /// <summary>
     /// Lists all users with optional filtering.
     /// </summary>
     /// <param name="search">Search by email prefix (e.g., "john").</param>
@@ -279,6 +345,28 @@ public record UserStatusResponse
     public string UserId { get; init; } = string.Empty;
     /// <summary>The user's new status.</summary>
     public string Status { get; init; } = string.Empty;
+    /// <summary>Success message.</summary>
+    public string Message { get; init; } = string.Empty;
+}
+
+/// <summary>
+/// Request to create a new user.
+/// </summary>
+public record CreateUserRequest(string Email, List<string>? Roles = null);
+
+/// <summary>
+/// Response after creating a user.
+/// </summary>
+public record CreateUserResponse
+{
+    /// <summary>The user's Cognito ID.</summary>
+    public string UserId { get; init; } = string.Empty;
+    /// <summary>The user's email.</summary>
+    public string Email { get; init; } = string.Empty;
+    /// <summary>Temporary password to share with the user.</summary>
+    public string TemporaryPassword { get; init; } = string.Empty;
+    /// <summary>Assigned roles.</summary>
+    public List<string> Roles { get; init; } = new();
     /// <summary>Success message.</summary>
     public string Message { get; init; } = string.Empty;
 }

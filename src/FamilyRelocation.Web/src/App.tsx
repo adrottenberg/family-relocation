@@ -16,6 +16,7 @@ const PropertiesListPage = lazy(() => import('./features/properties/PropertiesLi
 const PropertyDetailPage = lazy(() => import('./features/properties/PropertyDetailPage'));
 const RemindersPage = lazy(() => import('./features/reminders/RemindersPage'));
 const SettingsPage = lazy(() => import('./features/settings/SettingsPage'));
+const UsersPage = lazy(() => import('./features/users/UsersPage'));
 
 const LoadingFallback = () => (
   <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
@@ -60,6 +61,7 @@ function App() {
           <Route path="properties/:id" element={<PropertyDetailPage />} />
           <Route path="reminders" element={<RemindersPage />} />
           <Route path="settings" element={<SettingsPage />} />
+          <Route path="users" element={<UsersPage />} />
         </Route>
 
         {/* Catch all */}

@@ -45,6 +45,16 @@ export const authApi = {
     const response = await apiClient.post('/auth/confirm-email', request);
     return response.data;
   },
+
+  getMyRoles: async (): Promise<{ userId: string; email: string | null; roles: string[] }> => {
+    const response = await apiClient.get('/auth/me/roles');
+    return response.data;
+  },
+
+  bootstrapAdmin: async (): Promise<{ success: boolean; message: string; roles: string[] }> => {
+    const response = await apiClient.post('/auth/bootstrap-admin');
+    return response.data;
+  },
 };
 
 // Helper to check if response is a challenge

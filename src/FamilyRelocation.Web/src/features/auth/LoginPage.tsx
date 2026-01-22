@@ -111,9 +111,8 @@ const LoginPage = () => {
       refreshToken: tokens.refreshToken,
       expiresIn: tokens.expiresIn,
     });
-    // TODO: Extract roles from JWT token (idToken) in production
-    // For now, defaulting to Admin role for testing
-    setUser({ email: userEmail, roles: ['Admin'] });
+    // Roles will be fetched from backend by AppLayout after navigation
+    setUser({ email: userEmail, roles: [] });
     navigate('/dashboard', { replace: true });
   };
 

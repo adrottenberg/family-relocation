@@ -93,17 +93,75 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateAudience = false
         };
 
-        // Validate Cognito's client_id claim after token is validated
+        // Validate Cognito's client_id claim and map database roles after token is validated
         options.Events = new JwtBearerEvents
         {
-            OnTokenValidated = context =>
+            OnTokenValidated = async context =>
             {
                 var clientIdClaim = context.Principal?.FindFirst("client_id");
                 if (clientIdClaim == null || clientIdClaim.Value != cognitoClientId)
                 {
                     context.Fail("Invalid client_id claim");
+                    return;
                 }
-                return Task.CompletedTask;
+
+                // Get user's Cognito ID (sub claim) from the access token
+                var identity = context.Principal?.Identity as System.Security.Claims.ClaimsIdentity;
+                var logger = context.HttpContext.RequestServices.GetService<ILogger<Program>>();
+
+                // Log all claims for debugging
+                if (identity != null)
+                {
+                    var allClaims = identity.Claims.Select(c => $"{c.Type}={c.Value}");
+                    logger?.LogInformation("Access token claims: {Claims}", string.Join(", ", allClaims));
+                }
+
+                // Try multiple claim names for sub (Cognito sometimes uses different formats)
+                var subClaim = context.Principal?.FindFirst("sub")
+                    ?? context.Principal?.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")
+                    ?? context.Principal?.FindFirst("username");
+
+                if (identity != null && subClaim != null)
+                {
+                    var cognitoUserId = subClaim.Value;
+                    logger?.LogInformation("Looking up roles for user: {UserId}", cognitoUserId);
+
+                    try
+                    {
+                        // Look up roles from the database
+                        var userRoleService = context.HttpContext.RequestServices.GetRequiredService<IUserRoleService>();
+                        var roles = await userRoleService.GetUserRolesAsync(cognitoUserId);
+
+                        logger?.LogInformation("Found {Count} roles in database for user {UserId}: {Roles}",
+                            roles.Count, cognitoUserId, string.Join(", ", roles));
+
+                        // Add roles as claims
+                        foreach (var role in roles)
+                        {
+                            if (!identity.HasClaim(System.Security.Claims.ClaimTypes.Role, role))
+                            {
+                                identity.AddClaim(new System.Security.Claims.Claim(
+                                    System.Security.Claims.ClaimTypes.Role, role));
+                            }
+                        }
+
+                        // Log final roles
+                        var finalRoles = identity.Claims
+                            .Where(c => c.Type == System.Security.Claims.ClaimTypes.Role)
+                            .Select(c => c.Value);
+                        logger?.LogInformation("Final roles added to identity: {Roles}", string.Join(", ", finalRoles));
+                    }
+                    catch (Exception ex)
+                    {
+                        logger?.LogError(ex, "Failed to look up user roles from database");
+                        // If role lookup fails, continue without roles
+                        // The user is still authenticated via access token
+                    }
+                }
+                else
+                {
+                    logger?.LogWarning("No sub claim found in access token");
+                }
             }
         };
     });
