@@ -17,6 +17,7 @@ const PropertyDetailPage = lazy(() => import('./features/properties/PropertyDeta
 const RemindersPage = lazy(() => import('./features/reminders/RemindersPage'));
 const SettingsPage = lazy(() => import('./features/settings/SettingsPage'));
 const UsersPage = lazy(() => import('./features/users/UsersPage'));
+const ShowingsPage = lazy(() => import('./features/showings/ShowingsPage'));
 
 const LoadingFallback = () => (
   <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
@@ -59,6 +60,7 @@ function App() {
           <Route path="pipeline" element={<PipelinePage />} />
           <Route path="properties" element={<PropertiesListPage />} />
           <Route path="properties/:id" element={<PropertyDetailPage />} />
+          <Route path="showings" element={<ShowingsPage />} />
           <Route path="reminders" element={<RemindersPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="users" element={<UsersPage />} />

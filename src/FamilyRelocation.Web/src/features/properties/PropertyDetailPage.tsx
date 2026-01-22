@@ -34,6 +34,8 @@ import {
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { propertiesApi } from '../../api';
 import type { PropertyPhotoDto } from '../../api/types';
+import { PropertyMatchList, CreatePropertyMatchModal } from '../propertyMatches';
+import { ScheduleShowingModal } from '../showings';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -59,6 +61,11 @@ const PropertyDetailPage = () => {
   const queryClient = useQueryClient();
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [form] = Form.useForm();
+  const [createMatchModalOpen, setCreateMatchModalOpen] = useState(false);
+  const [scheduleShowingModalData, setScheduleShowingModalData] = useState<{
+    propertyMatchId: string;
+    propertyInfo?: { street: string; city: string };
+  } | null>(null);
 
   const { data: property, isLoading, error } = useQuery({
     queryKey: ['property', id],
@@ -435,6 +442,26 @@ const PropertyDetailPage = () => {
               )}
             </Descriptions>
           </Card>
+
+          {/* Interested Families / Property Matches */}
+          <div style={{ marginTop: 24 }}>
+            <PropertyMatchList
+              propertyId={property.id}
+              onCreateMatch={() => setCreateMatchModalOpen(true)}
+              onScheduleShowings={(matchIds) => {
+                const matchId = matchIds[0];
+                setScheduleShowingModalData({
+                  propertyMatchId: matchId,
+                  propertyInfo: {
+                    street: property.address.street,
+                    city: property.address.city,
+                  },
+                });
+              }}
+              showApplicant={true}
+              showProperty={false}
+            />
+          </div>
         </Col>
       </Row>
 
@@ -563,6 +590,23 @@ const PropertyDetailPage = () => {
           </Form.Item>
         </Form>
       </Modal>
+
+      {/* Create Property Match Modal */}
+      <CreatePropertyMatchModal
+        open={createMatchModalOpen}
+        onClose={() => setCreateMatchModalOpen(false)}
+        propertyId={property.id}
+      />
+
+      {/* Schedule Showing Modal */}
+      {scheduleShowingModalData && (
+        <ScheduleShowingModal
+          open={true}
+          onClose={() => setScheduleShowingModalData(null)}
+          propertyMatchId={scheduleShowingModalData.propertyMatchId}
+          propertyInfo={scheduleShowingModalData.propertyInfo}
+        />
+      )}
     </div>
   );
 };

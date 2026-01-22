@@ -54,6 +54,8 @@ import ContractFailedModal from '../pipeline/modals/ContractFailedModal';
 import ClosingConfirmModal from '../pipeline/modals/ClosingConfirmModal';
 import { CreateReminderModal } from '../reminders';
 import { LogActivityModal } from '../activities';
+import { PropertyMatchList, CreatePropertyMatchModal } from '../propertyMatches';
+import { ScheduleShowingModal } from '../showings';
 import './ApplicantDetailPage.css';
 
 const { Title, Text } = Typography;
@@ -68,6 +70,12 @@ const ApplicantDetailPage = () => {
   const [documentUploadModalOpen, setDocumentUploadModalOpen] = useState(false);
   const [reminderModalOpen, setReminderModalOpen] = useState(false);
   const [activityModalOpen, setActivityModalOpen] = useState(false);
+  const [createMatchModalOpen, setCreateMatchModalOpen] = useState(false);
+  const [scheduleShowingModalData, setScheduleShowingModalData] = useState<{
+    propertyMatchId: string;
+    propertyInfo?: { street: string; city: string };
+    applicantInfo?: { name: string };
+  } | null>(null);
 
   // Stage transition modal state
   const [activeTransitionModal, setActiveTransitionModal] = useState<TransitionType | null>(null);
@@ -378,6 +386,25 @@ const ApplicantDetailPage = () => {
       label: 'Housing Search',
       children: <HousingSearchTab applicant={applicant} />,
     },
+    ...(hs ? [{
+      key: 'matches',
+      label: 'Property Matches',
+      children: (
+        <PropertyMatchesTab
+          housingSearchId={hs.id}
+          applicantName={`${applicant.husband.lastName} Family`}
+          onCreateMatch={() => setCreateMatchModalOpen(true)}
+          onScheduleShowing={(matchIds) => {
+            // For now, schedule for first match (could extend to batch)
+            const matchId = matchIds[0];
+            setScheduleShowingModalData({
+              propertyMatchId: matchId,
+              applicantInfo: { name: `${applicant.husband.lastName} Family` },
+            });
+          }}
+        />
+      ),
+    }] : []),
     {
       key: 'documents',
       label: 'Documents',
@@ -503,6 +530,26 @@ const ApplicantDetailPage = () => {
         entityId={applicant.id}
         entityName={`${applicant.husband.lastName} Family`}
       />
+
+      {/* Create Property Match Modal */}
+      {hs && (
+        <CreatePropertyMatchModal
+          open={createMatchModalOpen}
+          onClose={() => setCreateMatchModalOpen(false)}
+          housingSearchId={hs.id}
+        />
+      )}
+
+      {/* Schedule Showing Modal */}
+      {scheduleShowingModalData && (
+        <ScheduleShowingModal
+          open={true}
+          onClose={() => setScheduleShowingModalData(null)}
+          propertyMatchId={scheduleShowingModalData.propertyMatchId}
+          propertyInfo={scheduleShowingModalData.propertyInfo}
+          applicantInfo={scheduleShowingModalData.applicantInfo}
+        />
+      )}
 
       {/* Stage Transition Modals */}
       {hs && (
@@ -757,6 +804,28 @@ const HousingSearchTab = ({ applicant }: HousingSearchTabProps) => {
           </Card>
         )}
       </div>
+    </div>
+  );
+};
+
+// Property Matches Tab
+interface PropertyMatchesTabProps {
+  housingSearchId: string;
+  applicantName: string;
+  onCreateMatch: () => void;
+  onScheduleShowing: (matchIds: string[]) => void;
+}
+
+const PropertyMatchesTab = ({ housingSearchId, onCreateMatch, onScheduleShowing }: PropertyMatchesTabProps) => {
+  return (
+    <div className="tab-content">
+      <PropertyMatchList
+        housingSearchId={housingSearchId}
+        onCreateMatch={onCreateMatch}
+        onScheduleShowings={onScheduleShowing}
+        showApplicant={false}
+        showProperty={true}
+      />
     </div>
   );
 };
