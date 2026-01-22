@@ -7,6 +7,7 @@ export interface ActivityDto {
   id: string;
   entityType: string;
   entityId: string;
+  entityDisplayName?: string;
   action: string;
   description: string;
   userId?: string;
@@ -36,6 +37,14 @@ export interface LogActivityResult {
 }
 
 export const activitiesApi = {
+  /**
+   * Get a single activity by ID.
+   */
+  getById: async (id: string): Promise<ActivityDto> => {
+    const response = await apiClient.get<ActivityDto>(`/activities/${id}`);
+    return response.data;
+  },
+
   /**
    * Get recent activities across all entities.
    */

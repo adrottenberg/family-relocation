@@ -67,7 +67,7 @@ public class SetBoardDecisionCommandHandler : IRequestHandler<SetBoardDecisionCo
             "Applicant",
             applicant.Id,
             "BoardDecisionMade",
-            $"Board decision: {request.Decision} for {applicant.Husband.LastName} family",
+            $"Board decision: {request.Decision} for {applicant.Husband.FirstName} {applicant.Husband.LastName} family",
             cancellationToken);
 
         // Send notification email based on decision

@@ -90,7 +90,7 @@ public class CreateApplicantCommandHandler : IRequestHandler<CreateApplicantComm
             "Applicant",
             applicant.Id,
             "Created",
-            $"Applicant {applicant.Husband.LastName} family created",
+            $"Applicant {applicant.Husband.FirstName} {applicant.Husband.LastName} family created",
             cancellationToken);
 
         // Send confirmation email (fire and forget - don't fail if email fails)

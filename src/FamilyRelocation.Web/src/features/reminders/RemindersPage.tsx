@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Typography,
   Table,
@@ -26,6 +27,7 @@ import {
   MoreOutlined,
   ReloadOutlined,
   ExclamationCircleOutlined,
+  EyeOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
 import type { MenuProps } from 'antd';
@@ -40,6 +42,7 @@ import {
 import CreateReminderModal from './CreateReminderModal';
 import SnoozeModal from './SnoozeModal';
 import RemindersPrintView from './RemindersPrintView';
+import ReminderDetailModal from './ReminderDetailModal';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -78,8 +81,14 @@ const RemindersPage = () => {
   // Modal states
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [snoozeModalOpen, setSnoozeModalOpen] = useState(false);
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedReminderId, setSelectedReminderId] = useState<string | null>(null);
   const [printViewOpen, setPrintViewOpen] = useState(false);
+
+  const openDetailModal = (id: string) => {
+    setSelectedReminderId(id);
+    setDetailModalOpen(true);
+  };
 
   const fetchReminders = useCallback(async (page = 1, pageSize = 20) => {
     setLoading(true);
@@ -272,13 +281,20 @@ const RemindersPage = () => {
       ),
     },
     {
-      title: 'Entity',
+      title: 'Related To',
       key: 'entity',
       render: (_, record) => (
         <Space direction="vertical" size={0}>
           <Text type="secondary" style={{ fontSize: 12 }}>{record.entityType}</Text>
-          {record.entityDisplayName && (
-            <Text>{record.entityDisplayName}</Text>
+          {record.entityType === 'Applicant' && record.entityId ? (
+            <Link
+              to={`/applicants/${record.entityId}`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {record.entityDisplayName || 'View Applicant'}
+            </Link>
+          ) : (
+            <Text>{record.entityDisplayName || '-'}</Text>
           )}
         </Space>
       ),
@@ -295,9 +311,20 @@ const RemindersPage = () => {
     {
       title: 'Actions',
       key: 'actions',
-      width: 120,
+      width: 150,
       render: (_, record) => (
         <Space>
+          <Tooltip title="View Details">
+            <Button
+              type="text"
+              size="small"
+              icon={<EyeOutlined />}
+              onClick={(e) => {
+                e.stopPropagation();
+                openDetailModal(record.id);
+              }}
+            />
+          </Tooltip>
           {(record.status === 'Open' || record.status === 'Snoozed') && (
             <Tooltip title="Complete">
               <Button
@@ -424,6 +451,10 @@ const RemindersPage = () => {
         loading={loading}
         pagination={pagination}
         onChange={handleTableChange}
+        onRow={(record) => ({
+          onClick: () => openDetailModal(record.id),
+          style: { cursor: 'pointer' },
+        })}
         rowClassName={(record) => {
           if (record.isOverdue) return 'reminder-row-overdue';
           if (record.isDueToday) return 'reminder-row-today';
@@ -455,6 +486,32 @@ const RemindersPage = () => {
       <RemindersPrintView
         open={printViewOpen}
         onClose={() => setPrintViewOpen(false)}
+      />
+
+      {/* Reminder Detail Modal */}
+      <ReminderDetailModal
+        open={detailModalOpen}
+        reminderId={selectedReminderId}
+        onClose={() => {
+          setDetailModalOpen(false);
+          setSelectedReminderId(null);
+        }}
+        onComplete={(id) => {
+          handleComplete(id);
+          setDetailModalOpen(false);
+        }}
+        onSnooze={(id) => {
+          setDetailModalOpen(false);
+          openSnoozeModal(id);
+        }}
+        onDismiss={(id) => {
+          handleDismiss(id);
+          setDetailModalOpen(false);
+        }}
+        onReopen={(id) => {
+          handleReopen(id);
+          setDetailModalOpen(false);
+        }}
       />
     </div>
   );

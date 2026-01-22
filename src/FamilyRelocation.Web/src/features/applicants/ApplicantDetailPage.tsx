@@ -34,7 +34,7 @@ import {
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { applicantsApi, documentsApi, getStageRequirements, housingSearchesApi, remindersApi, activitiesApi } from '../../api';
-import type { ApplicantDto, ReminderListDto } from '../../api/types';
+import type { ApplicantDto, ReminderListDto, AuditLogDto } from '../../api/types';
 import { colors, statusTagStyles, stageTagStyles } from '../../theme/antd-theme';
 import { useAuthStore } from '../../store/authStore';
 import BoardReviewSection from './BoardReviewSection';
@@ -78,9 +78,9 @@ const ApplicantDetailPage = () => {
     enabled: !!id,
   });
 
-  const { data: _auditLogs } = useQuery({
+  const { data: auditLogs } = useQuery({
     queryKey: ['applicant-audit', id],
-    queryFn: () => applicantsApi.getAuditLogs(id!, { page: 1, pageSize: 20 }),
+    queryFn: () => applicantsApi.getAuditLogs(id!, { page: 1, pageSize: 50 }),
     enabled: !!id,
   });
 
@@ -392,6 +392,11 @@ const ApplicantDetailPage = () => {
       key: 'activity',
       label: 'Activity',
       children: <ActivityTab applicantId={applicant.id} onLogActivity={() => setActivityModalOpen(true)} />,
+    },
+    {
+      key: 'history',
+      label: 'History',
+      children: <AuditHistoryTab auditLogs={auditLogs?.items || []} isLoading={!auditLogs} />,
     },
   ];
 
@@ -1078,6 +1083,111 @@ const ActivityTab = ({ applicantId, onLogActivity }: ActivityTabProps) => {
             </div>
           ),
         }))}
+      />
+    </div>
+  );
+};
+
+// Audit History Tab
+interface AuditHistoryTabProps {
+  auditLogs: AuditLogDto[];
+  isLoading: boolean;
+}
+
+const AuditHistoryTab = ({ auditLogs, isLoading }: AuditHistoryTabProps) => {
+  if (isLoading) {
+    return (
+      <div style={{ textAlign: 'center', padding: 40 }}>
+        <Spin />
+      </div>
+    );
+  }
+
+  if (!auditLogs || auditLogs.length === 0) {
+    return (
+      <div className="tab-content">
+        <Empty description="No audit history recorded" />
+      </div>
+    );
+  }
+
+  const getActionColor = (action: string) => {
+    switch (action.toLowerCase()) {
+      case 'created':
+      case 'added':
+        return 'green';
+      case 'updated':
+      case 'modified':
+        return 'blue';
+      case 'deleted':
+        return 'red';
+      default:
+        return 'default';
+    }
+  };
+
+  const formatChanges = (oldValues?: Record<string, unknown>, newValues?: Record<string, unknown>) => {
+    if (!newValues) return null;
+    const changes: { field: string; oldValue?: string; newValue: string }[] = [];
+
+    for (const [key, newVal] of Object.entries(newValues)) {
+      const oldVal = oldValues?.[key];
+      if (oldVal !== newVal) {
+        changes.push({
+          field: key,
+          oldValue: oldVal !== undefined ? String(oldVal) : undefined,
+          newValue: String(newVal),
+        });
+      }
+    }
+    return changes;
+  };
+
+  return (
+    <div className="tab-content">
+      <Timeline
+        items={auditLogs.map((log) => {
+          const changes = formatChanges(log.oldValues, log.newValues);
+          return {
+            dot: <HistoryOutlined style={{ color: '#8c8c8c' }} />,
+            color: getActionColor(log.action),
+            children: (
+              <div className="timeline-item">
+                <div className="timeline-header">
+                  <Space>
+                    <Tag color={getActionColor(log.action)}>{log.action}</Tag>
+                    <Text strong>{log.entityType}</Text>
+                  </Space>
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    {new Date(log.timestamp).toLocaleString()}
+                  </Text>
+                </div>
+                {changes && changes.length > 0 && (
+                  <div style={{ marginTop: 8, fontSize: 13 }}>
+                    {changes.map((change, idx) => (
+                      <div key={idx} style={{ color: '#666' }}>
+                        <Text code>{change.field}</Text>:{' '}
+                        {change.oldValue && <Text delete type="secondary">{change.oldValue}</Text>}
+                        {change.oldValue && ' → '}
+                        <Text>{change.newValue}</Text>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {!changes?.length && (
+                  <Text style={{ display: 'block', marginTop: 4 }}>
+                    {log.action} {log.entityType}
+                  </Text>
+                )}
+                {log.userName && (
+                  <Text type="secondary" style={{ fontSize: 13, display: 'block', marginTop: 4 }}>
+                    by {log.userName}
+                  </Text>
+                )}
+              </div>
+            ),
+          };
+        })}
       />
     </div>
   );

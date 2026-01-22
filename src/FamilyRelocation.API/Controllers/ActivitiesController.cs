@@ -1,6 +1,7 @@
 using FamilyRelocation.Application.Activities.Commands.LogActivity;
 using FamilyRelocation.Application.Activities.Queries;
 using MediatR;
+using ActivityDto = FamilyRelocation.Application.Activities.Queries.ActivityDto;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -19,6 +20,21 @@ public class ActivitiesController : ControllerBase
     public ActivitiesController(IMediator mediator)
     {
         _mediator = mediator;
+    }
+
+    /// <summary>
+    /// Gets a single activity by ID.
+    /// </summary>
+    /// <param name="id">The activity's unique identifier</param>
+    [HttpGet("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetById(Guid id)
+    {
+        var result = await _mediator.Send(new GetActivityByIdQuery(id));
+        if (result == null)
+            return NotFound(new { message = "Activity not found" });
+        return Ok(result);
     }
 
     /// <summary>

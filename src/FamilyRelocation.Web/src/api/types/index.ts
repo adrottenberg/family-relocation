@@ -323,6 +323,10 @@ export interface ReminderDto {
   completedByName?: string;
   isOverdue: boolean;
   isDueToday: boolean;
+  // Source activity info (if reminder was created from an activity)
+  sourceActivityId?: string;
+  sourceActivityType?: string;
+  sourceActivityTimestamp?: string;
 }
 
 export interface ReminderListDto {

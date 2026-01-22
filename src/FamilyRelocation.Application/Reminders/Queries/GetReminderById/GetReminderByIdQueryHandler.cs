@@ -26,6 +26,27 @@ public class GetReminderByIdQueryHandler : IRequestHandler<GetReminderByIdQuery,
         if (reminder == null)
             return null;
 
+        // Get entity display name
+        string? entityDisplayName = null;
+        if (reminder.EntityType == "Applicant")
+        {
+            var applicant = await _context.Set<Applicant>()
+                .Where(a => a.Id == reminder.EntityId)
+                .Select(a => new { a.Husband.FirstName, a.Husband.LastName })
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (applicant != null)
+            {
+                entityDisplayName = $"{applicant.FirstName} {applicant.LastName}";
+            }
+        }
+
+        // Find source activity (if this reminder was created from an activity)
+        var sourceActivity = await _context.Set<ActivityLog>()
+            .Where(a => a.FollowUpReminderId == reminder.Id)
+            .Select(a => new { a.Id, a.Type, a.Timestamp })
+            .FirstOrDefaultAsync(cancellationToken);
+
         return new ReminderDto
         {
             Id = reminder.Id,
@@ -36,6 +57,7 @@ public class GetReminderByIdQueryHandler : IRequestHandler<GetReminderByIdQuery,
             Priority = reminder.Priority,
             EntityType = reminder.EntityType,
             EntityId = reminder.EntityId,
+            EntityDisplayName = entityDisplayName,
             AssignedToUserId = reminder.AssignedToUserId,
             Status = reminder.Status,
             SendEmailNotification = reminder.SendEmailNotification,
@@ -46,7 +68,10 @@ public class GetReminderByIdQueryHandler : IRequestHandler<GetReminderByIdQuery,
             CompletedAt = reminder.CompletedAt,
             CompletedBy = reminder.CompletedBy,
             IsOverdue = reminder.IsOverdue,
-            IsDueToday = reminder.IsDueToday
+            IsDueToday = reminder.IsDueToday,
+            SourceActivityId = sourceActivity?.Id,
+            SourceActivityType = sourceActivity?.Type.ToString(),
+            SourceActivityTimestamp = sourceActivity?.Timestamp
         };
     }
 }

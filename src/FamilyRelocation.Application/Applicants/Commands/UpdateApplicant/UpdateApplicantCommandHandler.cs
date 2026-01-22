@@ -69,7 +69,7 @@ public class UpdateApplicantCommandHandler : IRequestHandler<UpdateApplicantComm
             "Applicant",
             applicant.Id,
             "Updated",
-            $"Applicant {applicant.Husband.LastName} family information updated",
+            $"Applicant {applicant.Husband.FirstName} {applicant.Husband.LastName} family information updated",
             cancellationToken);
 
         return applicant.ToDto();
