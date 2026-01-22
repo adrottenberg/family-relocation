@@ -3020,12 +3020,71 @@ A comprehensive code review is running in background (agent af9c221). Check resu
 
 ---
 
+## Session: January 22, 2026 - Property Matching & Showings Feature
+
+### Completed Features
+
+**Property Matching (v0.1):**
+- PropertyMatch entity with scoring algorithm (Budget 30pts, Bedrooms 20pts, Bathrooms 15pts, City 20pts, Features 15pts)
+- Automatic matching via domain events: PropertyCreatedHandler, HousingSearchStageChangedHandler, HousingPreferencesUpdatedHandler
+- Matches with score >= 50 created automatically; score >= 70 creates reminder for coordinator
+- Manual matching via CreatePropertyMatchCommand
+- Frontend: PropertyMatchCard, PropertyMatchList, MatchScoreDisplay, CreatePropertyMatchModal, UpdateMatchStatusModal
+- Integrated into ApplicantDetailPage (Property Matches tab) and PropertyDetailPage (Interested Families section)
+
+**Showings (v0.1):**
+- Showing entity linked to PropertyMatch
+- Schedule, Reschedule, Complete, Cancel, NoShow workflows
+- ShowingsPage with list/calendar toggle view
+- Frontend: ShowingCard, ShowingsList, ScheduleShowingModal, RescheduleShowingModal, ShowingDetailModal
+- Dashboard widget showing upcoming showings
+- Activity logging for all operations
+
+**Primary Photo:**
+- IsPrimary flag on PropertyPhoto
+- SetPrimaryPhotoCommand for designating primary
+- Frontend integration in PropertyDetailPage
+
+**Infrastructure:**
+- Domain event dispatcher (DomainEventNotification wrapper pattern for MediatR)
+- Activity logging added to all PropertyMatch and Showing command handlers
+- CORS fix for Testing environment (allow localhost fallback like Development)
+
+**Commits:**
+- `77c598c` - feat: add automatic matching, activity logging, and UI enhancements
+- `87fdf33` - docs: update API documentation for property matching and showings
+- `7f1252c` - fix(tests): handle CORS for Testing environment in Program.cs
+
+**All 351 tests passing** (230 Domain + 84 API + 37 Integration)
+
+### Future Enhancements (Backlog)
+
+**1. Batch Showing Scheduler (ScheduleShowingsModal)**
+- Schedule multiple showings at once for ShowingRequested matches
+- Currently: Individual scheduling only via ScheduleShowingModal
+- Priority: Low (convenience feature)
+
+**2. Automated Schedule Recommendation System**
+- Present suggested showing schedule based on:
+  - Identified requested/matched properties (ShowingRequested status)
+  - Property open house schedules (requires new OpenHouse entity/data)
+  - Family availability preferences (requires new preference fields)
+  - Geographic clustering (minimize travel between showings)
+- Could include:
+  - AI/algorithm-based time slot optimization
+  - Conflict detection with existing showings
+  - One-click "Apply Suggested Schedule" action
+- Priority: Medium-High (significant coordinator time savings)
+- Prerequisites: Open house schedule data, family availability preferences
+
+---
+
 ## FOR NEXT SESSION
 
 ### To Quickly Re-Establish Context
 
 **Just say:**
-> "I'm the developer building the Family Relocation CRM. We just finished Sprint 4 and are ready for v0.1.0 dev release. Let's work on deployment and CI/CD."
+> "I'm the developer building the Family Relocation CRM. Property Matching and Showings features are complete. Let's continue with [next task]."
 
 **I'll know:**
 - Complete domain model (Applicant, HousingSearch, Property, ActivityLog, FollowUpReminder, UserRole)
