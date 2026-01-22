@@ -65,7 +65,8 @@ export const remindersApi = {
     const response = await apiClient.get(`/reminders/entity/${entityType}/${entityId}`, {
       params: { status },
     });
-    return response.data;
+    // API returns paginated result with items property
+    return response.data.items || response.data;
   },
 
   getDueReport: async (upcomingDays?: number, assignedToUserId?: string): Promise<DueRemindersReportDto> => {

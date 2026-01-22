@@ -78,7 +78,9 @@ public class ChangeHousingSearchStageCommandHandler : IRequestHandler<ChangeHous
 
         // Log the stage change activity
         var applicant = housingSearch.Applicant;
-        var familyName = applicant?.Husband?.LastName ?? "Unknown";
+        var firstName = applicant?.Husband?.FirstName ?? "";
+        var lastName = applicant?.Husband?.LastName ?? "Unknown";
+        var familyName = string.IsNullOrEmpty(firstName) ? lastName : $"{firstName} {lastName}";
         await _activityLogger.LogAsync(
             entityType: "HousingSearch",
             entityId: housingSearch.Id,

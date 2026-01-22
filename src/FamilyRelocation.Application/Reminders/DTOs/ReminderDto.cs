@@ -24,8 +24,14 @@ public class ReminderDto
     public int SnoozeCount { get; init; }
     public DateTime CreatedAt { get; init; }
     public Guid CreatedBy { get; init; }
+    public string? CreatedByName { get; init; }
     public DateTime? CompletedAt { get; init; }
     public Guid? CompletedBy { get; init; }
     public bool IsOverdue { get; init; }
     public bool IsDueToday { get; init; }
+
+    // Source activity info (if reminder was created from an activity)
+    public Guid? SourceActivityId { get; init; }
+    public string? SourceActivityType { get; init; }
+    public DateTime? SourceActivityTimestamp { get; init; }
 }

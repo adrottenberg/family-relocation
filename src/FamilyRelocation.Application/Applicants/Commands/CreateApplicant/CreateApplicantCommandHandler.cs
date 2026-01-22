@@ -19,6 +19,7 @@ public class CreateApplicantCommandHandler : IRequestHandler<CreateApplicantComm
     private readonly IApplicationDbContext _context;
     private readonly ICurrentUserService _currentUserService;
     private readonly IEmailService _emailService;
+    private readonly IActivityLogger _activityLogger;
 
     /// <summary>
     /// Initializes a new instance of the handler.
@@ -27,12 +28,14 @@ public class CreateApplicantCommandHandler : IRequestHandler<CreateApplicantComm
         IMediator mediator,
         IApplicationDbContext context,
         ICurrentUserService currentUserService,
-        IEmailService emailService)
+        IEmailService emailService,
+        IActivityLogger activityLogger)
     {
         _mediator = mediator;
         _context = context;
         _currentUserService = currentUserService;
         _emailService = emailService;
+        _activityLogger = activityLogger;
     }
 
     /// <inheritdoc />
@@ -81,6 +84,14 @@ public class CreateApplicantCommandHandler : IRequestHandler<CreateApplicantComm
         // Save applicant - HousingSearch will be created when board approves
         _context.Add(applicant);
         await _context.SaveChangesAsync(cancellationToken);
+
+        // Log activity
+        await _activityLogger.LogAsync(
+            "Applicant",
+            applicant.Id,
+            "Created",
+            $"Applicant {applicant.Husband.FirstName} {applicant.Husband.LastName} family created",
+            cancellationToken);
 
         // Send confirmation email (fire and forget - don't fail if email fails)
         if (!string.IsNullOrEmpty(request.Husband.Email))

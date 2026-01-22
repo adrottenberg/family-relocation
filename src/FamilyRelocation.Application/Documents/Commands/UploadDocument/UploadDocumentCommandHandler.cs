@@ -14,13 +14,16 @@ public class UploadDocumentCommandHandler : IRequestHandler<UploadDocumentComman
 {
     private readonly IApplicationDbContext _context;
     private readonly ICurrentUserService _currentUserService;
+    private readonly IActivityLogger _activityLogger;
 
     public UploadDocumentCommandHandler(
         IApplicationDbContext context,
-        ICurrentUserService currentUserService)
+        ICurrentUserService currentUserService,
+        IActivityLogger activityLogger)
     {
         _context = context;
         _currentUserService = currentUserService;
+        _activityLogger = activityLogger;
     }
 
     public async Task<ApplicantDocumentDto> Handle(UploadDocumentCommand command, CancellationToken cancellationToken)
@@ -62,6 +65,14 @@ public class UploadDocumentCommandHandler : IRequestHandler<UploadDocumentComman
 
             await _context.SaveChangesAsync(cancellationToken);
 
+            // Log activity
+            await _activityLogger.LogAsync(
+                "Applicant",
+                command.ApplicantId,
+                "DocumentUpdated",
+                $"Updated document: {documentType.DisplayName} ({command.FileName})",
+                cancellationToken);
+
             return new ApplicantDocumentDto
             {
                 Id = existingDocument.Id,
@@ -88,6 +99,14 @@ public class UploadDocumentCommandHandler : IRequestHandler<UploadDocumentComman
 
         _context.Add(newDocument);
         await _context.SaveChangesAsync(cancellationToken);
+
+        // Log activity
+        await _activityLogger.LogAsync(
+            "Applicant",
+            command.ApplicantId,
+            "DocumentUploaded",
+            $"Uploaded document: {documentType.DisplayName} ({command.FileName})",
+            cancellationToken);
 
         return new ApplicantDocumentDto
         {

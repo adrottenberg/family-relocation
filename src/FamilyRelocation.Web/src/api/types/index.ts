@@ -293,17 +293,7 @@ export interface PropertyStatsDto {
   byStatus: Record<string, number>;
 }
 
-// Activity types
-export interface ActivityDto {
-  id: string;
-  entityType: string;
-  entityId: string;
-  action: string;
-  description: string;
-  userId?: string;
-  userName?: string;
-  timestamp: string;
-}
+// Activity types are defined in endpoints/activities.ts
 
 // Reminder types
 export type ReminderPriority = 'Low' | 'Normal' | 'High' | 'Urgent';
@@ -333,6 +323,10 @@ export interface ReminderDto {
   completedByName?: string;
   isOverdue: boolean;
   isDueToday: boolean;
+  // Source activity info (if reminder was created from an activity)
+  sourceActivityId?: string;
+  sourceActivityType?: string;
+  sourceActivityTimestamp?: string;
 }
 
 export interface ReminderListDto {

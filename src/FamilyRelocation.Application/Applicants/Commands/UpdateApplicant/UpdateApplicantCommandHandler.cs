@@ -15,16 +15,19 @@ public class UpdateApplicantCommandHandler : IRequestHandler<UpdateApplicantComm
 {
     private readonly IApplicationDbContext _context;
     private readonly ICurrentUserService _currentUserService;
+    private readonly IActivityLogger _activityLogger;
 
     /// <summary>
     /// Initializes a new instance of the handler.
     /// </summary>
     public UpdateApplicantCommandHandler(
         IApplicationDbContext context,
-        ICurrentUserService currentUserService)
+        ICurrentUserService currentUserService,
+        IActivityLogger activityLogger)
     {
         _context = context;
         _currentUserService = currentUserService;
+        _activityLogger = activityLogger;
     }
 
     /// <inheritdoc />
@@ -60,6 +63,14 @@ public class UpdateApplicantCommandHandler : IRequestHandler<UpdateApplicantComm
         applicant.UpdateCommunityInfo(request.CurrentKehila, request.ShabbosShul, userId);
 
         await _context.SaveChangesAsync(cancellationToken);
+
+        // Log activity
+        await _activityLogger.LogAsync(
+            "Applicant",
+            applicant.Id,
+            "Updated",
+            $"Applicant {applicant.Husband.FirstName} {applicant.Husband.LastName} family information updated",
+            cancellationToken);
 
         return applicant.ToDto();
     }

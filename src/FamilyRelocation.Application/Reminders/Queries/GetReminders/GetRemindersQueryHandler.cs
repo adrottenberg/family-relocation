@@ -73,6 +73,25 @@ public class GetRemindersQueryHandler : IRequestHandler<GetRemindersQuery, Remin
             .Take(query.Take)
             .ToListAsync(cancellationToken);
 
+        // Fetch applicant names for reminders linked to applicants
+        var applicantIds = reminders
+            .Where(r => r.EntityType == "Applicant")
+            .Select(r => r.EntityId)
+            .Distinct()
+            .ToList();
+
+        var applicantNames = new Dictionary<Guid, string>();
+        if (applicantIds.Count > 0)
+        {
+            applicantNames = await _context.Set<Applicant>()
+                .Where(a => applicantIds.Contains(a.Id))
+                .Select(a => new { a.Id, a.Husband.FirstName, a.Husband.LastName })
+                .ToDictionaryAsync(
+                    a => a.Id,
+                    a => $"{a.FirstName} {a.LastName}",
+                    cancellationToken);
+        }
+
         var items = reminders.Select(r => new ReminderDto
         {
             Id = r.Id,
@@ -83,6 +102,7 @@ public class GetRemindersQueryHandler : IRequestHandler<GetRemindersQuery, Remin
             Priority = r.Priority,
             EntityType = r.EntityType,
             EntityId = r.EntityId,
+            EntityDisplayName = r.EntityType == "Applicant" && applicantNames.TryGetValue(r.EntityId, out var name) ? name : null,
             AssignedToUserId = r.AssignedToUserId,
             Status = r.Status,
             SendEmailNotification = r.SendEmailNotification,

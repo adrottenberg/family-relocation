@@ -1,5 +1,7 @@
+using FamilyRelocation.Application.Activities.Commands.LogActivity;
 using FamilyRelocation.Application.Activities.Queries;
 using MediatR;
+using ActivityDto = FamilyRelocation.Application.Activities.Queries.ActivityDto;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -18,6 +20,21 @@ public class ActivitiesController : ControllerBase
     public ActivitiesController(IMediator mediator)
     {
         _mediator = mediator;
+    }
+
+    /// <summary>
+    /// Gets a single activity by ID.
+    /// </summary>
+    /// <param name="id">The activity's unique identifier</param>
+    [HttpGet("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetById(Guid id)
+    {
+        var result = await _mediator.Send(new GetActivityByIdQuery(id));
+        if (result == null)
+            return NotFound(new { message = "Activity not found" });
+        return Ok(result);
     }
 
     /// <summary>
@@ -53,4 +70,79 @@ public class ActivitiesController : ControllerBase
         var result = await _mediator.Send(new GetActivitiesByEntityQuery(entityType, entityId, page, pageSize));
         return Ok(result);
     }
+
+    /// <summary>
+    /// Logs a manual activity (phone call, note, etc.) for an entity.
+    /// </summary>
+    /// <param name="request">The activity details</param>
+    [HttpPost]
+    [ProducesResponseType(typeof(LogActivityResult), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> LogActivity([FromBody] LogActivityRequest request)
+    {
+        var command = new LogActivityCommand(
+            EntityType: request.EntityType,
+            EntityId: request.EntityId,
+            Type: request.Type,
+            Description: request.Description,
+            DurationMinutes: request.DurationMinutes,
+            Outcome: request.Outcome,
+            CreateFollowUp: request.CreateFollowUp,
+            FollowUpDate: request.FollowUpDate,
+            FollowUpTitle: request.FollowUpTitle
+        );
+
+        var result = await _mediator.Send(command);
+        return CreatedAtAction(nameof(LogActivity), new { id = result.ActivityId }, result);
+    }
 }
+
+/// <summary>
+/// Request body for logging a manual activity.
+/// </summary>
+public record LogActivityRequest(
+    /// <summary>
+    /// The type of entity (Applicant, Property, HousingSearch).
+    /// </summary>
+    string EntityType,
+
+    /// <summary>
+    /// The entity's unique identifier.
+    /// </summary>
+    Guid EntityId,
+
+    /// <summary>
+    /// The activity type (PhoneCall, Note, Email, SMS).
+    /// </summary>
+    string Type,
+
+    /// <summary>
+    /// Description or notes about the activity.
+    /// </summary>
+    string Description,
+
+    /// <summary>
+    /// Duration in minutes (for phone calls).
+    /// </summary>
+    int? DurationMinutes = null,
+
+    /// <summary>
+    /// Call outcome (Connected, Voicemail, NoAnswer, Busy, LeftMessage).
+    /// </summary>
+    string? Outcome = null,
+
+    /// <summary>
+    /// Whether to create a follow-up reminder.
+    /// </summary>
+    bool CreateFollowUp = false,
+
+    /// <summary>
+    /// Date for the follow-up reminder.
+    /// </summary>
+    DateTime? FollowUpDate = null,
+
+    /// <summary>
+    /// Title for the follow-up reminder.
+    /// </summary>
+    string? FollowUpTitle = null
+);

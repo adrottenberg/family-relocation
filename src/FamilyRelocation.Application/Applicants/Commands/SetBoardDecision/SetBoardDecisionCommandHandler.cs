@@ -17,15 +17,18 @@ public class SetBoardDecisionCommandHandler : IRequestHandler<SetBoardDecisionCo
     private readonly IApplicationDbContext _context;
     private readonly ICurrentUserService _currentUserService;
     private readonly IEmailService _emailService;
+    private readonly IActivityLogger _activityLogger;
 
     public SetBoardDecisionCommandHandler(
         IApplicationDbContext context,
         ICurrentUserService currentUserService,
-        IEmailService emailService)
+        IEmailService emailService,
+        IActivityLogger activityLogger)
     {
         _context = context;
         _currentUserService = currentUserService;
         _emailService = emailService;
+        _activityLogger = activityLogger;
     }
 
     public async Task<SetBoardDecisionResponse> Handle(
@@ -58,6 +61,14 @@ public class SetBoardDecisionCommandHandler : IRequestHandler<SetBoardDecisionCo
             reviewDate: request.ReviewDate);
 
         await _context.SaveChangesAsync(cancellationToken);
+
+        // Log activity
+        await _activityLogger.LogAsync(
+            "Applicant",
+            applicant.Id,
+            "BoardDecisionMade",
+            $"Board decision: {request.Decision} for {applicant.Husband.FirstName} {applicant.Husband.LastName} family",
+            cancellationToken);
 
         // Send notification email based on decision
         var email = applicant.Husband?.Email;
