@@ -70,10 +70,7 @@ export const useAuthStore = create<AuthState>()(
           // Import dynamically to avoid circular dependency
           const { authApi } = await import('../api');
 
-          // Bootstrap admin if needed (only works for first user)
-          await authApi.bootstrapAdmin().catch(() => {});
-
-          // Fetch actual roles
+          // Fetch actual roles from database
           const rolesResponse = await authApi.getMyRoles();
 
           set({

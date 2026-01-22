@@ -485,6 +485,10 @@ $RECYCLE.BIN/
 .claude/settings.local.json
 .mcp.json
 
+# HTTP request files (may contain credentials when in use)
+# Use .http.example for templates
+*.http
+
 # Vite cache
 .vite/
 

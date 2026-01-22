@@ -1,10 +1,12 @@
 using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 using FamilyRelocation.API.Middleware;
 using FamilyRelocation.API.Services;
 using FamilyRelocation.Application;
 using FamilyRelocation.Application.Common.Interfaces;
 using FamilyRelocation.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 
@@ -89,7 +91,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateIssuerSigningKey = true,
             ValidateIssuer = true,
             ValidateLifetime = true,
-            // Disable default audience validation - we'll validate client_id in OnTokenValidated
+            // NOTE: ValidateAudience is disabled because AWS Cognito ACCESS tokens use 'client_id'
+            // claim instead of 'aud' for audience. ID tokens have 'aud', but we use access tokens
+            // for API authorization. We manually validate 'client_id' in OnTokenValidated below.
+            // See: https://docs.aws.amazon.com/cognito/latest/developerguide/amazon-cognito-user-pools-using-tokens-verifying-a-jwt.html
             ValidateAudience = false
         };
 
@@ -168,19 +173,75 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
-// Add CORS policy
+// Add CORS policy (H-006: No hardcoded fallback in production)
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
-            ?? ["http://localhost:5173", "http://localhost:3000"];
+        var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
+
+        if (allowedOrigins == null || allowedOrigins.Length == 0)
+        {
+            if (builder.Environment.IsDevelopment())
+            {
+                // Only allow localhost fallback in Development
+                allowedOrigins = ["http://localhost:5173", "http://localhost:3000"];
+            }
+            else
+            {
+                throw new InvalidOperationException(
+                    "Cors:AllowedOrigins must be configured in production. " +
+                    "Add it to appsettings.Production.json or environment variables.");
+            }
+        }
 
         policy.WithOrigins(allowedOrigins)
-              .AllowAnyMethod()
-              .AllowAnyHeader()
+              .WithMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
+              .WithHeaders("Authorization", "Content-Type", "X-Cognito-Id-Token")
               .AllowCredentials();
     });
+});
+
+// Add rate limiting for auth endpoints (H-003: Brute force protection)
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    // Auth endpoints: 10 requests per minute per IP (login, forgot-password, etc.)
+    options.AddPolicy("auth", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(1),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0
+            }));
+
+    // Stricter limit for login specifically: 5 attempts per minute per IP
+    options.AddPolicy("auth-login", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(1),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0
+            }));
+
+    // Public form submissions: 5 per hour per IP
+    options.AddPolicy("public-form", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromHours(1),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0
+            }));
 });
 
 // Add global exception handler
@@ -204,6 +265,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseCors("AllowFrontend");
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
