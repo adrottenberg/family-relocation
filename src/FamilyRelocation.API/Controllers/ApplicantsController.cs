@@ -8,6 +8,7 @@ using FamilyRelocation.Application.Common.Exceptions;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace FamilyRelocation.API.Controllers;
 
@@ -34,6 +35,7 @@ public class ApplicantsController : ControllerBase
     /// Gets a paginated list of applicants with search, filter, and sort options.
     /// </summary>
     [HttpGet]
+    [Authorize(Roles = "Coordinator,Admin,BoardMember")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAll([FromQuery] GetApplicantsQuery query)
     {
@@ -47,9 +49,11 @@ public class ApplicantsController : ControllerBase
     /// </summary>
     [HttpPost]
     [AllowAnonymous]
+    [EnableRateLimiting("public-form")]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     public async Task<IActionResult> Create([FromBody] CreateApplicantCommand command)
     {
         try
@@ -64,9 +68,10 @@ public class ApplicantsController : ControllerBase
     }
 
     /// <summary>
-    /// Gets an applicant by ID
+    /// Gets an applicant by ID with full details including PII.
     /// </summary>
     [HttpGet("{id:guid}")]
+    [Authorize(Roles = "Coordinator,Admin,BoardMember")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetById(Guid id)

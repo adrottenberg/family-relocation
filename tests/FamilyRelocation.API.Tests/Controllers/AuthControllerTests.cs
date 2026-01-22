@@ -4,6 +4,7 @@ using FamilyRelocation.Application.Auth;
 using FamilyRelocation.Application.Auth.Models;
 using FamilyRelocation.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 
 namespace FamilyRelocation.API.Tests.Controllers;
 
@@ -12,6 +13,7 @@ public class AuthControllerTests
     private readonly Mock<IAuthenticationService> _authServiceMock;
     private readonly Mock<IUserRoleService> _userRoleServiceMock;
     private readonly Mock<ICurrentUserService> _currentUserServiceMock;
+    private readonly Mock<IConfiguration> _configurationMock;
     private readonly AuthController _controller;
 
     public AuthControllerTests()
@@ -19,10 +21,12 @@ public class AuthControllerTests
         _authServiceMock = new Mock<IAuthenticationService>();
         _userRoleServiceMock = new Mock<IUserRoleService>();
         _currentUserServiceMock = new Mock<ICurrentUserService>();
+        _configurationMock = new Mock<IConfiguration>();
         _controller = new AuthController(
             _authServiceMock.Object,
             _userRoleServiceMock.Object,
-            _currentUserServiceMock.Object);
+            _currentUserServiceMock.Object,
+            _configurationMock.Object);
     }
 
     #region Login Tests
