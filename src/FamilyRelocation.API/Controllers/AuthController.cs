@@ -3,6 +3,7 @@ using FamilyRelocation.Application.Auth.Models;
 using FamilyRelocation.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using AuthModels = FamilyRelocation.API.Models.Auth;
 
 namespace FamilyRelocation.API.Controllers;
@@ -40,10 +41,12 @@ public class AuthController : ControllerBase
     /// <param name="request">Login credentials.</param>
     /// <returns>JWT tokens on success, or a challenge response if additional verification is needed.</returns>
     [HttpPost("login")]
+    [EnableRateLimiting("auth-login")]
     [ProducesResponseType(typeof(AuthModels.LoginResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(AuthModels.ChallengeResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     public async Task<IActionResult> Login([FromBody] AuthModels.LoginRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Email))
@@ -91,10 +94,12 @@ public class AuthController : ControllerBase
     /// <param name="request">Challenge response data.</param>
     /// <returns>JWT tokens on success, or another challenge if needed.</returns>
     [HttpPost("respond-to-challenge")]
+    [EnableRateLimiting("auth")]
     [ProducesResponseType(typeof(AuthModels.LoginResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(AuthModels.ChallengeResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     public async Task<IActionResult> RespondToChallenge([FromBody] AuthModels.ChallengeRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Email))
@@ -185,8 +190,10 @@ public class AuthController : ControllerBase
     /// <param name="request">Email address for password reset.</param>
     /// <returns>Success message indicating code was sent.</returns>
     [HttpPost("forgot-password")]
+    [EnableRateLimiting("auth")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     public async Task<IActionResult> ForgotPassword([FromBody] AuthModels.ForgotPasswordRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Email))
@@ -212,8 +219,10 @@ public class AuthController : ControllerBase
     /// <param name="request">Email, verification code, and new password.</param>
     /// <returns>Success message confirming password was reset.</returns>
     [HttpPost("confirm-forgot-password")]
+    [EnableRateLimiting("auth")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     public async Task<IActionResult> ConfirmForgotPassword([FromBody] AuthModels.ConfirmForgotPasswordRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Email))
@@ -241,8 +250,10 @@ public class AuthController : ControllerBase
     /// <param name="request">Email address to resend confirmation to.</param>
     /// <returns>Success message indicating code was sent.</returns>
     [HttpPost("resend-confirmation")]
+    [EnableRateLimiting("auth")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     public async Task<IActionResult> ResendConfirmation([FromBody] AuthModels.ResendConfirmationRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Email))
@@ -268,8 +279,10 @@ public class AuthController : ControllerBase
     /// <param name="request">Email and verification code.</param>
     /// <returns>Success message confirming email was verified.</returns>
     [HttpPost("confirm-email")]
+    [EnableRateLimiting("auth")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     public async Task<IActionResult> ConfirmEmail([FromBody] AuthModels.ConfirmEmailRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Email))

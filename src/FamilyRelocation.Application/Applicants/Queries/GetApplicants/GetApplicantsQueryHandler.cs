@@ -38,6 +38,8 @@ public class GetApplicantsQueryHandler : IRequestHandler<GetApplicantsQuery, Pag
             .Where(a => !a.IsDeleted);
 
         // Apply search filter
+        // Note: ToLower() translates to SQL LOWER() function - acceptable for small datasets
+        // For large datasets, consider adding functional indexes or using full-text search
         if (!string.IsNullOrWhiteSpace(request.Search))
         {
             var search = request.Search.Trim().ToLower();
@@ -45,7 +47,7 @@ public class GetApplicantsQueryHandler : IRequestHandler<GetApplicantsQuery, Pag
             var phoneSearch = new string(request.Search.Where(char.IsDigit).ToArray());
 
             query = query.Where(a =>
-                // Name search
+                // Name search (translated to SQL LOWER() LIKE)
                 a.Husband.FirstName.ToLower().Contains(search) ||
                 a.Husband.LastName.ToLower().Contains(search) ||
                 (a.Wife != null && a.Wife.FirstName.ToLower().Contains(search)) ||
@@ -54,6 +56,7 @@ public class GetApplicantsQueryHandler : IRequestHandler<GetApplicantsQuery, Pag
                 (a.Husband.Email != null && a.Husband.Email.ToLower().Contains(search)) ||
                 (a.Wife != null && a.Wife.Email != null && a.Wife.Email.ToLower().Contains(search)) ||
                 // Phone search (if search contains at least 3 digits)
+                // EF Core translates .Any() to EXISTS subquery - no N+1 issue
                 (phoneSearch.Length >= 3 && a.Husband.PhoneNumbers.Any(p => p.Number.Contains(phoneSearch))) ||
                 (phoneSearch.Length >= 3 && a.Wife != null && a.Wife.PhoneNumbers.Any(p => p.Number.Contains(phoneSearch))));
         }
@@ -71,7 +74,7 @@ public class GetApplicantsQueryHandler : IRequestHandler<GetApplicantsQuery, Pag
             }
         }
 
-        // Apply city filter
+        // Apply city filter (case-insensitive)
         if (!string.IsNullOrWhiteSpace(request.City))
         {
             var city = request.City.Trim().ToLower();
