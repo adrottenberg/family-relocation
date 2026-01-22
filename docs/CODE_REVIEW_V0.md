@@ -311,17 +311,29 @@ Now requires explicit CORS configuration in production - app fails fast if missi
 
 ## LOW Priority Issues
 
-### L-001: Empty Catch Blocks in Frontend
+### L-001: Empty Catch Blocks in Frontend - ✅ ACCEPTABLE
 
-**Files:** Multiple frontend files use `catch { }` without error handling
+**Files:** Multiple frontend files use `catch { }` pattern
+**Status:** **ACCEPTABLE - Intentional pattern**
 
+**Analysis:**
+Reviewed all catch blocks - they fall into two acceptable patterns:
+
+1. **Form validation catches** (`form.validateFields()`) - Ant Design shows validation errors inline automatically. The catch block prevents unhandled promise rejection. Adding console.error would create noise since the errors are already visible to users.
+
+2. **API error catches** - All other catches have proper handling: error messages (`message.error`), logout/redirect, or modal display.
+
+**Example (acceptable form validation pattern):**
 ```typescript
+try {
+  const values = await form.validateFields();
+  mutation.mutate(values);
 } catch {
-  // Error silently ignored
+  // Validation failed - Ant Design shows inline errors
 }
 ```
 
-**Recommendation:** Log errors or show user-friendly messages even in catch blocks.
+**Conclusion:** No changes needed. The pattern is intentional and follows Ant Design best practices.
 
 ### L-002: innerHTML Usage in Print View
 
