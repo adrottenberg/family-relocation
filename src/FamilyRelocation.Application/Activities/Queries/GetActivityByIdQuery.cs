@@ -35,7 +35,7 @@ public class GetActivityByIdQueryHandler : IRequestHandler<GetActivityByIdQuery,
         if (activity.EntityType == "Applicant")
         {
             var applicant = await _context.Set<Applicant>()
-                .Where(a => a.ApplicantId == activity.EntityId && !a.IsDeleted)
+                .Where(a => a.Id == activity.EntityId && !a.IsDeleted)
                 .Select(a => new { a.Husband.FirstName, a.Husband.LastName })
                 .FirstOrDefaultAsync(ct);
 

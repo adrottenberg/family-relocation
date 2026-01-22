@@ -31,7 +31,7 @@ public class GetReminderByIdQueryHandler : IRequestHandler<GetReminderByIdQuery,
         if (reminder.EntityType == "Applicant")
         {
             var applicant = await _context.Set<Applicant>()
-                .Where(a => a.Id == reminder.EntityId)
+                .Where(a => a.Id == reminder.EntityId && !a.IsDeleted)
                 .Select(a => new { a.Husband.FirstName, a.Husband.LastName })
                 .FirstOrDefaultAsync(cancellationToken);
 
