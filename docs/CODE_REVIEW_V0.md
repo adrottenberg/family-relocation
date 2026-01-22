@@ -277,17 +277,18 @@ Now requires explicit CORS configuration in production - app fails fast if missi
 2. Added `*.http` to `.gitignore`
 3. Developers copy template to `.http` and add real credentials locally (ignored by git)
 
-### M-002: Database Connection String in Test Config
+### M-002: Database Connection String in Test Config - ✅ FIXED
 
 **File:** `src/FamilyRelocation.API/appsettings.Testing.json:8`
+**Status:** **FIXED**
 
-```json
-"DefaultConnection": "Host=localhost;Port=5432;Database=test;Username=test;Password=test"
-```
+**Original Issue:** Generic test credentials in source control.
 
-**Issue:** Test credentials in source control.
-
-**Recommendation:** Use environment variables for test database connection or ensure this is only used in CI/CD with ephemeral databases.
+**Fix Applied:**
+1. Added `_note` field documenting these are placeholders for CI/CD ephemeral databases
+2. Changed generic `test/test` to clearly named `test_user/test_password_ci`
+3. Changed database name from `test` to `familyrelocation_test` for clarity
+4. Values should be overridden via environment variables in actual CI/CD pipelines
 
 ### M-003: Missing Validators for Some Commands
 
