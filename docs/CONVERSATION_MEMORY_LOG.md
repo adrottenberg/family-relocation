@@ -2949,40 +2949,108 @@ All 351 tests passing:
 
 ---
 
+## SESSION UPDATE: January 22, 2026
+
+### Database-Managed Roles Implementation
+
+**Problem Solved:** Cognito groups weren't working reliably for role management. The user's ID token didn't contain `cognito:groups` even when groups existed.
+
+**Solution:** Implemented database-managed roles instead of relying on Cognito groups.
+
+**New Files Created:**
+- `src/FamilyRelocation.Domain/Entities/UserRole.cs` - Entity for storing user roles
+- `src/FamilyRelocation.Application/Common/Interfaces/IUserRoleService.cs` - Service interface
+- `src/FamilyRelocation.Infrastructure/Services/UserRoleService.cs` - Implementation
+- `src/FamilyRelocation.Infrastructure/Persistence/Configurations/UserRoleConfiguration.cs` - EF config
+- Migrations: `AddUserRolesTable`, `SeedAdminUser`
+
+**Key Changes:**
+1. **Program.cs** - OnTokenValidated now looks up roles from database
+   - Fixed Cognito claim name issue: uses `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier` instead of `sub`
+2. **AuthController.cs** - Added endpoints:
+   - `GET /api/auth/me/roles` - Get current user's roles
+   - `POST /api/auth/bootstrap-admin` - Bootstrap first admin
+3. **Frontend authStore.ts** - Added `fetchAndSetRoles()` method
+4. **AppLayout.tsx** - Calls `fetchAndSetRoles()` after login (non-blocking)
+5. **LoginPage.tsx** - Sets `roles: []` initially, real roles fetched by AppLayout
+
+**Commit:** `666347c feat(auth): implement database-managed roles for user management`
+
+### Sprint 4 Status - MOSTLY COMPLETE
+
+**COMPLETED:**
+- ✅ US-037 to US-040: Reminders system (CRUD, filters, due report)
+- ✅ US-042 to US-045: User Management APIs
+- ✅ US-046: RBAC review (database-managed roles)
+- ✅ US-047: Communication Logging (LogActivityCommand)
+- ✅ US-051: Broker Role (added to PropertiesController)
+- ✅ US-052: Activity Logging expanded to 10 handlers
+- ✅ US-F12 to US-F15: Reminders frontend
+- ✅ US-F17 & US-F18: User Management frontend
+- ✅ US-F19: Log Activity Modal
+- ✅ US-F21: Pipeline Moved In Column
+- ✅ CR-001 to CR-007: Code review fixes
+
+**REMAINING (~15 points):**
+- US-041: Audit log viewer API enhancements (2 pts)
+- US-048: SES Email Verification (2 pts)
+- US-049: Automated Agreement Follow-up (3 pts)
+- US-050: Board Approval Report (3 pts)
+- US-F16: Audit History Tab on detail pages (4 pts)
+- US-F20: Board Report Print View (2 pts)
+
+### Ready for v0.1.0 Dev Release
+
+**Next Steps (Tomorrow):**
+1. Set up `develop` branch (Git Flow)
+2. Configure GitHub branch protection rules
+3. Finalize deployment workflows (AWS ECS/S3)
+4. Set up GitHub Environments with secrets
+5. Create v0.1.0-dev tag
+
+**Existing Infrastructure:**
+- `.github/workflows/ci.yml` - Build & test on PRs
+- `.github/workflows/deploy-staging.yml` - Deploy to staging (needs completion)
+- `.github/workflows/deploy-production.yml` - Deploy to production (needs completion)
+- `docs/BRANCHING_STRATEGY.md` - Complete Git Flow documentation
+
+**Code Review Running:**
+A comprehensive code review is running in background (agent af9c221). Check results at:
+`C:\Users\adrot\AppData\Local\Temp\claude\C--Users-adrot-github-adrottenberg-FamilyRelocation\tasks\af9c221.output`
+
+---
+
 ## FOR NEXT SESSION
 
 ### To Quickly Re-Establish Context
 
 **Just say:**
-> "I'm the developer building the Family Relocation CRM for the Jewish community in Union County. We just completed user management and RBAC."
+> "I'm the developer building the Family Relocation CRM. We just finished Sprint 4 and are ready for v0.1.0 dev release. Let's work on deployment and CI/CD."
 
 **I'll know:**
-- Complete domain model (Applicant, HousingSearch, Property, ActivityLog, FollowUpReminder)
-- Tech stack (.NET 10, React + Ant Design, AWS Cognito)
-- **User management complete** - List, Get, Update Roles, Deactivate/Reactivate
-- **RBAC applied** to all controllers with appropriate role restrictions
-- **Three roles:** Admin (full access), Coordinator (manage applicants/properties), BoardMember (board decisions)
+- Complete domain model (Applicant, HousingSearch, Property, ActivityLog, FollowUpReminder, UserRole)
+- Tech stack (.NET 10, React + Ant Design, AWS Cognito, PostgreSQL)
+- **Database-managed roles** (not Cognito groups) via UserRole entity
+- **Four roles:** Admin, Coordinator, BoardMember, Broker
+- User management, Reminders, Activity Logging all complete
 - Query object pattern, all handlers in Application layer
 - EF Core ToJson() for JSON columns
-- Global exception handler and validation pipeline in place
+- Global exception handler and validation pipeline
+- GitHub workflows exist but deployment steps need completion
 
-### Sprint 4 Remaining Stories
+### Key Technical Details
 
-**Backend:**
-- US-047: Communication Logging via Activity Log (4 pts) - IN PROGRESS
-- US-052: Expand Activity Logging Coverage (2 pts) - IN PROGRESS
-- US-048: SES Email Verification (2 pts)
-- US-049: Automated Agreement Follow-up Emails (3 pts)
-- US-050: Board Approval Report (3 pts)
-- US-051: Broker Role (2 pts)
+1. **Cognito Claim Names:**
+   - Cognito uses `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier` NOT `sub`
+   - Code checks multiple claim names for compatibility
 
-**Frontend:**
-- US-F12-F15: Reminders UI (12 pts)
-- US-F16: Audit history tab (4 pts)
-- US-F17-F18: User management UI (6 pts)
-- US-F19: Log Activity Modal (3 pts)
-- US-F20: Board Report Print View (2 pts)
-- US-F21: Pipeline MovedIn Column (3 pts)
+2. **Role Lookup Flow:**
+   - User logs in → tokens stored → navigate to dashboard
+   - AppLayout useEffect calls `fetchAndSetRoles()`
+   - Calls `GET /api/auth/me/roles` → updates authStore with real roles
+   - Sidebar re-renders with correct menu items
+
+3. **Current Branch:** `feature/user-management` (pushed to origin)
 
 **And we can pick up exactly where we left off.**
 
