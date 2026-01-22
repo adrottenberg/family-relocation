@@ -428,6 +428,26 @@ const PropertyDetailPage = () => {
               <Text type="secondary">{property.photos.length}/10 photos</Text>
             </div>
           </Card>
+
+          {/* Interested Families / Property Matches */}
+          <div style={{ marginTop: 24 }}>
+            <PropertyMatchList
+              propertyId={property.id}
+              onCreateMatch={() => setCreateMatchModalOpen(true)}
+              onScheduleShowings={(matchIds) => {
+                const matchId = matchIds[0];
+                setScheduleShowingModalData({
+                  propertyMatchId: matchId,
+                  propertyInfo: {
+                    street: property.address.street,
+                    city: property.address.city,
+                  },
+                });
+              }}
+              showApplicant={true}
+              showProperty={false}
+            />
+          </div>
         </Col>
 
         {/* Sidebar */}
@@ -490,26 +510,6 @@ const PropertyDetailPage = () => {
               />
             )}
           </Card>
-
-          {/* Interested Families / Property Matches */}
-          <div style={{ marginTop: 24 }}>
-            <PropertyMatchList
-              propertyId={property.id}
-              onCreateMatch={() => setCreateMatchModalOpen(true)}
-              onScheduleShowings={(matchIds) => {
-                const matchId = matchIds[0];
-                setScheduleShowingModalData({
-                  propertyMatchId: matchId,
-                  propertyInfo: {
-                    street: property.address.street,
-                    city: property.address.city,
-                  },
-                });
-              }}
-              showApplicant={true}
-              showProperty={false}
-            />
-          </div>
         </Col>
       </Row>
 

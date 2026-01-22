@@ -46,9 +46,13 @@ public static class ShulMapper
             Name = shul.Name,
             Street = shul.Address.Street,
             City = shul.Address.City,
+            State = shul.Address.State,
+            ZipCode = shul.Address.ZipCode,
             Rabbi = shul.Rabbi,
             Denomination = shul.Denomination,
-            IsActive = shul.IsActive
+            IsActive = shul.IsActive,
+            Latitude = shul.Location?.Latitude,
+            Longitude = shul.Location?.Longitude
         };
     }
 

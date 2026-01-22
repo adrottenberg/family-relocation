@@ -9,6 +9,7 @@ import {
   BellOutlined,
   UserOutlined,
   CalendarOutlined,
+  BankOutlined,
 } from '@ant-design/icons';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
@@ -31,6 +32,7 @@ const Sidebar = () => {
     if (path.startsWith('/properties')) return 'properties';
     if (path.startsWith('/showings')) return 'showings';
     if (path.startsWith('/reminders')) return 'reminders';
+    if (path.startsWith('/shuls')) return 'shuls';
     if (path.startsWith('/settings')) return 'settings';
     if (path.startsWith('/users')) return 'users';
     return 'dashboard';
@@ -77,6 +79,11 @@ const Sidebar = () => {
       key: 'reminders',
       icon: <BellOutlined />,
       label: 'Reminders',
+    },
+    {
+      key: 'shuls',
+      icon: <BankOutlined />,
+      label: 'Shuls',
     },
     {
       key: 'settings',

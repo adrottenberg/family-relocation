@@ -189,7 +189,7 @@ export interface MoneyDto {
 
 export interface ShulProximityDto {
   maxWalkingMinutes?: number;
-  preferredShuls?: string[];
+  preferredShulIds?: string[];
 }
 
 export interface ContractDto {
@@ -211,6 +211,17 @@ export interface AuditLogDto {
   userId?: string;
   userName?: string;
   timestamp: string;
+}
+
+// Create Applicant Request - matches backend CreateApplicantCommand
+export interface CreateApplicantRequest {
+  husband: HusbandInfoDto;
+  wife?: SpouseInfoDto;
+  address?: AddressDto;
+  children?: ChildDto[];
+  currentKehila?: string;
+  shabbosShul?: string;
+  housingPreferences?: HousingPreferencesDto;
 }
 
 // Paginated list
@@ -478,9 +489,13 @@ export interface ShulListDto {
   name: string;
   street: string;
   city: string;
+  state: string;
+  zipCode: string;
   rabbi?: string;
   denomination?: string;
   isActive: boolean;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface ShulAddressDto {

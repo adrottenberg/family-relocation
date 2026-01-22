@@ -8,16 +8,20 @@ namespace FamilyRelocation.Infrastructure.Services;
 /// <summary>
 /// Walking distance service using OpenStreetMap/OSRM public API.
 /// Uses Nominatim for geocoding and OSRM for routing.
+/// Note: The public OSRM demo server only supports driving profile,
+/// so we use driving route distance and calculate walking time at 4 mph.
 /// </summary>
 public class OsrmWalkingDistanceService : IWalkingDistanceService
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<OsrmWalkingDistanceService> _logger;
 
-    // Public OSRM demo server - consider self-hosting for production
+    // Public OSRM demo server - only supports driving profile
     private const string OsrmBaseUrl = "https://router.project-osrm.org";
     // Nominatim for geocoding
     private const string NominatimBaseUrl = "https://nominatim.openstreetmap.org";
+    // Walking speed: 4 mph = 15 minutes per mile
+    private const double WalkingMinutesPerMile = 15.0;
 
     public OsrmWalkingDistanceService(
         HttpClient httpClient,
@@ -39,8 +43,9 @@ public class OsrmWalkingDistanceService : IWalkingDistanceService
     {
         try
         {
-            // OSRM uses format: /route/v1/foot/{lon},{lat};{lon},{lat}
-            var url = $"{OsrmBaseUrl}/route/v1/foot/{fromLongitude},{fromLatitude};{toLongitude},{toLatitude}?overview=false";
+            // OSRM public demo server only supports driving profile
+            // We use driving route for distance (follows roads) and calculate walking time at 4 mph
+            var url = $"{OsrmBaseUrl}/route/v1/driving/{fromLongitude},{fromLatitude};{toLongitude},{toLatitude}?overview=false";
 
             var response = await _httpClient.GetAsync(url, cancellationToken);
 
@@ -67,8 +72,8 @@ public class OsrmWalkingDistanceService : IWalkingDistanceService
             // Distance is in meters, convert to miles (1 mile = 1609.34 meters)
             var distanceMiles = route.Distance / 1609.34;
 
-            // Duration is in seconds, convert to minutes
-            var walkingTimeMinutes = (int)Math.Ceiling(route.Duration / 60);
+            // Calculate walking time at 4 mph (15 minutes per mile)
+            var walkingTimeMinutes = (int)Math.Ceiling(distanceMiles * WalkingMinutesPerMile);
 
             return new WalkingDistanceResult(
                 DistanceMiles: Math.Round(distanceMiles, 2),

@@ -68,6 +68,10 @@ public static class DependencyInjection
         // Walking Distance Service (OSRM/OpenStreetMap)
         services.AddHttpClient<IWalkingDistanceService, OsrmWalkingDistanceService>();
 
+        // Background Task Queue (for async domain event processing)
+        services.AddSingleton<IBackgroundTaskQueue, BackgroundTaskQueue>();
+        services.AddHostedService<BackgroundTaskService>();
+
         return services;
     }
 }

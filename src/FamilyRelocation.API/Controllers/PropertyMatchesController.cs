@@ -22,10 +22,12 @@ namespace FamilyRelocation.API.Controllers;
 public class PropertyMatchesController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly ILogger<PropertyMatchesController> _logger;
 
-    public PropertyMatchesController(IMediator mediator)
+    public PropertyMatchesController(IMediator mediator, ILogger<PropertyMatchesController> logger)
     {
         _mediator = mediator;
+        _logger = logger;
     }
 
     /// <summary>
@@ -86,13 +88,33 @@ public class PropertyMatchesController : ControllerBase
     [ProducesResponseType(typeof(PropertyMatchDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Create([FromBody] CreatePropertyMatchRequest request)
+    public async Task<IActionResult> Create([FromBody] CreatePropertyMatchRequest? request)
     {
+        _logger.LogInformation("Create PropertyMatch called. Request is null: {IsNull}", request == null);
+
+        if (request == null)
+        {
+            return BadRequest(new { message = "Request body is required" });
+        }
+
+        _logger.LogInformation("Request: HousingSearchId={HousingSearchId}, PropertyId={PropertyId}",
+            request.HousingSearchId, request.PropertyId);
+
+        if (!request.HousingSearchId.HasValue || request.HousingSearchId == Guid.Empty)
+        {
+            return BadRequest(new { message = "HousingSearchId is required" });
+        }
+
+        if (!request.PropertyId.HasValue || request.PropertyId == Guid.Empty)
+        {
+            return BadRequest(new { message = "PropertyId is required" });
+        }
+
         try
         {
             var result = await _mediator.Send(new CreatePropertyMatchCommand(
-                request.HousingSearchId,
-                request.PropertyId,
+                request.HousingSearchId.Value,
+                request.PropertyId.Value,
                 request.Notes));
             return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
         }

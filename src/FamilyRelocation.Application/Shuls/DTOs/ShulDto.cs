@@ -27,9 +27,13 @@ public record ShulListDto
     public required string Name { get; init; }
     public required string Street { get; init; }
     public required string City { get; init; }
+    public required string State { get; init; }
+    public required string ZipCode { get; init; }
     public string? Rabbi { get; init; }
     public string? Denomination { get; init; }
     public bool IsActive { get; init; }
+    public double? Latitude { get; init; }
+    public double? Longitude { get; init; }
 }
 
 /// <summary>

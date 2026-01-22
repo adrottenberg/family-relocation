@@ -64,9 +64,10 @@ const CreatePropertyMatchModal = ({
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
+      // Use prop values if provided (since those fields are hidden)
       createMutation.mutate({
-        housingSearchId: values.housingSearchId,
-        propertyId: values.propertyId,
+        housingSearchId: housingSearchId || values.housingSearchId,
+        propertyId: propertyId || values.propertyId,
         notes: values.notes,
       });
     } catch {

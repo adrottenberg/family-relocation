@@ -31,10 +31,10 @@ public class CreatePropertyMatchCommandHandler : IRequestHandler<CreatePropertyM
     {
         var userId = _currentUserService.UserId ?? throw new UnauthorizedAccessException("User not authenticated");
 
-        // Load housing search with applicant
+        // Load housing search with applicant (allow matching even if not active)
         var housingSearch = await _context.Set<HousingSearch>()
             .Include(h => h.Applicant)
-            .FirstOrDefaultAsync(h => h.Id == request.HousingSearchId && h.IsActive, cancellationToken);
+            .FirstOrDefaultAsync(h => h.Id == request.HousingSearchId, cancellationToken);
 
         if (housingSearch == null)
         {

@@ -96,8 +96,8 @@ public record MatchApplicantDto
 /// </summary>
 public record CreatePropertyMatchRequest
 {
-    public required Guid HousingSearchId { get; init; }
-    public required Guid PropertyId { get; init; }
+    public Guid? HousingSearchId { get; init; }
+    public Guid? PropertyId { get; init; }
     public string? Notes { get; init; }
 }
 

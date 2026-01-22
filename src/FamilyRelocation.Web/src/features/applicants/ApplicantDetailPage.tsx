@@ -41,6 +41,7 @@ import BoardReviewSection from './BoardReviewSection';
 import SetBoardDecisionModal from './SetBoardDecisionModal';
 import EditApplicantDrawer from './EditApplicantDrawer';
 import DocumentUploadModal from './DocumentUploadModal';
+import EditPreferencesModal from './EditPreferencesModal';
 import {
   validateTransition,
   formatStage,
@@ -71,6 +72,7 @@ const ApplicantDetailPage = () => {
   const [reminderModalOpen, setReminderModalOpen] = useState(false);
   const [activityModalOpen, setActivityModalOpen] = useState(false);
   const [createMatchModalOpen, setCreateMatchModalOpen] = useState(false);
+  const [editPreferencesModalOpen, setEditPreferencesModalOpen] = useState(false);
   const [scheduleShowingModalData, setScheduleShowingModalData] = useState<{
     propertyMatchId: string;
     propertyInfo?: { street: string; city: string };
@@ -384,7 +386,7 @@ const ApplicantDetailPage = () => {
     {
       key: 'housing',
       label: 'Housing Search',
-      children: <HousingSearchTab applicant={applicant} />,
+      children: <HousingSearchTab applicant={applicant} onEditPreferences={() => setEditPreferencesModalOpen(true)} />,
     },
     ...(hs ? [{
       key: 'matches',
@@ -548,6 +550,17 @@ const ApplicantDetailPage = () => {
           propertyMatchId={scheduleShowingModalData.propertyMatchId}
           propertyInfo={scheduleShowingModalData.propertyInfo}
           applicantInfo={scheduleShowingModalData.applicantInfo}
+        />
+      )}
+
+      {/* Edit Preferences Modal */}
+      {hs && (
+        <EditPreferencesModal
+          open={editPreferencesModalOpen}
+          onClose={() => setEditPreferencesModalOpen(false)}
+          housingSearchId={hs.id}
+          applicantId={applicant.id}
+          preferences={hs.preferences}
         />
       )}
 
@@ -723,9 +736,10 @@ const OverviewTab = ({ applicant, onRecordBoardDecision, onUploadDocuments, canA
 // Housing Search Tab
 interface HousingSearchTabProps {
   applicant: ApplicantDto;
+  onEditPreferences: () => void;
 }
 
-const HousingSearchTab = ({ applicant }: HousingSearchTabProps) => {
+const HousingSearchTab = ({ applicant, onEditPreferences }: HousingSearchTabProps) => {
   const hs = applicant.housingSearch;
 
   if (!hs) {
@@ -753,8 +767,20 @@ const HousingSearchTab = ({ applicant }: HousingSearchTabProps) => {
         </Card>
 
         {/* Preferences */}
-        {prefs && (
-          <Card title="Preferences" size="small" className="info-card">
+        <Card
+          title="Preferences"
+          size="small"
+          className="info-card"
+          extra={
+            <Button
+              type="text"
+              icon={<EditOutlined />}
+              size="small"
+              onClick={onEditPreferences}
+            />
+          }
+        >
+          {prefs ? (
             <Descriptions column={1} size="small">
               <Descriptions.Item label="Budget">
                 {prefs.budgetAmount
@@ -771,8 +797,10 @@ const HousingSearchTab = ({ applicant }: HousingSearchTabProps) => {
                 {prefs.moveTimeline || 'N/A'}
               </Descriptions.Item>
             </Descriptions>
-          </Card>
-        )}
+          ) : (
+            <Text type="secondary">No preferences set. Click edit to add.</Text>
+          )}
+        </Card>
 
         {/* Required Features */}
         {prefs?.requiredFeatures && prefs.requiredFeatures.length > 0 && (

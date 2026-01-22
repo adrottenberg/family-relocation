@@ -4,6 +4,7 @@ import type {
   ApplicantListItemDto,
   PaginatedList,
   AuditLogDto,
+  CreateApplicantRequest,
 } from '../types';
 
 export interface GetApplicantsParams {
@@ -31,7 +32,7 @@ export const applicantsApi = {
     return response.data;
   },
 
-  create: async (applicant: Partial<ApplicantDto>): Promise<{ applicantId: string; housingSearchId: string }> => {
+  create: async (applicant: CreateApplicantRequest): Promise<{ applicantId: string; housingSearchId: string }> => {
     const response = await apiClient.post('/applicants', applicant);
     return response.data;
   },
