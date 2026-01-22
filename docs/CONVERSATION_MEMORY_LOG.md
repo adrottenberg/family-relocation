@@ -1059,6 +1059,29 @@ Creating:
 - TECHNICAL_SPECS_COMPLETE.md (complete project specs)
 - SOLUTION_STRUCTURE_AND_CODE.md (Visual Studio solution + code)
 
+### Pre-Deployment Tasks (Before v1.0.0 Release)
+
+**1. Complete GitHub Actions Workflows for AWS**
+- Workflow files created but deployment steps are placeholders
+- Files: `.github/workflows/ci.yml`, `deploy-staging.yml`, `deploy-production.yml`
+- TODO: Add AWS-specific deployment commands (ECS, Elastic Beanstalk, or Lambda)
+- TODO: Configure GitHub Secrets for AWS credentials
+- TODO: Set up staging and production environments in GitHub
+- Reference: `docs/BRANCHING_STRATEGY.md` for full CI/CD documentation
+
+**2. Set Up AWS Infrastructure**
+- Configure target deployment service (ECS, Elastic Beanstalk, etc.)
+- Set up RDS PostgreSQL for staging and production
+- Configure Cognito user pools
+- Set up S3 buckets for document storage
+- Configure SES for email notifications
+
+**3. Finalize Git Flow Setup**
+- Create `develop` branch from `master`
+- Merge feature branches to `develop`
+- Create `release/1.0.0` branch for final testing
+- Set up branch protection rules in GitHub
+
 ### Short-Term Next Steps (Week 1)
 
 **1. Set Up Development Environment**
