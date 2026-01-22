@@ -290,13 +290,22 @@ Now requires explicit CORS configuration in production - app fails fast if missi
 3. Changed database name from `test` to `familyrelocation_test` for clarity
 4. Values should be overridden via environment variables in actual CI/CD pipelines
 
-### M-003: Missing Validators for Some Commands
+### M-003: Missing Validators for Some Commands - ✅ FIXED
 
-**Existing validators:** 13 validators found
-**Potential gaps:** Some commands may lack dedicated validators
+**Status:** **FIXED**
 
-**Recommendation:** Verify all commands that accept user input have corresponding validators:
-- Commands without validators rely on domain validation (which is fine but less user-friendly)
+**Original Issue:** 13 validators found, some commands lacked dedicated validators.
+
+**Fix Applied:** Added 4 new validators for commands that accept significant user input:
+
+1. `SetBoardDecisionCommandValidator` - Validates board decision, notes length, review date
+2. `UpdatePreferencesCommandValidator` - Validates budget, bedrooms, bathrooms, move timeline
+3. `UpdatePropertyCommandValidator` - Validates address, price, property details
+4. `UpdatePropertyStatusCommandValidator` - Validates status is a valid ListingStatus enum value
+
+**Total validators:** 17 (was 13)
+
+**Note:** Commands that only take IDs (DeleteDocument, CompleteReminder, etc.) rely on handler-level validation which is appropriate for simple operations.
 
 ---
 
