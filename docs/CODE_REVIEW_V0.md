@@ -9,7 +9,13 @@
 
 ## Executive Summary
 
-The codebase is well-structured and follows Clean Architecture principles. Most critical security issues from the previous code review (CR-001 to CR-007) have been addressed. The application is in good shape for a dev release with a few remaining items to address.
+The codebase demonstrates **strong architectural fundamentals** with clean code organization, proper separation of concerns, and good security practices in core areas. However, there are **several critical and high-priority issues** that require attention before production deployment, particularly around authorization, input validation, and query performance.
+
+**Total Issues Found:** 24
+- CRITICAL: 4
+- HIGH: 8
+- MEDIUM: 8
+- LOW: 4
 
 **Test Coverage:** 234 tests
 **Controllers:** 12
@@ -24,17 +30,7 @@ The codebase is well-structured and follows Clean Architecture principles. Most 
 **File:** `src/FamilyRelocation.API/Program.cs:93`
 **Issue:** `ValidateAudience = false` disables audience validation in JWT configuration.
 
-```csharp
-ValidateAudience = false  // Security risk
-```
-
 **Risk:** Tokens from other Cognito clients could be accepted.
-
-**Fix:** Enable audience validation:
-```csharp
-ValidateAudience = true,
-ValidAudience = cognitoClientId,
-```
 
 **Note:** We disabled this because Cognito access tokens use `client_id` claim instead of `aud`. The current workaround validates `client_id` in `OnTokenValidated`. This is acceptable but should be documented.
 
@@ -42,20 +38,123 @@ ValidAudience = cognitoClientId,
 
 ---
 
+### CR-002: Missing Role Authorization on GetApplicantById
+
+**File:** `src/FamilyRelocation.API/Controllers/ApplicantsController.cs:72`
+**Issue:** Any authenticated user can retrieve ANY applicant's complete details including PII.
+
+```csharp
+[HttpGet("{id:guid}")]
+public async Task<IActionResult> GetById(Guid id)  // No role check!
+```
+
+**Risk:** A user with basic authentication could access sensitive family data (addresses, phone numbers, children info).
+
+**Fix:**
+```csharp
+[HttpGet("{id:guid}")]
+[Authorize(Roles = "Coordinator,Admin,BoardMember")]
+public async Task<IActionResult> GetById(Guid id)
+```
+
+---
+
+### CR-003: Bootstrap Admin Endpoint Security Risk
+
+**File:** `src/FamilyRelocation.API/Controllers/AuthController.cs:360-406`
+**Issue:** `POST /api/auth/bootstrap-admin` allows ANY authenticated user to grant themselves Admin role.
+
+**Risk:** First user to authenticate in a fresh deployment becomes admin. Compromised basic account can escalate to admin.
+
+**Recommendation:**
+- Remove this endpoint and use manual admin provisioning
+- Or require a secure bootstrap token from environment variable
+- Or disable after first admin is created
+
+---
+
+### CR-004: Unvalidated File Extension in Document Upload
+
+**File:** `src/FamilyRelocation.API/Controllers/DocumentsController.cs:217`
+**Issue:** File extension extracted from user-supplied filename without validation.
+
+**Risk:** Malicious files (.exe, .sh) could be uploaded disguised with allowed content-type.
+
+**Fix:** Whitelist allowed extensions:
+```csharp
+private static readonly string[] AllowedExtensions = ["pdf", "jpg", "jpeg", "png", "doc", "docx"];
+var extension = Path.GetExtension(originalFileName).TrimStart('.').ToLower();
+if (!AllowedExtensions.Contains(extension))
+    return BadRequest(new { message = "File extension not allowed" });
+```
+
+---
+
 ## HIGH Priority Issues
 
-### H-001: Generic Exception Catching in Multiple Places
+### H-001: N+1 Query Issue in Phone Number Search
 
-**Files:**
-- `src/FamilyRelocation.API/Program.cs:154`
-- `src/FamilyRelocation.Infrastructure/Services/SesEmailService.cs:48`
-- `src/FamilyRelocation.Infrastructure/AWS/CognitoAuthenticationService.cs` (5 locations)
+**File:** `src/FamilyRelocation.Application/Applicants/Queries/GetApplicants/GetApplicantsQueryHandler.cs:57-58`
+**Issue:** Phone number search generates N+1 queries.
 
-**Issue:** Catching generic `Exception` can mask specific errors and make debugging harder.
+```csharp
+a.Husband.PhoneNumbers.Any(p => p.Number.Contains(phoneSearch))
+```
 
-**Recommendation:** Consider catching more specific exceptions where appropriate, though the current implementation does log the exceptions which helps with debugging.
+**Risk:** For 100 applicants, this generates ~101 queries instead of 1.
 
-### H-002: Hardcoded CORS Origins
+**Fix:** Ensure the query is optimized by EF Core or use a join-based approach.
+
+---
+
+### H-002: Case-Insensitive Search Uses In-Memory ToLower()
+
+**File:** `src/FamilyRelocation.Application/Applicants/Queries/GetApplicants/GetApplicantsQueryHandler.cs:49-58`
+**Issue:** `ToLower()` is executed in-memory, bypassing database indexes.
+
+```csharp
+a.Husband.FirstName.ToLower().Contains(search)
+```
+
+**Fix:** Use PostgreSQL's `EF.Functions.ILike()`:
+```csharp
+EF.Functions.ILike(a.Husband.FirstName, $"%{search}%")
+```
+
+---
+
+### H-003: Missing Rate Limiting on Auth Endpoints
+
+**File:** `src/FamilyRelocation.API/Controllers/AuthController.cs:39-83`
+**Issue:** Login endpoint has no rate limiting, enabling brute force attacks.
+
+**Recommendation:** Implement rate limiting using `AspNetCoreRateLimit` or similar middleware.
+
+---
+
+### H-004: CORS Allows Any Method/Header with Credentials
+
+**File:** `src/FamilyRelocation.API/Program.cs:172-184`
+**Issue:** `AllowAnyMethod()` and `AllowAnyHeader()` combined with `AllowCredentials()`.
+
+**Fix:** Explicitly specify allowed methods and headers:
+```csharp
+.WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+.WithHeaders("Authorization", "Content-Type", "X-Cognito-Id-Token")
+```
+
+---
+
+### H-005: Generic Exception Catching
+
+**Files:** Multiple locations in CognitoAuthenticationService.cs
+**Issue:** Catching generic `Exception` can mask specific errors.
+
+**Status:** Acceptable for now - exceptions are logged.
+
+---
+
+### H-006: Hardcoded CORS Origins Fallback
 
 **File:** `src/FamilyRelocation.API/Program.cs:177`
 
@@ -63,9 +162,7 @@ ValidAudience = cognitoClientId,
 ?? ["http://localhost:5173", "http://localhost:3000"];
 ```
 
-**Issue:** Default CORS origins are hardcoded. In production, these should come from configuration only.
-
-**Recommendation:** Remove the hardcoded fallback for production builds or make it environment-specific.
+**Recommendation:** Remove fallback for production or make environment-specific.
 
 ---
 
@@ -175,19 +272,24 @@ ${printContent.innerHTML}
 
 ## Recommendations for v0.1.0 Release
 
-### Must Do
-1. Add comment explaining JWT audience validation workaround
-2. Review CORS configuration for staging/production
+### Must Do (Before Production)
+1. **CR-002:** Add role authorization to `GetApplicantById` endpoint
+2. **CR-003:** Secure or remove `bootstrap-admin` endpoint
+3. **CR-004:** Validate file extensions in document upload
+4. **H-003:** Implement rate limiting on auth endpoints
+5. Add comment explaining JWT audience validation workaround
 
-### Should Do
-1. Add environment-specific CORS configuration
-2. Review generic exception catching in Cognito service
-3. Consider adding `.http` file to `.gitignore`
+### Should Do (High Priority)
+1. **H-001/H-002:** Optimize N+1 queries and case-insensitive search
+2. **H-004:** Restrict CORS methods and headers explicitly
+3. Review CORS configuration for staging/production
+4. Add pagination limits to all list endpoints
 
 ### Nice to Have
 1. Increase test coverage for handlers
 2. Add integration tests for user management
 3. Add frontend component tests
+4. Add health checks for AWS services (S3, Cognito, SES)
 
 ---
 
