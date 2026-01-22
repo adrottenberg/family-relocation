@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Typography, Card, Row, Col, Spin, Statistic, List, Space, Tag } from 'antd';
+import { Typography, Card, Row, Col, Spin, Statistic, List, Space, Tag, Empty, Button } from 'antd';
 import {
   UserOutlined,
   HomeOutlined,
@@ -7,8 +7,11 @@ import {
   CheckCircleOutlined,
   SearchOutlined,
   FileTextOutlined,
+  CalendarOutlined,
+  RightOutlined,
 } from '@ant-design/icons';
-import { dashboardApi, activitiesApi, DashboardStatsDto, ActivityDto } from '../../api';
+import { useNavigate } from 'react-router-dom';
+import { dashboardApi, activitiesApi, showingsApi, DashboardStatsDto, ActivityDto, ShowingListDto } from '../../api';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 
@@ -20,19 +23,23 @@ const { Title, Text } = Typography;
  * Dashboard page showing statistics and recent activity
  */
 const DashboardPage = () => {
+  const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStatsDto | null>(null);
   const [activities, setActivities] = useState<ActivityDto[]>([]);
+  const [upcomingShowings, setUpcomingShowings] = useState<ShowingListDto[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [statsData, activitiesData] = await Promise.all([
+        const [statsData, activitiesData, showingsData] = await Promise.all([
           dashboardApi.getStats(),
           activitiesApi.getRecent(10),
+          showingsApi.getUpcoming(),
         ]);
         setStats(statsData);
         setActivities(activitiesData);
+        setUpcomingShowings(showingsData.slice(0, 5)); // Show top 5 upcoming
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);
       } finally {
@@ -147,6 +154,84 @@ const DashboardPage = () => {
         </Col>
       </Row>
 
+      {/* Upcoming Showings */}
+      <Title level={4} style={{ marginTop: 32 }}>
+        <CalendarOutlined /> Upcoming Showings
+      </Title>
+      <Card
+        extra={
+          <Button type="link" onClick={() => navigate('/showings')} icon={<RightOutlined />}>
+            View All
+          </Button>
+        }
+      >
+        {upcomingShowings.length === 0 ? (
+          <Empty description="No upcoming showings" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+        ) : (
+          <List
+            dataSource={upcomingShowings}
+            renderItem={(showing) => (
+              <List.Item
+                actions={[
+                  <Button type="link" size="small" onClick={() => navigate('/showings')}>
+                    View
+                  </Button>,
+                ]}
+              >
+                <List.Item.Meta
+                  avatar={
+                    showing.propertyPhotoUrl ? (
+                      <img
+                        src={showing.propertyPhotoUrl}
+                        alt={showing.propertyStreet}
+                        style={{ width: 60, height: 45, objectFit: 'cover', borderRadius: 4 }}
+                      />
+                    ) : (
+                      <div
+                        style={{
+                          width: 60,
+                          height: 45,
+                          background: '#f0f0f0',
+                          borderRadius: 4,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        <HomeOutlined style={{ color: '#999' }} />
+                      </div>
+                    )
+                  }
+                  title={
+                    <Space>
+                      <Text strong>{showing.propertyStreet}</Text>
+                      <Text type="secondary">({showing.propertyCity})</Text>
+                    </Space>
+                  }
+                  description={
+                    <Space direction="vertical" size={0}>
+                      <Text>{showing.applicantName} Family</Text>
+                      <Space>
+                        <Tag
+                          color={dayjs(showing.scheduledDate).isSame(dayjs(), 'day') ? 'red' : 'blue'}
+                        >
+                          {dayjs(showing.scheduledDate).isSame(dayjs(), 'day')
+                            ? 'Today'
+                            : dayjs(showing.scheduledDate).format('ddd, MMM D')}
+                        </Tag>
+                        <Text type="secondary">
+                          <ClockCircleOutlined /> {formatShowingTime(showing.scheduledTime)}
+                        </Text>
+                      </Space>
+                    </Space>
+                  }
+                />
+              </List.Item>
+            )}
+          />
+        )}
+      </Card>
+
       {/* Recent Activity */}
       <Title level={4} style={{ marginTop: 32 }}>
         <FileTextOutlined /> Recent Activity
@@ -193,6 +278,17 @@ const getEntityColor = (entityType: string): string => {
     default:
       return 'default';
   }
+};
+
+const formatShowingTime = (timeStr: string): string => {
+  const [hours, minutes] = timeStr.split(':');
+  const date = new Date();
+  date.setHours(parseInt(hours), parseInt(minutes));
+  return date.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
 };
 
 export default DashboardPage;

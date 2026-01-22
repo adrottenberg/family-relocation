@@ -11,11 +11,16 @@ public class ScheduleShowingCommandHandler : IRequestHandler<ScheduleShowingComm
 {
     private readonly IApplicationDbContext _context;
     private readonly ICurrentUserService _currentUserService;
+    private readonly IActivityLogger _activityLogger;
 
-    public ScheduleShowingCommandHandler(IApplicationDbContext context, ICurrentUserService currentUserService)
+    public ScheduleShowingCommandHandler(
+        IApplicationDbContext context,
+        ICurrentUserService currentUserService,
+        IActivityLogger activityLogger)
     {
         _context = context;
         _currentUserService = currentUserService;
+        _activityLogger = activityLogger;
     }
 
     public async Task<ShowingDto> Handle(ScheduleShowingCommand request, CancellationToken cancellationToken)
@@ -56,6 +61,16 @@ public class ScheduleShowingCommandHandler : IRequestHandler<ScheduleShowingComm
                 .ThenInclude(m => m.HousingSearch)
                     .ThenInclude(h => h.Applicant)
             .FirstAsync(s => s.Id == showing.Id, cancellationToken);
+
+        var familyName = savedShowing.PropertyMatch.HousingSearch.Applicant?.Husband?.LastName ?? "Unknown";
+        var propertyAddress = $"{savedShowing.PropertyMatch.Property.Address.Street}, {savedShowing.PropertyMatch.Property.Address.City}";
+
+        await _activityLogger.LogAsync(
+            "Showing",
+            showing.Id,
+            "Scheduled",
+            $"Showing scheduled for {familyName} family at {propertyAddress} on {request.ScheduledDate:MMM d, yyyy} at {request.ScheduledTime}",
+            cancellationToken);
 
         return savedShowing.ToDto();
     }

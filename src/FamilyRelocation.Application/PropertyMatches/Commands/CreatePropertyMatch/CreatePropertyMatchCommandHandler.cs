@@ -13,15 +13,18 @@ public class CreatePropertyMatchCommandHandler : IRequestHandler<CreatePropertyM
     private readonly IApplicationDbContext _context;
     private readonly ICurrentUserService _currentUserService;
     private readonly IPropertyMatchingService _matchingService;
+    private readonly IActivityLogger _activityLogger;
 
     public CreatePropertyMatchCommandHandler(
         IApplicationDbContext context,
         ICurrentUserService currentUserService,
-        IPropertyMatchingService matchingService)
+        IPropertyMatchingService matchingService,
+        IActivityLogger activityLogger)
     {
         _context = context;
         _currentUserService = currentUserService;
         _matchingService = matchingService;
+        _activityLogger = activityLogger;
     }
 
     public async Task<PropertyMatchDto> Handle(CreatePropertyMatchCommand request, CancellationToken cancellationToken)
@@ -81,6 +84,16 @@ public class CreatePropertyMatchCommandHandler : IRequestHandler<CreatePropertyM
             .Include(m => m.HousingSearch)
                 .ThenInclude(h => h.Applicant)
             .FirstAsync(m => m.Id == match.Id, cancellationToken);
+
+        var familyName = savedMatch.HousingSearch.Applicant?.Husband?.LastName ?? "Unknown";
+        var propertyAddress = $"{property.Address.Street}, {property.Address.City}";
+
+        await _activityLogger.LogAsync(
+            "PropertyMatch",
+            match.Id,
+            "Created",
+            $"Manual match created between {familyName} family and property at {propertyAddress} (Score: {score}%)",
+            cancellationToken);
 
         return savedMatch.ToDto(_matchingService);
     }

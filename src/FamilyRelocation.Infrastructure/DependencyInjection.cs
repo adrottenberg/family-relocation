@@ -56,6 +56,9 @@ public static class DependencyInjection
         // Activity Logging
         services.AddScoped<IActivityLogger, ActivityLogger>();
 
+        // Domain Event Dispatcher
+        services.AddScoped<IDomainEventDispatcher, DomainEventDispatcher>();
+
         // Email Service
         services.AddScoped<IEmailService, SesEmailService>();
 
