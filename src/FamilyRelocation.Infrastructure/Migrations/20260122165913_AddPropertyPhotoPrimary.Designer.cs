@@ -3,6 +3,7 @@ using System;
 using FamilyRelocation.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FamilyRelocation.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260122165913_AddPropertyPhotoPrimary")]
+    partial class AddPropertyPhotoPrimary
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -514,63 +517,6 @@ namespace FamilyRelocation.Infrastructure.Migrations
                     b.ToTable("Properties", (string)null);
                 });
 
-            modelBuilder.Entity("FamilyRelocation.Domain.Entities.PropertyMatch", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("CreatedBy")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("HousingSearchId")
-                        .HasColumnType("uuid");
-
-                    b.Property<bool>("IsAutoMatched")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false);
-
-                    b.Property<string>("MatchDetails")
-                        .HasColumnType("jsonb");
-
-                    b.Property<int>("MatchScore")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime?>("ModifiedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("ModifiedBy")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Notes")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
-
-                    b.Property<Guid>("PropertyId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("HousingSearchId");
-
-                    b.HasIndex("MatchScore");
-
-                    b.HasIndex("PropertyId");
-
-                    b.HasIndex("Status");
-
-                    b.HasIndex("HousingSearchId", "PropertyId")
-                        .IsUnique();
-
-                    b.ToTable("PropertyMatches", (string)null);
-                });
-
             modelBuilder.Entity("FamilyRelocation.Domain.Entities.PropertyPhoto", b =>
                 {
                     b.Property<Guid>("Id")
@@ -611,60 +557,6 @@ namespace FamilyRelocation.Infrastructure.Migrations
                         .HasFilter("\"IsPrimary\" = true");
 
                     b.ToTable("PropertyPhotos", (string)null);
-                });
-
-            modelBuilder.Entity("FamilyRelocation.Domain.Entities.Showing", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid?>("BrokerUserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime?>("CompletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("CreatedBy")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime?>("ModifiedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("ModifiedBy")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Notes")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
-
-                    b.Property<Guid>("PropertyMatchId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateOnly>("ScheduledDate")
-                        .HasColumnType("date");
-
-                    b.Property<TimeOnly>("ScheduledTime")
-                        .HasColumnType("time without time zone");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("BrokerUserId");
-
-                    b.HasIndex("PropertyMatchId");
-
-                    b.HasIndex("ScheduledDate");
-
-                    b.HasIndex("Status");
-
-                    b.HasIndex("ScheduledDate", "Status");
-
-                    b.ToTable("Showings", (string)null);
                 });
 
             modelBuilder.Entity("FamilyRelocation.Domain.Entities.StageTransitionRequirement", b =>
@@ -1322,25 +1214,6 @@ namespace FamilyRelocation.Infrastructure.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("FamilyRelocation.Domain.Entities.PropertyMatch", b =>
-                {
-                    b.HasOne("FamilyRelocation.Domain.Entities.HousingSearch", "HousingSearch")
-                        .WithMany()
-                        .HasForeignKey("HousingSearchId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("FamilyRelocation.Domain.Entities.Property", "Property")
-                        .WithMany()
-                        .HasForeignKey("PropertyId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("HousingSearch");
-
-                    b.Navigation("Property");
-                });
-
             modelBuilder.Entity("FamilyRelocation.Domain.Entities.PropertyPhoto", b =>
                 {
                     b.HasOne("FamilyRelocation.Domain.Entities.Property", null)
@@ -1348,17 +1221,6 @@ namespace FamilyRelocation.Infrastructure.Migrations
                         .HasForeignKey("PropertyId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-                });
-
-            modelBuilder.Entity("FamilyRelocation.Domain.Entities.Showing", b =>
-                {
-                    b.HasOne("FamilyRelocation.Domain.Entities.PropertyMatch", "PropertyMatch")
-                        .WithMany()
-                        .HasForeignKey("PropertyMatchId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("PropertyMatch");
                 });
 
             modelBuilder.Entity("FamilyRelocation.Domain.Entities.StageTransitionRequirement", b =>

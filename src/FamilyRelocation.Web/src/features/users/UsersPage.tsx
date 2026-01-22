@@ -10,7 +10,6 @@ import {
   message,
   Popconfirm,
   Tooltip,
-  Alert,
 } from 'antd';
 import {
   SearchOutlined,
@@ -67,7 +66,6 @@ const UsersPage = () => {
   const {
     data: usersData,
     isLoading,
-    error,
     refetch,
   } = useQuery({
     queryKey: ['users', searchText],

@@ -81,8 +81,14 @@ public class PropertyPhotoConfiguration : IEntityTypeConfiguration<PropertyPhoto
         builder.Property(p => p.Url).HasMaxLength(500).IsRequired();
         builder.Property(p => p.Description).HasMaxLength(500);
         builder.Property(p => p.DisplayOrder).HasDefaultValue(0);
+        builder.Property(p => p.IsPrimary).HasDefaultValue(false);
         builder.Property(p => p.UploadedAt).IsRequired();
 
         builder.HasIndex(p => new { p.PropertyId, p.DisplayOrder });
+
+        // Unique filtered index to ensure only one primary photo per property
+        builder.HasIndex(p => new { p.PropertyId, p.IsPrimary })
+            .HasFilter("\"IsPrimary\" = true")
+            .IsUnique();
     }
 }

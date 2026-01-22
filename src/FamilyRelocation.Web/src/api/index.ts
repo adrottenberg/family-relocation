@@ -7,6 +7,8 @@ export * from './endpoints/documents';
 export * from './endpoints/documentTypes';
 export * from './endpoints/stageRequirements';
 export * from './endpoints/properties';
+export * from './endpoints/propertyMatches';
+export * from './endpoints/showings';
 export * from './endpoints/dashboard';
 export * from './endpoints/reminders';
 export * from './endpoints/activities';

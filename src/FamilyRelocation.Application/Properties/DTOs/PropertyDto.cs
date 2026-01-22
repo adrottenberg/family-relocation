@@ -64,5 +64,6 @@ public record PropertyPhotoDto
     public required string Url { get; init; }
     public string? Description { get; init; }
     public int DisplayOrder { get; init; }
+    public bool IsPrimary { get; init; }
     public required DateTime UploadedAt { get; init; }
 }

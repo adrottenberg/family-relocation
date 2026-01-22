@@ -49,7 +49,7 @@ public static class PropertyMapper
             SquareFeet = property.SquareFeet,
             Status = property.Status.ToString(),
             MlsNumber = property.MlsNumber,
-            PrimaryPhotoUrl = property.Photos.OrderBy(p => p.DisplayOrder).FirstOrDefault()?.Url
+            PrimaryPhotoUrl = property.PrimaryPhoto?.Url
         };
     }
 
@@ -79,6 +79,7 @@ public static class PropertyMapper
             Url = photo.Url,
             Description = photo.Description,
             DisplayOrder = photo.DisplayOrder,
+            IsPrimary = photo.IsPrimary,
             UploadedAt = photo.UploadedAt
         };
     }

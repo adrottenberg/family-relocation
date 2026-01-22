@@ -28,6 +28,8 @@ import {
   DollarOutlined,
   UploadOutlined,
   DeleteOutlined,
+  StarOutlined,
+  StarFilled,
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { propertiesApi } from '../../api';
@@ -96,6 +98,17 @@ const PropertyDetailPage = () => {
     },
     onError: () => {
       message.error('Failed to delete photo');
+    },
+  });
+
+  const setPrimaryPhotoMutation = useMutation({
+    mutationFn: (photoId: string) => propertiesApi.setPrimaryPhoto(id!, photoId),
+    onSuccess: () => {
+      message.success('Primary photo updated');
+      queryClient.invalidateQueries({ queryKey: ['property', id] });
+    },
+    onError: () => {
+      message.error('Failed to set primary photo');
     },
   });
 
@@ -294,46 +307,106 @@ const PropertyDetailPage = () => {
             }
           >
             {property.photos.length > 0 ? (
-              <Image.PreviewGroup>
-                <Row gutter={[16, 16]}>
-                  {property.photos.map((photo: PropertyPhotoDto) => (
-                    <Col key={photo.id} xs={12} sm={8} md={6}>
-                      <div style={{ position: 'relative' }}>
-                        <Image
-                          src={photo.url}
-                          alt={photo.description || 'Property photo'}
-                          style={{ width: '100%', height: 150, objectFit: 'cover' }}
-                        />
-                        <Popconfirm
-                          title="Delete this photo?"
-                          onConfirm={() => deletePhotoMutation.mutate(photo.id)}
-                          okText="Delete"
-                          cancelText="Cancel"
-                        >
-                          <Button
-                            type="text"
-                            danger
-                            icon={<DeleteOutlined />}
-                            size="small"
-                            style={{
+              <>
+                {/* Primary Photo - Large Display */}
+                {(() => {
+                  const primaryPhoto = property.photos.find(p => p.isPrimary) || property.photos[0];
+                  return primaryPhoto && (
+                    <div style={{ marginBottom: 16 }}>
+                      <Image
+                        src={primaryPhoto.url}
+                        alt={primaryPhoto.description || 'Primary property photo'}
+                        style={{ width: '100%', maxHeight: 400, objectFit: 'cover', borderRadius: 8 }}
+                      />
+                      <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <StarFilled style={{ color: '#faad14' }} />
+                        <Text type="secondary">Primary Photo</Text>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Photo Thumbnails */}
+                <Image.PreviewGroup>
+                  <Row gutter={[16, 16]}>
+                    {property.photos.map((photo: PropertyPhotoDto) => (
+                      <Col key={photo.id} xs={12} sm={8} md={6}>
+                        <div style={{
+                          position: 'relative',
+                          border: photo.isPrimary ? '2px solid #faad14' : '2px solid transparent',
+                          borderRadius: 4,
+                        }}>
+                          <Image
+                            src={photo.url}
+                            alt={photo.description || 'Property photo'}
+                            style={{ width: '100%', height: 150, objectFit: 'cover' }}
+                          />
+                          {/* Primary indicator badge */}
+                          {photo.isPrimary && (
+                            <div style={{
                               position: 'absolute',
                               top: 4,
-                              right: 4,
-                              background: 'rgba(255,255,255,0.8)',
-                            }}
-                            loading={deletePhotoMutation.isPending}
-                          />
-                        </Popconfirm>
-                      </div>
-                      {photo.description && (
-                        <Text type="secondary" style={{ fontSize: 12 }}>
-                          {photo.description}
-                        </Text>
-                      )}
-                    </Col>
-                  ))}
-                </Row>
-              </Image.PreviewGroup>
+                              left: 4,
+                              background: '#faad14',
+                              color: 'white',
+                              padding: '2px 6px',
+                              borderRadius: 4,
+                              fontSize: 11,
+                              fontWeight: 500,
+                            }}>
+                              Primary
+                            </div>
+                          )}
+                          {/* Action buttons */}
+                          <div style={{
+                            position: 'absolute',
+                            top: 4,
+                            right: 4,
+                            display: 'flex',
+                            gap: 4,
+                          }}>
+                            {!photo.isPrimary && (
+                              <Button
+                                type="text"
+                                icon={<StarOutlined />}
+                                size="small"
+                                title="Set as primary"
+                                onClick={() => setPrimaryPhotoMutation.mutate(photo.id)}
+                                style={{
+                                  background: 'rgba(255,255,255,0.8)',
+                                }}
+                                loading={setPrimaryPhotoMutation.isPending}
+                              />
+                            )}
+                            <Popconfirm
+                              title="Delete this photo?"
+                              onConfirm={() => deletePhotoMutation.mutate(photo.id)}
+                              okText="Delete"
+                              cancelText="Cancel"
+                            >
+                              <Button
+                                type="text"
+                                danger
+                                icon={<DeleteOutlined />}
+                                size="small"
+                                style={{
+                                  background: 'rgba(255,255,255,0.8)',
+                                }}
+                                loading={deletePhotoMutation.isPending}
+                              />
+                            </Popconfirm>
+                          </div>
+                        </div>
+                        {photo.description && (
+                          <Text type="secondary" style={{ fontSize: 12 }}>
+                            {photo.description}
+                          </Text>
+                        )}
+                      </Col>
+                    ))}
+                  </Row>
+                </Image.PreviewGroup>
+              </>
             ) : (
               <Empty description="No photos uploaded" />
             )}

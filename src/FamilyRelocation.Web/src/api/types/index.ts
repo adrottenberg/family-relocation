@@ -273,6 +273,7 @@ export interface PropertyPhotoDto {
   url: string;
   description?: string;
   displayOrder: number;
+  isPrimary: boolean;
   uploadedAt: string;
 }
 
@@ -294,6 +295,108 @@ export interface PropertyStatsDto {
 }
 
 // Activity types are defined in endpoints/activities.ts
+
+// Property Match types
+export type PropertyMatchStatus = 'MatchIdentified' | 'ShowingRequested' | 'ApplicantInterested' | 'OfferMade' | 'ApplicantRejected';
+
+export interface PropertyMatchDto {
+  id: string;
+  housingSearchId: string;
+  propertyId: string;
+  status: PropertyMatchStatus;
+  matchScore: number;
+  matchDetails?: MatchScoreBreakdownDto;
+  notes?: string;
+  isAutoMatched: boolean;
+  createdAt: string;
+  modifiedAt?: string;
+  property: PropertyListDto;
+  applicant: MatchApplicantDto;
+}
+
+export interface PropertyMatchListDto {
+  id: string;
+  housingSearchId: string;
+  propertyId: string;
+  status: PropertyMatchStatus;
+  matchScore: number;
+  isAutoMatched: boolean;
+  createdAt: string;
+  propertyStreet: string;
+  propertyCity: string;
+  propertyPrice: number;
+  propertyBedrooms: number;
+  propertyBathrooms: number;
+  propertyPhotoUrl?: string;
+  applicantId: string;
+  applicantName: string;
+}
+
+export interface MatchScoreBreakdownDto {
+  budgetScore: number;
+  maxBudgetScore: number;
+  budgetNotes?: string;
+  bedroomsScore: number;
+  maxBedroomsScore: number;
+  bedroomsNotes?: string;
+  bathroomsScore: number;
+  maxBathroomsScore: number;
+  bathroomsNotes?: string;
+  cityScore: number;
+  maxCityScore: number;
+  cityNotes?: string;
+  featuresScore: number;
+  maxFeaturesScore: number;
+  featuresNotes?: string;
+  totalScore: number;
+  maxTotalScore: number;
+}
+
+export interface MatchApplicantDto {
+  id: string;
+  familyName: string;
+  husbandFirstName?: string;
+  wifeFirstName?: string;
+}
+
+// Showing types
+export type ShowingStatus = 'Scheduled' | 'Completed' | 'Cancelled' | 'NoShow';
+
+export interface ShowingDto {
+  id: string;
+  propertyMatchId: string;
+  scheduledDate: string;
+  scheduledTime: string;
+  status: ShowingStatus;
+  notes?: string;
+  brokerUserId?: string;
+  brokerUserName?: string;
+  createdAt: string;
+  modifiedAt?: string;
+  completedAt?: string;
+  propertyId: string;
+  propertyStreet: string;
+  propertyCity: string;
+  propertyPrice: number;
+  propertyPhotoUrl?: string;
+  applicantId: string;
+  applicantName: string;
+}
+
+export interface ShowingListDto {
+  id: string;
+  propertyMatchId: string;
+  scheduledDate: string;
+  scheduledTime: string;
+  status: ShowingStatus;
+  brokerUserId?: string;
+  propertyId: string;
+  propertyStreet: string;
+  propertyCity: string;
+  propertyPhotoUrl?: string;
+  applicantId: string;
+  applicantName: string;
+}
 
 // Reminder types
 export type ReminderPriority = 'Low' | 'Normal' | 'High' | 'Urgent';
