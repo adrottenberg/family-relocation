@@ -3079,19 +3079,92 @@ A comprehensive code review is running in background (agent af9c221). Check resu
 
 ---
 
+## SESSION: January 22, 2026 - Shul Walking Distance Feature
+
+### What Was Implemented
+
+**Shul Walking Distance Feature** - Calculate and display walking distances from properties to synagogues
+
+#### Domain Layer
+- **Shul entity** (`src/FamilyRelocation.Domain/Entities/Shul.cs`)
+  - Name, Address, Coordinates, Rabbi, Denomination, Website, Notes, IsActive
+  - Factory method `Create()`, `Update()`, `Deactivate()`, `Activate()`
+- **PropertyShulDistance entity** - Walking distance from a property to a shul
+  - PropertyId, ShulId, DistanceMiles, WalkingTimeMinutes, CalculatedAt
+- **ShulCreated domain event** - Triggers distance calculation when shul is added
+
+#### Infrastructure Layer
+- **OsrmWalkingDistanceService** - Uses OpenStreetMap/OSRM for walking distances
+  - Nominatim for geocoding addresses to coordinates
+  - OSRM public API for walking route calculation
+- **EF Core configurations** for Shuls and PropertyShulDistances tables
+- **Migration: AddShulsAndDistances** (needs to be applied)
+
+#### Application Layer
+- **Shul CRUD** - CreateShul, UpdateShul, DeleteShul commands
+- **Queries** - GetShuls, GetShulById, GetPropertyShulDistances
+- **Event Handlers:**
+  - `PropertyCreatedDistanceHandler` - Calculates distances when property is created
+  - `ShulCreatedDistanceHandler` - Calculates distances to all active properties when shul is added
+
+#### API Layer
+- **ShulsController** at `/api/shuls`
+  - GET /api/shuls - List with filters
+  - GET /api/shuls/{id} - Get by ID
+  - POST /api/shuls - Create (Admin/Coordinator)
+  - PUT /api/shuls/{id} - Update (Admin/Coordinator)
+  - DELETE /api/shuls/{id} - Soft delete (Admin/Coordinator)
+  - GET /api/shuls/distances/property/{propertyId} - Get distances for property
+
+#### Frontend
+- **API client** (`src/FamilyRelocation.Web/src/api/endpoints/shuls.ts`)
+- **Types** - ShulDto, ShulListDto, PropertyShulDistanceDto
+- **PropertyDetailPage** - Added "Walking to Shuls" card in sidebar showing distances
+
+### How It Works
+1. **Add shuls** via API (Coordinators/Admin can create them)
+2. **Auto-geocoding** - If coordinates not provided, system uses Nominatim to geocode address
+3. **Property created** → Event handler calculates distances to all shuls
+4. **Shul created** → Event handler calculates distances from all active properties
+5. **View on property** → Property detail page shows walking distances sorted by time
+
+### Files Created/Modified
+- `src/FamilyRelocation.Domain/Entities/Shul.cs` (NEW)
+- `src/FamilyRelocation.Domain/Events/ShulCreated.cs` (NEW)
+- `src/FamilyRelocation.Infrastructure/Persistence/Configurations/ShulConfiguration.cs` (NEW)
+- `src/FamilyRelocation.Infrastructure/Services/OsrmWalkingDistanceService.cs` (NEW)
+- `src/FamilyRelocation.Application/Common/Interfaces/IWalkingDistanceService.cs` (NEW)
+- `src/FamilyRelocation.Application/Shuls/` (NEW - full CRUD + queries + event handlers)
+- `src/FamilyRelocation.API/Controllers/ShulsController.cs` (NEW)
+- `src/FamilyRelocation.Web/src/api/endpoints/shuls.ts` (NEW)
+- `src/FamilyRelocation.Web/src/features/properties/PropertyDetailPage.tsx` (MODIFIED)
+- `src/FamilyRelocation.API/FamilyRelocation.API.http.example` (MODIFIED)
+
+### Pending
+- **Apply migration** - `dotnet ef database update` (requires database access)
+- **Add shuls via admin UI** - User will add shuls manually, no seed data
+
+### Future Backlog Items (Deferred)
+1. **Automated Schedule Recommendation** - Present suggested showing schedules based on identified property matches and property open house schedules
+2. **Shul management UI** - Admin page to manage shuls (currently API-only)
+
+---
+
 ## FOR NEXT SESSION
 
 ### To Quickly Re-Establish Context
 
 **Just say:**
-> "I'm the developer building the Family Relocation CRM. Property Matching and Showings features are complete. Let's continue with [next task]."
+> "I'm the developer building the Family Relocation CRM. Property Matching, Showings, and Shul Walking Distance features are complete. Let's continue with [next task]."
 
 **I'll know:**
-- Complete domain model (Applicant, HousingSearch, Property, ActivityLog, FollowUpReminder, UserRole)
+- Complete domain model (Applicant, HousingSearch, Property, PropertyMatch, Showing, Shul, ActivityLog, FollowUpReminder, UserRole)
 - Tech stack (.NET 10, React + Ant Design, AWS Cognito, PostgreSQL)
 - **Database-managed roles** (not Cognito groups) via UserRole entity
 - **Four roles:** Admin, Coordinator, BoardMember, Broker
-- User management, Reminders, Activity Logging all complete
+- Property matching with scoring algorithm (Budget 30, Bedrooms 20, Bathrooms 15, City 20, Features 15)
+- Showings linked to PropertyMatch with status workflow
+- Shul walking distances using OpenStreetMap/OSRM
 - Query object pattern, all handlers in Application layer
 - EF Core ToJson() for JSON columns
 - Global exception handler and validation pipeline
@@ -3109,7 +3182,12 @@ A comprehensive code review is running in background (agent af9c221). Check resu
    - Calls `GET /api/auth/me/roles` → updates authStore with real roles
    - Sidebar re-renders with correct menu items
 
-3. **Current Branch:** `feature/user-management` (pushed to origin)
+3. **Walking Distance Service:**
+   - Uses OSRM public API (https://router.project-osrm.org)
+   - Uses Nominatim for geocoding (https://nominatim.openstreetmap.org)
+   - Auto-calculates on property/shul creation via domain events
+
+4. **Current Branch:** `bugfix/code-review-fixes-v0-clean`
 
 **And we can pick up exactly where we left off.**
 

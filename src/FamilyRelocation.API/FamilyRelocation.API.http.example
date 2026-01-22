@@ -1069,3 +1069,91 @@ Authorization: Bearer {{accessToken}}
     "status": "NoShow",
     "notes": "Family did not arrive. Will follow up."
 }
+
+###############################################################################
+# SHULS API
+# Manage synagogues and walking distances from properties
+###############################################################################
+
+# Variables for Shuls
+@shulId = paste-shul-id-here
+
+### Get All Shuls
+# Returns paginated list with optional filters
+GET {{baseUrl}}/api/shuls?page=1&pageSize=50
+Authorization: Bearer {{accessToken}}
+
+### Get Shuls with Filters
+# Filter by city, denomination, or search by name/rabbi
+GET {{baseUrl}}/api/shuls?search=Young Israel&city=Union
+Authorization: Bearer {{accessToken}}
+
+### Get Shuls Including Inactive
+GET {{baseUrl}}/api/shuls?includeInactive=true
+Authorization: Bearer {{accessToken}}
+
+### Get Shul by ID
+GET {{baseUrl}}/api/shuls/{{shulId}}
+Authorization: Bearer {{accessToken}}
+
+### Create Shul
+# Coordinates will be auto-geocoded from address if not provided
+POST {{baseUrl}}/api/shuls
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "name": "Congregation Israel",
+    "street": "339 Mountain Ave",
+    "city": "Springfield",
+    "state": "NJ",
+    "zipCode": "07081",
+    "rabbi": "Rabbi David Cohen",
+    "denomination": "Orthodox",
+    "website": "https://example.com",
+    "notes": "Main shul for the community"
+}
+
+### Create Shul with Coordinates
+POST {{baseUrl}}/api/shuls
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "name": "Young Israel of Union",
+    "street": "2065 Vauxhall Rd",
+    "city": "Union",
+    "state": "NJ",
+    "zipCode": "07083",
+    "latitude": 40.6892,
+    "longitude": -74.2631,
+    "rabbi": "Rabbi Moshe Katz",
+    "denomination": "Young Israel"
+}
+
+### Update Shul
+PUT {{baseUrl}}/api/shuls/{{shulId}}
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "id": "{{shulId}}",
+    "name": "Congregation Israel of Springfield",
+    "street": "339 Mountain Ave",
+    "city": "Springfield",
+    "state": "NJ",
+    "zipCode": "07081",
+    "rabbi": "Rabbi David Cohen",
+    "denomination": "Orthodox",
+    "website": "https://congregationisrael.org",
+    "notes": "Updated notes"
+}
+
+### Delete Shul (Deactivates)
+DELETE {{baseUrl}}/api/shuls/{{shulId}}
+Authorization: Bearer {{accessToken}}
+
+### Get Walking Distances from Property to All Shuls
+# Returns calculated walking distances and times
+GET {{baseUrl}}/api/shuls/distances/property/{{propertyId}}
+Authorization: Bearer {{accessToken}}

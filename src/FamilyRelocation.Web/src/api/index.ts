@@ -13,4 +13,5 @@ export * from './endpoints/dashboard';
 export * from './endpoints/reminders';
 export * from './endpoints/activities';
 export * from './endpoints/users';
+export * from './endpoints/shuls';
 export * from './types';

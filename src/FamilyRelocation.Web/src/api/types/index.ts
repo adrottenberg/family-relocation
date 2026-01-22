@@ -457,3 +457,50 @@ export interface DueRemindersReportDto {
   upcomingCount: number;
   totalOpenCount: number;
 }
+
+// Shul types
+export interface ShulDto {
+  id: string;
+  name: string;
+  address: ShulAddressDto;
+  location?: ShulCoordinatesDto;
+  rabbi?: string;
+  denomination?: string;
+  website?: string;
+  notes?: string;
+  isActive: boolean;
+  createdAt: string;
+  modifiedAt?: string;
+}
+
+export interface ShulListDto {
+  id: string;
+  name: string;
+  street: string;
+  city: string;
+  rabbi?: string;
+  denomination?: string;
+  isActive: boolean;
+}
+
+export interface ShulAddressDto {
+  street: string;
+  street2?: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  fullAddress?: string;
+}
+
+export interface ShulCoordinatesDto {
+  latitude: number;
+  longitude: number;
+}
+
+export interface PropertyShulDistanceDto {
+  shulId: string;
+  shulName: string;
+  distanceMiles: number;
+  walkingTimeMinutes: number;
+  calculatedAt: string;
+}

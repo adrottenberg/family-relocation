@@ -65,6 +65,9 @@ public static class DependencyInjection
         // User Role Service
         services.AddScoped<IUserRoleService, UserRoleService>();
 
+        // Walking Distance Service (OSRM/OpenStreetMap)
+        services.AddHttpClient<IWalkingDistanceService, OsrmWalkingDistanceService>();
+
         return services;
     }
 }

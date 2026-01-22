@@ -30,10 +30,11 @@ import {
   DeleteOutlined,
   StarOutlined,
   StarFilled,
+  EnvironmentOutlined,
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { propertiesApi } from '../../api';
-import type { PropertyPhotoDto } from '../../api/types';
+import { propertiesApi, shulsApi } from '../../api';
+import type { PropertyPhotoDto, PropertyShulDistanceDto } from '../../api/types';
 import { PropertyMatchList, CreatePropertyMatchModal } from '../propertyMatches';
 import { ScheduleShowingModal } from '../showings';
 
@@ -70,6 +71,12 @@ const PropertyDetailPage = () => {
   const { data: property, isLoading, error } = useQuery({
     queryKey: ['property', id],
     queryFn: () => propertiesApi.getById(id!),
+    enabled: !!id,
+  });
+
+  const { data: shulDistances, isLoading: shulDistancesLoading } = useQuery({
+    queryKey: ['property-shul-distances', id],
+    queryFn: () => shulsApi.getPropertyDistances(id!),
     enabled: !!id,
   });
 
@@ -441,6 +448,47 @@ const PropertyDetailPage = () => {
                 </Descriptions.Item>
               )}
             </Descriptions>
+          </Card>
+
+          {/* Walking Distances to Shuls */}
+          <Card
+            title={
+              <Space>
+                <EnvironmentOutlined />
+                Walking to Shuls
+              </Space>
+            }
+            style={{ marginTop: 24 }}
+            size="small"
+          >
+            {shulDistancesLoading ? (
+              <div style={{ textAlign: 'center', padding: 16 }}>
+                <Spin size="small" />
+              </div>
+            ) : shulDistances && shulDistances.length > 0 ? (
+              <div style={{ maxHeight: 300, overflowY: 'auto' }}>
+                {shulDistances.map((distance: PropertyShulDistanceDto) => (
+                  <div
+                    key={distance.shulId}
+                    style={{
+                      padding: '8px 0',
+                      borderBottom: '1px solid #f0f0f0',
+                    }}
+                  >
+                    <div style={{ fontWeight: 500 }}>{distance.shulName}</div>
+                    <div style={{ display: 'flex', gap: 16, color: '#666', fontSize: 13 }}>
+                      <span>{distance.distanceMiles.toFixed(2)} mi</span>
+                      <span>{distance.walkingTimeMinutes} min walk</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <Empty
+                description="No shul distances calculated yet"
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+              />
+            )}
           </Card>
 
           {/* Interested Families / Property Matches */}
