@@ -265,18 +265,17 @@ Now requires explicit CORS configuration in production - app fails fast if missi
 
 ## MEDIUM Priority Issues
 
-### M-001: Test Password in .http File
+### M-001: Test Password in .http File - ✅ FIXED
 
 **File:** `src/FamilyRelocation.API/FamilyRelocation.API.http:5-6`
+**Status:** **FIXED**
 
-```
-@testPassword = YourPassword123!
-@newPassword = NewPassword123!
-```
+**Original Issue:** Test credentials in source control (though these are placeholders).
 
-**Issue:** Test credentials in source control (though these are placeholders).
-
-**Recommendation:** Add `.http` files to `.gitignore` or use environment variables.
+**Fix Applied:**
+1. Renamed `.http` file to `.http.example` (template for documentation)
+2. Added `*.http` to `.gitignore`
+3. Developers copy template to `.http` and add real credentials locally (ignored by git)
 
 ### M-002: Database Connection String in Test Config
 
