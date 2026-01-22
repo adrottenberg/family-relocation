@@ -81,4 +81,8 @@ export const propertiesApi = {
   deletePhoto: async (propertyId: string, photoId: string): Promise<void> => {
     await apiClient.delete(`/properties/${propertyId}/photos/${photoId}`);
   },
+
+  setPrimaryPhoto: async (propertyId: string, photoId: string): Promise<void> => {
+    await apiClient.put(`/properties/${propertyId}/photos/${photoId}/primary`);
+  },
 };

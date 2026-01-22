@@ -1,12 +1,17 @@
 using FamilyRelocation.Domain.Common;
 using FamilyRelocation.Domain.Enums;
+using FamilyRelocation.Domain.Events;
 using FamilyRelocation.Domain.ValueObjects;
 
 namespace FamilyRelocation.Domain.Entities;
 
-public class Property : AuditableEntity
+public class Property : Entity<Guid>
 {
-    public Guid Id { get; private set; }
+    // Audit fields (managed manually since we extend Entity<Guid> for domain events)
+    public Guid CreatedBy { get; private set; }
+    public DateTime CreatedAt { get; private set; }
+    public Guid? ModifiedBy { get; private set; }
+    public DateTime? ModifiedAt { get; private set; }
     public Address Address { get; private set; } = null!;
     public Money Price { get; private set; } = null!;
     public int Bedrooms { get; private set; }
@@ -64,6 +69,8 @@ public class Property : AuditableEntity
             CreatedBy = createdBy,
             CreatedAt = DateTime.UtcNow
         };
+
+        property.AddDomainEvent(new PropertyCreated(property.Id));
 
         return property;
     }
@@ -130,6 +137,36 @@ public class Property : AuditableEntity
             _photos.Remove(photo);
     }
 
+    /// <summary>
+    /// Gets the primary photo, or the first photo by display order if none is marked as primary.
+    /// </summary>
+    public PropertyPhoto? PrimaryPhoto =>
+        _photos.FirstOrDefault(p => p.IsPrimary) ??
+        _photos.OrderBy(p => p.DisplayOrder).FirstOrDefault();
+
+    /// <summary>
+    /// Sets the specified photo as the primary photo for this property.
+    /// Clears primary flag from any other photos.
+    /// </summary>
+    public void SetPrimaryPhoto(Guid photoId, Guid modifiedBy)
+    {
+        var photo = _photos.FirstOrDefault(p => p.Id == photoId);
+        if (photo == null)
+            throw new InvalidOperationException($"Photo with ID {photoId} not found on this property");
+
+        // Clear primary flag from all photos
+        foreach (var p in _photos)
+        {
+            p.SetAsPrimary(false);
+        }
+
+        // Set the specified photo as primary
+        photo.SetAsPrimary(true);
+
+        ModifiedBy = modifiedBy;
+        ModifiedAt = DateTime.UtcNow;
+    }
+
     public decimal CalculateMonthlyPayment(decimal downPayment, decimal annualInterestRate, int loanTermYears)
     {
         var loanAmount = Price.Amount - downPayment;
@@ -159,6 +196,7 @@ public class PropertyPhoto
     public string Url { get; private set; } = null!;
     public string? Description { get; private set; }
     public int DisplayOrder { get; private set; }
+    public bool IsPrimary { get; private set; }
     public DateTime UploadedAt { get; private set; }
 
     private PropertyPhoto() { }
@@ -172,7 +210,13 @@ public class PropertyPhoto
             Url = url ?? throw new ArgumentNullException(nameof(url)),
             Description = description,
             DisplayOrder = displayOrder,
+            IsPrimary = false,
             UploadedAt = DateTime.UtcNow
         };
+    }
+
+    internal void SetAsPrimary(bool isPrimary)
+    {
+        IsPrimary = isPrimary;
     }
 }

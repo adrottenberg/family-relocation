@@ -42,6 +42,7 @@ const PublicApplicationPage = () => {
         address: data.address,
         currentKehila: data.currentKehila,
         shabbosShul: data.shabbosShul,
+        housingPreferences: data.housingPreferences,
       }),
     onSuccess: () => {
       setSubmitted(true);

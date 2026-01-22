@@ -1,13 +1,13 @@
-import { Drawer, Form, Input, Select, Button, Space, Collapse, message, InputNumber, Checkbox } from 'antd';
+import { Modal, Form, Input, Select, Button, Space, Collapse, message, InputNumber, Checkbox } from 'antd';
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { applicantsApi } from '../../api';
-import type { PhoneNumberDto, ChildDto } from '../../api/types';
+import { applicantsApi, shulsApi } from '../../api';
+import type { PhoneNumberDto, ChildDto, HousingPreferencesDto } from '../../api/types';
 
 const { Panel } = Collapse;
 
-interface CreateApplicantDrawerProps {
+interface CreateApplicantModalProps {
   open: boolean;
   onClose: () => void;
 }
@@ -42,6 +42,7 @@ interface FormValues {
   children?: ChildDto[];
   currentKehila?: string;
   shabbosShul?: string;
+  housingPreferences?: HousingPreferencesDto;
 }
 
 const PHONE_TYPES = [
@@ -55,12 +56,6 @@ const GENDERS = [
   { value: 'Female', label: 'Female' },
 ];
 
-const SHULS = [
-  { value: 'Bobov', label: 'Bobov' },
-  { value: 'Yismach Yisroel', label: 'Yismach Yisroel' },
-  { value: 'Nassad', label: 'Nassad' },
-];
-
 const US_STATES = [
   'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
   'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
@@ -69,10 +64,40 @@ const US_STATES = [
   'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY',
 ].map(s => ({ value: s, label: s }));
 
-const CreateApplicantDrawer = ({ open, onClose }: CreateApplicantDrawerProps) => {
+const FEATURES = [
+  { value: 'Garage', label: 'Garage' },
+  { value: 'Finished Basement', label: 'Finished Basement' },
+  { value: 'Central Air', label: 'Central Air' },
+  { value: 'In-Ground Pool', label: 'In-Ground Pool' },
+  { value: 'Large Backyard', label: 'Large Backyard' },
+  { value: 'Modern Kitchen', label: 'Modern Kitchen' },
+  { value: 'Master Suite', label: 'Master Suite' },
+  { value: 'Home Office', label: 'Home Office' },
+];
+
+const MOVE_TIMELINES = [
+  { value: 'Immediate', label: 'Immediate (within 1 month)' },
+  { value: 'ShortTerm', label: 'Short Term (1-3 months)' },
+  { value: 'MediumTerm', label: 'Medium Term (3-6 months)' },
+  { value: 'LongTerm', label: 'Long Term (6+ months)' },
+  { value: 'Flexible', label: 'Flexible' },
+];
+
+const CreateApplicantModal = ({ open, onClose }: CreateApplicantModalProps) => {
   const [form] = Form.useForm<FormValues>();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+
+  // Fetch shuls from API
+  const { data: shulsData, isLoading: shulsLoading } = useQuery({
+    queryKey: ['shuls'],
+    queryFn: () => shulsApi.getAll({ pageSize: 100 }),
+  });
+
+  const shulOptions = shulsData?.items.map(shul => ({
+    value: shul.id,
+    label: shul.name,
+  })) || [];
 
   const mutation = useMutation({
     mutationFn: (values: FormValues) => {
@@ -100,6 +125,7 @@ const CreateApplicantDrawer = ({ open, onClose }: CreateApplicantDrawerProps) =>
         children: values.children?.filter(c => c.age !== undefined),
         currentKehila: values.currentKehila,
         shabbosShul: values.shabbosShul,
+        housingPreferences: values.housingPreferences,
       });
     },
     onSuccess: (data) => {
@@ -132,13 +158,12 @@ const CreateApplicantDrawer = ({ open, onClose }: CreateApplicantDrawerProps) =>
   };
 
   return (
-    <Drawer
+    <Modal
       title="Add New Applicant"
-      placement="right"
-      width={600}
       open={open}
-      onClose={handleCancel}
-      extra={
+      onCancel={handleCancel}
+      width={800}
+      footer={
         <Space>
           <Button onClick={handleCancel}>Cancel</Button>
           <Button type="primary" onClick={handleSubmit} loading={mutation.isPending}>
@@ -146,6 +171,7 @@ const CreateApplicantDrawer = ({ open, onClose }: CreateApplicantDrawerProps) =>
           </Button>
         </Space>
       }
+      styles={{ body: { maxHeight: '70vh', overflowY: 'auto' } }}
     >
       <Form
         form={form}
@@ -412,18 +438,60 @@ const CreateApplicantDrawer = ({ open, onClose }: CreateApplicantDrawerProps) =>
               <Input />
             </Form.Item>
 
-            <Form.Item name="shabbosShul" label="Preferred Shul">
+            <Form.Item name="shabbosShul" label="Shabbos Shul">
+              <Input placeholder="Current Shabbos shul (optional)" />
+            </Form.Item>
+          </Panel>
+
+          {/* Housing Preferences Section */}
+          <Panel header="Housing Preferences" key="preferences">
+            <Form.Item name={['housingPreferences', 'budgetAmount']} label="Budget">
+              <InputNumber
+                style={{ width: '100%' }}
+                formatter={(value) => `$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                parser={(value) => Number(value?.replace(/\$\s?|(,*)/g, '') || 0) as unknown as 0}
+                placeholder="Enter budget"
+                min={0}
+                step={10000}
+              />
+            </Form.Item>
+
+            <Space>
+              <Form.Item name={['housingPreferences', 'minBedrooms']} label="Min Bedrooms">
+                <InputNumber min={1} max={10} style={{ width: 100 }} />
+              </Form.Item>
+
+              <Form.Item name={['housingPreferences', 'minBathrooms']} label="Min Bathrooms">
+                <InputNumber min={1} max={10} step={0.5} style={{ width: 100 }} />
+              </Form.Item>
+            </Space>
+
+            <Form.Item name={['housingPreferences', 'requiredFeatures']} label="Desired Features">
+              <Checkbox.Group options={FEATURES} />
+            </Form.Item>
+
+            <Form.Item name={['housingPreferences', 'moveTimeline']} label="Move Timeline">
+              <Select placeholder="When are they looking to move?" options={MOVE_TIMELINES} allowClear />
+            </Form.Item>
+
+            <Form.Item name={['housingPreferences', 'shulProximity', 'maxWalkingMinutes']} label="Max Walk to Shul (minutes)">
+              <InputNumber min={1} max={60} placeholder="15" style={{ width: 150 }} />
+            </Form.Item>
+
+            <Form.Item name={['housingPreferences', 'shulProximity', 'preferredShulIds']} label="Preferred Shuls">
               <Select
                 mode="multiple"
-                options={SHULS}
-                placeholder="Select shuls"
+                placeholder="Select preferred shuls"
+                options={shulOptions}
+                loading={shulsLoading}
+                allowClear
               />
             </Form.Item>
           </Panel>
         </Collapse>
       </Form>
-    </Drawer>
+    </Modal>
   );
 };
 
-export default CreateApplicantDrawer;
+export default CreateApplicantModal;

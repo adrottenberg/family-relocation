@@ -56,11 +56,21 @@ public static class DependencyInjection
         // Activity Logging
         services.AddScoped<IActivityLogger, ActivityLogger>();
 
+        // Domain Event Dispatcher
+        services.AddScoped<IDomainEventDispatcher, DomainEventDispatcher>();
+
         // Email Service
         services.AddScoped<IEmailService, SesEmailService>();
 
         // User Role Service
         services.AddScoped<IUserRoleService, UserRoleService>();
+
+        // Walking Distance Service (OSRM/OpenStreetMap)
+        services.AddHttpClient<IWalkingDistanceService, OsrmWalkingDistanceService>();
+
+        // Background Task Queue (for async domain event processing)
+        services.AddSingleton<IBackgroundTaskQueue, BackgroundTaskQueue>();
+        services.AddHostedService<BackgroundTaskService>();
 
         return services;
     }

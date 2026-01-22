@@ -6,6 +6,200 @@
     "version": "v1"
   },
   "paths": {
+    "/api/activities/{id}": {
+      "get": {
+        "tags": [
+          "Activities"
+        ],
+        "summary": "Gets a single activity by ID.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The activity's unique identifier",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/activities/recent": {
+      "get": {
+        "tags": [
+          "Activities"
+        ],
+        "summary": "Gets the most recent activities across all entities.",
+        "parameters": [
+          {
+            "name": "count",
+            "in": "query",
+            "description": "Number of activities to return (default: 10, max: 50)",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/activities/{entityType}/{entityId}": {
+      "get": {
+        "tags": [
+          "Activities"
+        ],
+        "summary": "Gets activities for a specific entity.",
+        "parameters": [
+          {
+            "name": "entityType",
+            "in": "path",
+            "description": "The type of entity (e.g., \"Applicant\", \"Property\")",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "entityId",
+            "in": "path",
+            "description": "The entity's unique identifier",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number (default: 1)",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "description": "Items per page (default: 20, max: 100)",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/activities": {
+      "post": {
+        "tags": [
+          "Activities"
+        ],
+        "summary": "Logs a manual activity (phone call, note, etc.) for an entity.",
+        "requestBody": {
+          "description": "The activity details",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LogActivityRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LogActivityRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/LogActivityRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogActivityResult"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogActivityResult"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogActivityResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/applicants": {
       "get": {
         "tags": [
@@ -76,7 +270,7 @@
           {
             "name": "Stage",
             "in": "query",
-            "description": "Filter by housing search stage (Searching, UnderContract, Closed, MovedIn, Paused).",
+            "description": "Filter by housing search stage (AwaitingAgreements, Searching, UnderContract, Closed, MovedIn, Paused).",
             "schema": {
               "type": "string"
             }
@@ -171,6 +365,26 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         }
       }
@@ -180,7 +394,7 @@
         "tags": [
           "Applicants"
         ],
-        "summary": "Gets an applicant by ID",
+        "summary": "Gets an applicant by ID with full details including PII.",
         "parameters": [
           {
             "name": "id",
@@ -363,181 +577,13 @@
         }
       }
     },
-    "/api/applicants/{id}/stage": {
-      "put": {
-        "tags": [
-          "Applicants"
-        ],
-        "summary": "Changes the housing search stage for an applicant.\r\nRequired fields depend on the target stage.",
-        "description": "Stage transitions and required fields:\r\n- Searching: Reason optional (when returning from UnderContract/Closed if contract fell through)\r\n- Paused: Reason optional\r\n- UnderContract: Contract details required (price, optional propertyId and expectedClosingDate)\r\n- Closed: ClosingDate required\r\n- MovedIn: MovedInDate required\r\n            \r\nNote: This only applies to approved applicants with an active HousingSearch.\r\nUse PUT /api/applicants/{id}/board-review to set board decision (which creates HousingSearch on approval).\r\nUse GET /api/stage-requirements/{fromStage}/{toStage} to check required documents for transitions.",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ChangeStageRequest"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ChangeStageRequest"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/ChangeStageRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/applicants/{id}/preferences": {
-      "put": {
-        "tags": [
-          "Applicants"
-        ],
-        "summary": "Updates the housing preferences for an applicant's housing search.",
-        "description": "Updates housing search criteria including:\r\n- Budget amount\r\n- Minimum bedrooms/bathrooms\r\n- Required features (e.g., basement, garage, yard)\r\n- Shul proximity preferences\r\n- Move timeline",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/HousingPreferencesDto"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/HousingPreferencesDto"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/HousingPreferencesDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/applicants/{id}/board-review": {
       "put": {
         "tags": [
           "Applicants"
         ],
         "summary": "Sets the board's decision on an applicant and updates status accordingly.",
-        "description": "Records the board's decision and automatically updates the applicant:\r\n- Approved: Sets ApplicationStatus to Approved and creates a HousingSearch in Searching stage.\r\n  Returns the new housingSearchId. Applicant can now proceed through the pipeline.\r\n- Rejected: Sets ApplicationStatus to Rejected. No HousingSearch is created. Terminal state.\r\n- Deferred: No status change. Applicant remains in Submitted status for future review.\r\n- Pending: No status change. Resets decision to pending.\r\n            \r\nCan only set decision when applicant has Submitted status.\r\nThe 'notes' field can be used for approval notes, rejection reason, or deferral reason.",
+        "description": "Records the board's decision and automatically updates the applicant:\r\n- Approved: Sets ApplicationStatus to Approved and creates a HousingSearch in AwaitingAgreements stage.\r\n  Returns the new housingSearchId. Applicant can now proceed through the pipeline.\r\n- Rejected: Sets ApplicationStatus to Rejected. No HousingSearch is created. Terminal state.\r\n- Deferred: No status change. Applicant remains in Submitted status for future review.\r\n- Pending: No status change. Resets decision to pending.\r\n            \r\nCan only set decision when applicant has Submitted status.\r\nThe 'notes' field can be used for approval notes, rejection reason, or deferral reason.",
         "parameters": [
           {
             "name": "id",
@@ -913,6 +959,26 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         }
       }
@@ -986,6 +1052,26 @@
           },
           "401": {
             "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1146,6 +1232,26 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         }
       }
@@ -1182,6 +1288,26 @@
           },
           "400": {
             "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1252,6 +1378,26 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         }
       }
@@ -1288,6 +1434,26 @@
           },
           "400": {
             "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1415,6 +1581,169 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/auth/me/roles": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Gets the current user's roles from the database.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserRolesResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserRolesResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserRolesResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/bootstrap-admin": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Bootstrap endpoint: Creates the first Admin user if no admins exist.\r\nRequires a bootstrap token from configuration (Security:BootstrapToken).\r\nSet this in user-secrets or environment variables, then remove after first admin is created.",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "description": "Bootstrap token from configuration.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/BootstrapResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BootstrapResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BootstrapResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/dashboard/stats": {
+      "get": {
+        "tags": [
+          "Dashboard"
+        ],
+        "summary": "Gets dashboard statistics including applicant and property counts.",
+        "responses": {
+          "200": {
+            "description": "OK"
           }
         }
       }
@@ -1674,7 +2003,7 @@
         "tags": [
           "DocumentTypes"
         ],
-        "summary": "Creates a new document type.",
+        "summary": "Creates a new document type. Admin only.",
         "requestBody": {
           "content": {
             "application/json": {
@@ -1726,7 +2055,7 @@
         "tags": [
           "DocumentTypes"
         ],
-        "summary": "Updates an existing document type.",
+        "summary": "Updates an existing document type. Admin only.",
         "parameters": [
           {
             "name": "id",
@@ -1787,7 +2116,7 @@
         "tags": [
           "DocumentTypes"
         ],
-        "summary": "Deactivates (soft deletes) a document type.",
+        "summary": "Deactivates (soft deletes) a document type. Admin only.",
         "parameters": [
           {
             "name": "id",
@@ -1846,6 +2175,2673 @@
         }
       }
     },
+    "/api/housing-searches/{id}/stage": {
+      "put": {
+        "tags": [
+          "HousingSearches"
+        ],
+        "summary": "Changes the stage of a housing search.\r\nRequired fields depend on the target stage.",
+        "description": "Stage transitions and required fields:\r\n- AwaitingAgreements -> Searching: Requires agreements to be signed (checked by document requirements)\r\n- Searching -> UnderContract: Contract details required (price, optional propertyId and expectedClosingDate)\r\n- Searching -> Paused: Reason optional\r\n- UnderContract -> Closed: ClosingDate required\r\n- UnderContract -> Searching: Contract fell through, reason optional\r\n- Closed -> MovedIn: MovedInDate required\r\n- Closed -> Searching: Contract fell through after closing, reason optional\r\n- Paused -> Searching: Resume house hunting\r\n            \r\nUse GET /api/stage-requirements/{fromStage}/{toStage} to check required documents for transitions.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeHousingSearchStageRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeHousingSearchStageRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeHousingSearchStageRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/housing-searches/{id}/preferences": {
+      "put": {
+        "tags": [
+          "HousingSearches"
+        ],
+        "summary": "Updates the housing preferences for a housing search.",
+        "description": "Housing preferences can be updated at any time during the search.\r\nInitial preferences are copied from the applicant when the housing search is created.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateHousingSearchPreferencesRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateHousingSearchPreferencesRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateHousingSearchPreferencesRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/properties": {
+      "get": {
+        "tags": [
+          "Properties"
+        ],
+        "summary": "Gets a paginated list of properties with search, filter, and sort options.",
+        "parameters": [
+          {
+            "name": "Page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "PageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "Search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "MinPrice",
+            "in": "query",
+            "schema": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          {
+            "name": "MaxPrice",
+            "in": "query",
+            "schema": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          {
+            "name": "MinBeds",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "City",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "SortBy",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "SortOrder",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Properties"
+        ],
+        "summary": "Creates a new property listing.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePropertyCommand"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePropertyCommand"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePropertyCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/properties/{id}": {
+      "get": {
+        "tags": [
+          "Properties"
+        ],
+        "summary": "Gets a property by ID.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Properties"
+        ],
+        "summary": "Updates an existing property.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePropertyCommand"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePropertyCommand"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePropertyCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Properties"
+        ],
+        "summary": "Soft deletes a property.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/properties/{id}/status": {
+      "put": {
+        "tags": [
+          "Properties"
+        ],
+        "summary": "Updates a property's listing status.",
+        "description": "Valid statuses: Active, UnderContract, Sold, OffMarket",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateStatusRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateStatusRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateStatusRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/properties/{id}/photos": {
+      "post": {
+        "tags": [
+          "Properties"
+        ],
+        "summary": "Uploads a photo for a property.",
+        "description": "Maximum 10 photos per property. Accepted formats: JPEG, PNG.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "description": {
+                    "type": "string"
+                  }
+                }
+              },
+              "encoding": {
+                "file": {
+                  "style": "form"
+                },
+                "description": {
+                  "style": "form"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/properties/{id}/photos/{photoId}": {
+      "delete": {
+        "tags": [
+          "Properties"
+        ],
+        "summary": "Deletes a photo from a property.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "photoId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/properties/{id}/photos/{photoId}/primary": {
+      "put": {
+        "tags": [
+          "Properties"
+        ],
+        "summary": "Sets a photo as the primary photo for a property.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "photoId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/property-matches": {
+      "get": {
+        "tags": [
+          "PropertyMatches"
+        ],
+        "summary": "Gets property matches for a housing search or property.",
+        "description": "Provide either housingSearchId or propertyId (not both).",
+        "parameters": [
+          {
+            "name": "housingSearchId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "propertyId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PropertyMatchListDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PropertyMatchListDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PropertyMatchListDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "PropertyMatches"
+        ],
+        "summary": "Creates a new property match (manual matching).",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePropertyMatchRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePropertyMatchRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePropertyMatchRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PropertyMatchDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PropertyMatchDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PropertyMatchDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/property-matches/{id}": {
+      "get": {
+        "tags": [
+          "PropertyMatches"
+        ],
+        "summary": "Gets a property match by ID.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PropertyMatchDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PropertyMatchDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PropertyMatchDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "PropertyMatches"
+        ],
+        "summary": "Deletes a property match.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/property-matches/{id}/status": {
+      "put": {
+        "tags": [
+          "PropertyMatches"
+        ],
+        "summary": "Updates a property match status.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePropertyMatchStatusRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePropertyMatchStatusRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePropertyMatchStatusRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PropertyMatchDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PropertyMatchDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PropertyMatchDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/property-matches/request-showings": {
+      "post": {
+        "tags": [
+          "PropertyMatches"
+        ],
+        "summary": "Requests showings for one or more property matches (batch operation).",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "text/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": { }
+              },
+              "application/json": {
+                "schema": { }
+              },
+              "text/json": {
+                "schema": { }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reminders": {
+      "get": {
+        "tags": [
+          "Reminders"
+        ],
+        "summary": "Gets reminders with optional filtering.",
+        "parameters": [
+          {
+            "name": "entityType",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "entityId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/ReminderStatus"
+            }
+          },
+          {
+            "name": "priority",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/ReminderPriority"
+            }
+          },
+          {
+            "name": "assignedToUserId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "dueDateFrom",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "dueDateTo",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "overdueOnly",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "dueTodayOnly",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "take",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RemindersListDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RemindersListDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RemindersListDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Reminders"
+        ],
+        "summary": "Creates a new reminder.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateReminderRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateReminderRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateReminderRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReminderDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReminderDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReminderDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reminders/{id}": {
+      "get": {
+        "tags": [
+          "Reminders"
+        ],
+        "summary": "Gets a reminder by ID.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReminderDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReminderDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReminderDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Reminders"
+        ],
+        "summary": "Updates an existing reminder.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateReminderRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateReminderRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateReminderRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReminderDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReminderDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReminderDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reminders/due-report": {
+      "get": {
+        "tags": [
+          "Reminders"
+        ],
+        "summary": "Gets a due reminders report for the dashboard.",
+        "description": "Returns overdue reminders, reminders due today, and upcoming reminders\r\nfor the next N days (default 7).",
+        "parameters": [
+          {
+            "name": "upcomingDays",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 7
+            }
+          },
+          {
+            "name": "assignedToUserId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/DueRemindersReportDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DueRemindersReportDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DueRemindersReportDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reminders/entity/{entityType}/{entityId}": {
+      "get": {
+        "tags": [
+          "Reminders"
+        ],
+        "summary": "Gets reminders for a specific entity (applicant, housing search, etc.).",
+        "parameters": [
+          {
+            "name": "entityType",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "entityId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/ReminderStatus"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RemindersListDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RemindersListDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RemindersListDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reminders/{id}/complete": {
+      "post": {
+        "tags": [
+          "Reminders"
+        ],
+        "summary": "Marks a reminder as completed.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reminders/{id}/snooze": {
+      "post": {
+        "tags": [
+          "Reminders"
+        ],
+        "summary": "Snoozes a reminder until a specified date.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SnoozeReminderRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SnoozeReminderRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SnoozeReminderRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reminders/{id}/dismiss": {
+      "post": {
+        "tags": [
+          "Reminders"
+        ],
+        "summary": "Dismisses a reminder (soft delete).",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reminders/{id}/reopen": {
+      "post": {
+        "tags": [
+          "Reminders"
+        ],
+        "summary": "Reopens a completed or dismissed reminder.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/showings": {
+      "get": {
+        "tags": [
+          "Showings"
+        ],
+        "summary": "Gets showings with optional filters.",
+        "parameters": [
+          {
+            "name": "fromDate",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "toDate",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "brokerId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "propertyMatchId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ShowingListDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ShowingListDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ShowingListDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Showings"
+        ],
+        "summary": "Schedules a new showing.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduleShowingRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduleShowingRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduleShowingRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShowingDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShowingDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShowingDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/showings/upcoming": {
+      "get": {
+        "tags": [
+          "Showings"
+        ],
+        "summary": "Gets upcoming showings (today and future).",
+        "parameters": [
+          {
+            "name": "days",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ShowingListDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ShowingListDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ShowingListDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/showings/{id}": {
+      "get": {
+        "tags": [
+          "Showings"
+        ],
+        "summary": "Gets a showing by ID.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShowingDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShowingDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShowingDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/showings/{id}/reschedule": {
+      "put": {
+        "tags": [
+          "Showings"
+        ],
+        "summary": "Reschedules a showing to a new date/time.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RescheduleShowingRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RescheduleShowingRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RescheduleShowingRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShowingDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShowingDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShowingDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/showings/{id}/status": {
+      "put": {
+        "tags": [
+          "Showings"
+        ],
+        "summary": "Updates showing status (complete, cancel, no-show).",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateShowingStatusRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateShowingStatusRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateShowingStatusRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShowingDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShowingDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShowingDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/shuls": {
+      "get": {
+        "tags": [
+          "Shuls"
+        ],
+        "summary": "Gets a paginated list of shuls with optional filtering.",
+        "parameters": [
+          {
+            "name": "Page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "PageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "Search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "City",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Denomination",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "IncludeInactive",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Shuls"
+        ],
+        "summary": "Creates a new shul.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateShulCommand"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateShulCommand"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateShulCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/shuls/{id}": {
+      "get": {
+        "tags": [
+          "Shuls"
+        ],
+        "summary": "Gets a shul by ID.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Shuls"
+        ],
+        "summary": "Updates an existing shul.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateShulCommand"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateShulCommand"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateShulCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Shuls"
+        ],
+        "summary": "Deletes (deactivates) a shul.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/shuls/distances/property/{propertyId}": {
+      "get": {
+        "tags": [
+          "Shuls"
+        ],
+        "summary": "Gets walking distances from a property to all shuls.",
+        "parameters": [
+          {
+            "name": "propertyId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/stage-requirements": {
       "get": {
         "tags": [
@@ -1862,7 +4858,7 @@
         "tags": [
           "StageRequirements"
         ],
-        "summary": "Creates a new stage transition requirement.",
+        "summary": "Creates a new stage transition requirement. Admin only.",
         "requestBody": {
           "content": {
             "application/json": {
@@ -1973,7 +4969,7 @@
         "tags": [
           "StageRequirements"
         ],
-        "summary": "Deletes a stage transition requirement.",
+        "summary": "Deletes a stage transition requirement. Admin only.",
         "parameters": [
           {
             "name": "id",
@@ -1988,6 +4984,464 @@
         "responses": {
           "204": {
             "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users": {
+      "post": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Creates a new user with a temporary password.",
+        "requestBody": {
+          "description": "User creation details.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUserRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUserRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUserRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateUserResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateUserResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateUserResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Lists all users with optional filtering.",
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "description": "Search by email prefix (e.g., \"john\").",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Filter by status (e.g., \"CONFIRMED\", \"FORCE_CHANGE_PASSWORD\").",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum users to return (1-60, default 60).",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 60
+            }
+          },
+          {
+            "name": "paginationToken",
+            "in": "query",
+            "description": "Token for fetching next page.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserListResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserListResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/{userId}": {
+      "get": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Gets a specific user's details.",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "description": "The user's ID (email or Cognito username).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/{userId}/roles": {
+      "put": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Updates a user's roles.",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "description": "The user's ID.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "The new roles to assign.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRolesRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRolesRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRolesRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateRolesResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateRolesResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateRolesResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/{userId}/deactivate": {
+      "post": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Deactivates a user account (prevents login).",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "description": "The user's ID.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserStatusResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserStatusResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserStatusResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/{userId}/reactivate": {
+      "post": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Reactivates a disabled user account.",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "description": "The user's ID.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserStatusResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserStatusResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserStatusResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           },
           "404": {
             "description": "Not Found",
@@ -2068,6 +5522,30 @@
         ],
         "type": "string"
       },
+      "BootstrapResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Whether the operation succeeded."
+          },
+          "message": {
+            "type": "string",
+            "description": "Status message.",
+            "nullable": true
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "User's roles after the operation.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Response from bootstrap admin endpoint."
+      },
       "ChallengeRequest": {
         "required": [
           "challengeName",
@@ -2139,7 +5617,7 @@
         "additionalProperties": false,
         "description": "Response indicating an authentication challenge is required."
       },
-      "ChangeStageRequest": {
+      "ChangeHousingSearchStageRequest": {
         "required": [
           "newStage"
         ],
@@ -2147,7 +5625,7 @@
         "properties": {
           "newStage": {
             "type": "string",
-            "description": "Target stage: Searching, Paused, UnderContract, Closed, MovedIn.",
+            "description": "Target stage: AwaitingAgreements, Searching, Paused, UnderContract, Closed, MovedIn.",
             "nullable": true
           },
           "reason": {
@@ -2261,7 +5739,7 @@
         "properties": {
           "propertyId": {
             "type": "string",
-            "description": "Property ID (for future use when Property entity exists).",
+            "description": "Property ID (optional - for linking to Property entity).",
             "format": "uuid",
             "nullable": true
           },
@@ -2339,6 +5817,217 @@
         "additionalProperties": false,
         "description": "Request body for creating a document type."
       },
+      "CreatePropertyCommand": {
+        "required": [
+          "bathrooms",
+          "bedrooms",
+          "city",
+          "price",
+          "state",
+          "street",
+          "zipCode"
+        ],
+        "type": "object",
+        "properties": {
+          "street": {
+            "type": "string",
+            "nullable": true
+          },
+          "street2": {
+            "type": "string",
+            "nullable": true
+          },
+          "city": {
+            "type": "string",
+            "nullable": true
+          },
+          "state": {
+            "type": "string",
+            "nullable": true
+          },
+          "zipCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "price": {
+            "type": "number",
+            "format": "double"
+          },
+          "bedrooms": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "bathrooms": {
+            "type": "number",
+            "format": "double"
+          },
+          "squareFeet": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "lotSize": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "yearBuilt": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "annualTaxes": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "features": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "mlsNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreatePropertyMatchRequest": {
+        "required": [
+          "housingSearchId",
+          "propertyId"
+        ],
+        "type": "object",
+        "properties": {
+          "housingSearchId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "propertyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Request to create a new property match."
+      },
+      "CreateReminderRequest": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "entityType": {
+            "type": "string",
+            "nullable": true
+          },
+          "entityId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "dueTime": {
+            "type": "string",
+            "format": "time",
+            "nullable": true
+          },
+          "priority": {
+            "$ref": "#/components/schemas/ReminderPriority"
+          },
+          "assignedToUserId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "sendEmailNotification": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Request model for creating a reminder."
+      },
+      "CreateShulCommand": {
+        "required": [
+          "city",
+          "name",
+          "state",
+          "street",
+          "zipCode"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "street": {
+            "type": "string",
+            "nullable": true
+          },
+          "street2": {
+            "type": "string",
+            "nullable": true
+          },
+          "city": {
+            "type": "string",
+            "nullable": true
+          },
+          "state": {
+            "type": "string",
+            "nullable": true
+          },
+          "zipCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "latitude": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "longitude": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "rabbi": {
+            "type": "string",
+            "nullable": true
+          },
+          "denomination": {
+            "type": "string",
+            "nullable": true
+          },
+          "website": {
+            "type": "string",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "CreateStageRequirementRequest": {
         "type": "object",
         "properties": {
@@ -2360,6 +6049,103 @@
         },
         "additionalProperties": false,
         "description": "Request body for creating a stage requirement."
+      },
+      "CreateUserRequest": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Request to create a new user."
+      },
+      "CreateUserResponse": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "description": "The user's Cognito ID.",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "description": "The user's email.",
+            "nullable": true
+          },
+          "temporaryPassword": {
+            "type": "string",
+            "description": "Temporary password to share with the user.",
+            "nullable": true
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Assigned roles.",
+            "nullable": true
+          },
+          "message": {
+            "type": "string",
+            "description": "Success message.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Response after creating a user."
+      },
+      "DueRemindersReportDto": {
+        "type": "object",
+        "properties": {
+          "overdue": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReminderDto"
+            },
+            "nullable": true
+          },
+          "dueToday": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReminderDto"
+            },
+            "nullable": true
+          },
+          "upcoming": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReminderDto"
+            },
+            "nullable": true
+          },
+          "overdueCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "dueTodayCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "upcomingCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalOpenCount": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false,
+        "description": "DTO for the due reminders dashboard report."
       },
       "ForgotPasswordRequest": {
         "required": [
@@ -2466,6 +6252,66 @@
         "additionalProperties": false,
         "description": "Information about the husband/primary applicant."
       },
+      "LogActivityRequest": {
+        "type": "object",
+        "properties": {
+          "entityType": {
+            "type": "string",
+            "nullable": true
+          },
+          "entityId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "durationMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "outcome": {
+            "type": "string",
+            "nullable": true
+          },
+          "createFollowUp": {
+            "type": "boolean"
+          },
+          "followUpDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "followUpTitle": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Request body for logging a manual activity."
+      },
+      "LogActivityResult": {
+        "type": "object",
+        "properties": {
+          "activityId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "followUpReminderId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Result of logging an activity."
+      },
       "LoginRequest": {
         "required": [
           "email",
@@ -2486,6 +6332,108 @@
         },
         "additionalProperties": false,
         "description": "Request to authenticate a user with email and password."
+      },
+      "MatchApplicantDto": {
+        "required": [
+          "familyName",
+          "id"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "familyName": {
+            "type": "string",
+            "nullable": true
+          },
+          "husbandFirstName": {
+            "type": "string",
+            "nullable": true
+          },
+          "wifeFirstName": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Minimal applicant info for match display."
+      },
+      "MatchScoreBreakdownDto": {
+        "type": "object",
+        "properties": {
+          "budgetScore": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "maxBudgetScore": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "budgetNotes": {
+            "type": "string",
+            "nullable": true
+          },
+          "bedroomsScore": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "maxBedroomsScore": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "bedroomsNotes": {
+            "type": "string",
+            "nullable": true
+          },
+          "bathroomsScore": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "maxBathroomsScore": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "bathroomsNotes": {
+            "type": "string",
+            "nullable": true
+          },
+          "cityScore": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "maxCityScore": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "cityNotes": {
+            "type": "string",
+            "nullable": true
+          },
+          "featuresScore": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "maxFeaturesScore": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "featuresNotes": {
+            "type": "string",
+            "nullable": true
+          },
+          "totalScore": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "maxTotalScore": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Match score breakdown showing how points were calculated."
       },
       "PhoneNumberDto": {
         "required": [
@@ -2537,6 +6485,208 @@
           }
         },
         "additionalProperties": { }
+      },
+      "PropertyListDto": {
+        "required": [
+          "bathrooms",
+          "bedrooms",
+          "city",
+          "id",
+          "price",
+          "status",
+          "street"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "street": {
+            "type": "string",
+            "nullable": true
+          },
+          "city": {
+            "type": "string",
+            "nullable": true
+          },
+          "price": {
+            "type": "number",
+            "format": "double"
+          },
+          "bedrooms": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "bathrooms": {
+            "type": "number",
+            "format": "double"
+          },
+          "squareFeet": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "mlsNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "primaryPhotoUrl": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Lightweight property data for list views."
+      },
+      "PropertyMatchDto": {
+        "required": [
+          "applicant",
+          "createdAt",
+          "housingSearchId",
+          "id",
+          "isAutoMatched",
+          "matchScore",
+          "property",
+          "propertyId",
+          "status"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "housingSearchId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "propertyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "matchScore": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "matchDetails": {
+            "$ref": "#/components/schemas/MatchScoreBreakdownDto"
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "isAutoMatched": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "modifiedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "property": {
+            "$ref": "#/components/schemas/PropertyListDto"
+          },
+          "applicant": {
+            "$ref": "#/components/schemas/MatchApplicantDto"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Full property match details including nested property and applicant info."
+      },
+      "PropertyMatchListDto": {
+        "required": [
+          "applicantId",
+          "applicantName",
+          "createdAt",
+          "housingSearchId",
+          "id",
+          "isAutoMatched",
+          "matchScore",
+          "propertyBathrooms",
+          "propertyBedrooms",
+          "propertyCity",
+          "propertyId",
+          "propertyPrice",
+          "propertyStreet",
+          "status"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "housingSearchId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "propertyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "matchScore": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "isAutoMatched": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "propertyStreet": {
+            "type": "string",
+            "nullable": true
+          },
+          "propertyCity": {
+            "type": "string",
+            "nullable": true
+          },
+          "propertyPrice": {
+            "type": "number",
+            "format": "double"
+          },
+          "propertyBedrooms": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "propertyBathrooms": {
+            "type": "number",
+            "format": "double"
+          },
+          "propertyPhotoUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "applicantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "applicantName": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Lightweight property match for list views."
       },
       "RefreshTokenRequest": {
         "required": [
@@ -2632,6 +6782,178 @@
         "additionalProperties": false,
         "description": "Response after successfully registering a new user."
       },
+      "ReminderDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "dueTime": {
+            "type": "string",
+            "format": "time",
+            "nullable": true
+          },
+          "priority": {
+            "$ref": "#/components/schemas/ReminderPriority"
+          },
+          "entityType": {
+            "type": "string",
+            "nullable": true
+          },
+          "entityId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "entityDisplayName": {
+            "type": "string",
+            "nullable": true
+          },
+          "assignedToUserId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "assignedToUserName": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "$ref": "#/components/schemas/ReminderStatus"
+          },
+          "sendEmailNotification": {
+            "type": "boolean"
+          },
+          "snoozedUntil": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "snoozeCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdBy": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "createdByName": {
+            "type": "string",
+            "nullable": true
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "completedBy": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "isOverdue": {
+            "type": "boolean"
+          },
+          "isDueToday": {
+            "type": "boolean"
+          },
+          "sourceActivityId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "sourceActivityType": {
+            "type": "string",
+            "nullable": true
+          },
+          "sourceActivityTimestamp": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "DTO for follow-up reminder data."
+      },
+      "ReminderPriority": {
+        "enum": [
+          "Low",
+          "Normal",
+          "High",
+          "Urgent"
+        ],
+        "type": "string"
+      },
+      "ReminderStatus": {
+        "enum": [
+          "Open",
+          "Completed",
+          "Snoozed",
+          "Dismissed"
+        ],
+        "type": "string"
+      },
+      "RemindersListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReminderDto"
+            },
+            "nullable": true
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "overdueCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "dueTodayCount": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false,
+        "description": "DTO for a paginated list of reminders."
+      },
+      "RescheduleShowingRequest": {
+        "required": [
+          "newDate",
+          "newTime"
+        ],
+        "type": "object",
+        "properties": {
+          "newDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "newTime": {
+            "type": "string",
+            "format": "time"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Request to reschedule a showing."
+      },
       "ResendConfirmationRequest": {
         "required": [
           "email"
@@ -2646,6 +6968,39 @@
         },
         "additionalProperties": false,
         "description": "Request to resend an email confirmation code."
+      },
+      "ScheduleShowingRequest": {
+        "required": [
+          "propertyMatchId",
+          "scheduledDate",
+          "scheduledTime"
+        ],
+        "type": "object",
+        "properties": {
+          "propertyMatchId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "scheduledDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "scheduledTime": {
+            "type": "string",
+            "format": "time"
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "brokerUserId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Request to schedule a new showing."
       },
       "SetBoardDecisionRequest": {
         "required": [
@@ -2670,6 +7025,170 @@
         },
         "additionalProperties": false,
         "description": "Request body for setting board decision."
+      },
+      "ShowingDto": {
+        "required": [
+          "applicantId",
+          "applicantName",
+          "createdAt",
+          "id",
+          "propertyCity",
+          "propertyId",
+          "propertyMatchId",
+          "propertyPrice",
+          "propertyStreet",
+          "scheduledDate",
+          "scheduledTime",
+          "status"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "propertyMatchId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "scheduledDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "scheduledTime": {
+            "type": "string",
+            "format": "time"
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "brokerUserId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "brokerUserName": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "modifiedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "propertyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "propertyStreet": {
+            "type": "string",
+            "nullable": true
+          },
+          "propertyCity": {
+            "type": "string",
+            "nullable": true
+          },
+          "propertyPrice": {
+            "type": "number",
+            "format": "double"
+          },
+          "propertyPhotoUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "applicantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "applicantName": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Full showing details with nested property and applicant info."
+      },
+      "ShowingListDto": {
+        "required": [
+          "applicantId",
+          "applicantName",
+          "id",
+          "propertyCity",
+          "propertyId",
+          "propertyMatchId",
+          "propertyStreet",
+          "scheduledDate",
+          "scheduledTime",
+          "status"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "propertyMatchId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "scheduledDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "scheduledTime": {
+            "type": "string",
+            "format": "time"
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "brokerUserId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "propertyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "propertyStreet": {
+            "type": "string",
+            "nullable": true
+          },
+          "propertyCity": {
+            "type": "string",
+            "nullable": true
+          },
+          "propertyPhotoUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "applicantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "applicantName": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Lightweight showing for list/calendar views."
       },
       "ShulProximityPreferenceDto": {
         "type": "object",
@@ -2702,6 +7221,17 @@
         },
         "additionalProperties": false,
         "description": "DTO for shul proximity preferences."
+      },
+      "SnoozeReminderRequest": {
+        "type": "object",
+        "properties": {
+          "snoozeUntil": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Request model for snoozing a reminder."
       },
       "SpouseInfoDto": {
         "required": [
@@ -2813,10 +7343,465 @@
         },
         "additionalProperties": false,
         "description": "Request body for updating a document type."
+      },
+      "UpdateHousingSearchPreferencesRequest": {
+        "type": "object",
+        "properties": {
+          "budgetAmount": {
+            "type": "number",
+            "description": "Maximum budget amount in USD.",
+            "format": "double",
+            "nullable": true
+          },
+          "minBedrooms": {
+            "type": "integer",
+            "description": "Minimum number of bedrooms required.",
+            "format": "int32",
+            "nullable": true
+          },
+          "minBathrooms": {
+            "type": "number",
+            "description": "Minimum number of bathrooms required.",
+            "format": "double",
+            "nullable": true
+          },
+          "requiredFeatures": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of required features (e.g., \"basement\", \"garage\", \"yard\").",
+            "nullable": true
+          },
+          "shulProximity": {
+            "$ref": "#/components/schemas/ShulProximityPreferenceDto"
+          },
+          "moveTimeline": {
+            "type": "string",
+            "description": "When the family plans to move.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Request body for updating housing search preferences."
+      },
+      "UpdatePropertyCommand": {
+        "required": [
+          "bathrooms",
+          "bedrooms",
+          "city",
+          "id",
+          "price",
+          "state",
+          "street",
+          "zipCode"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "street": {
+            "type": "string",
+            "nullable": true
+          },
+          "street2": {
+            "type": "string",
+            "nullable": true
+          },
+          "city": {
+            "type": "string",
+            "nullable": true
+          },
+          "state": {
+            "type": "string",
+            "nullable": true
+          },
+          "zipCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "price": {
+            "type": "number",
+            "format": "double"
+          },
+          "bedrooms": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "bathrooms": {
+            "type": "number",
+            "format": "double"
+          },
+          "squareFeet": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "lotSize": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "yearBuilt": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "annualTaxes": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "features": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "mlsNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdatePropertyMatchStatusRequest": {
+        "required": [
+          "status"
+        ],
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Request to update property match status."
+      },
+      "UpdateReminderRequest": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "dueTime": {
+            "type": "string",
+            "format": "time",
+            "nullable": true
+          },
+          "priority": {
+            "$ref": "#/components/schemas/ReminderPriority"
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "assignedToUserId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "sendEmailNotification": {
+            "type": "boolean",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Request model for updating a reminder."
+      },
+      "UpdateRolesRequest": {
+        "type": "object",
+        "properties": {
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Request to update user roles."
+      },
+      "UpdateRolesResponse": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "description": "The user's ID.",
+            "nullable": true
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The user's new roles.",
+            "nullable": true
+          },
+          "message": {
+            "type": "string",
+            "description": "Success message.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Response after updating user roles."
+      },
+      "UpdateShowingStatusRequest": {
+        "required": [
+          "status"
+        ],
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Request to update showing status."
+      },
+      "UpdateShulCommand": {
+        "required": [
+          "city",
+          "id",
+          "name",
+          "state",
+          "street",
+          "zipCode"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "street": {
+            "type": "string",
+            "nullable": true
+          },
+          "street2": {
+            "type": "string",
+            "nullable": true
+          },
+          "city": {
+            "type": "string",
+            "nullable": true
+          },
+          "state": {
+            "type": "string",
+            "nullable": true
+          },
+          "zipCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "latitude": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "longitude": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "rabbi": {
+            "type": "string",
+            "nullable": true
+          },
+          "denomination": {
+            "type": "string",
+            "nullable": true
+          },
+          "website": {
+            "type": "string",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateStatusRequest": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "UserDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "User's unique identifier (Cognito sub).",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "description": "User's email address.",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "description": "User's display name (if set).",
+            "nullable": true
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "User's assigned roles (from Cognito groups).",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "description": "User's account status.",
+            "nullable": true
+          },
+          "emailVerified": {
+            "type": "boolean",
+            "description": "Whether the user's email is verified."
+          },
+          "mfaEnabled": {
+            "type": "boolean",
+            "description": "Whether MFA is enabled for this user."
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "When the user account was created.",
+            "format": "date-time"
+          },
+          "lastLogin": {
+            "type": "string",
+            "description": "When the user last logged in.",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Represents a system user from Cognito."
+      },
+      "UserListResponse": {
+        "type": "object",
+        "properties": {
+          "users": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UserDto"
+            },
+            "description": "List of users.",
+            "nullable": true
+          },
+          "paginationToken": {
+            "type": "string",
+            "description": "Token for fetching next page.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Response containing list of users."
+      },
+      "UserRolesResponse": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "description": "User's Cognito ID.",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "description": "User's email address.",
+            "nullable": true
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of roles.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Response containing user roles."
+      },
+      "UserStatusResponse": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "description": "The user's ID.",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "description": "The user's new status.",
+            "nullable": true
+          },
+          "message": {
+            "type": "string",
+            "description": "Success message.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Response after changing user status."
+      }
+    },
+    "securitySchemes": {
+      "Bearer": {
+        "type": "http",
+        "description": "JWT Authorization header using the Bearer scheme. Enter 'Bearer' [space] and then your token in the text input below.\r\n\r\nExample: \"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\"",
+        "scheme": "Bearer",
+        "bearerFormat": "JWT"
       }
     }
   },
+  "security": [
+    {
+      "Bearer": [ ]
+    }
+  ],
   "tags": [
+    {
+      "name": "Activities"
+    },
     {
       "name": "Applicants"
     },
@@ -2827,13 +7812,37 @@
       "name": "Auth"
     },
     {
+      "name": "Dashboard"
+    },
+    {
       "name": "Documents"
     },
     {
       "name": "DocumentTypes"
     },
     {
+      "name": "HousingSearches"
+    },
+    {
+      "name": "Properties"
+    },
+    {
+      "name": "PropertyMatches"
+    },
+    {
+      "name": "Reminders"
+    },
+    {
+      "name": "Showings"
+    },
+    {
+      "name": "Shuls"
+    },
+    {
       "name": "StageRequirements"
+    },
+    {
+      "name": "Users"
     }
   ]
 }

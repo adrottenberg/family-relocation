@@ -182,9 +182,13 @@ builder.Services.AddCors(options =>
 
         if (allowedOrigins == null || allowedOrigins.Length == 0)
         {
-            if (builder.Environment.IsDevelopment())
+            // Allow localhost fallback in Development and Testing environments only
+            // Testing environment uses HttpClient directly (no CORS), but needs valid policy
+            var isNonProductionEnv = builder.Environment.IsDevelopment() ||
+                                     builder.Environment.EnvironmentName == "Testing";
+
+            if (isNonProductionEnv)
             {
-                // Only allow localhost fallback in Development
                 allowedOrigins = ["http://localhost:5173", "http://localhost:3000"];
             }
             else

@@ -1,7 +1,7 @@
 import { Drawer, Form, Input, Select, Button, Space, Collapse, message, InputNumber, Checkbox } from 'antd';
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { applicantsApi } from '../../api';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
+import { applicantsApi, shulsApi } from '../../api';
 import type { ApplicantDto, PhoneNumberDto, ChildDto } from '../../api/types';
 import { useEffect } from 'react';
 
@@ -56,12 +56,6 @@ const GENDERS = [
   { value: 'Female', label: 'Female' },
 ];
 
-const SHULS = [
-  { value: 'Bobov', label: 'Bobov' },
-  { value: 'Yismach Yisroel', label: 'Yismach Yisroel' },
-  { value: 'Nassad', label: 'Nassad' },
-];
-
 const US_STATES = [
   'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
   'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
@@ -73,6 +67,17 @@ const US_STATES = [
 const EditApplicantDrawer = ({ open, onClose, applicant }: EditApplicantDrawerProps) => {
   const [form] = Form.useForm<FormValues>();
   const queryClient = useQueryClient();
+
+  // Fetch shuls from API
+  const { data: shulsData, isLoading: shulsLoading } = useQuery({
+    queryKey: ['shuls'],
+    queryFn: () => shulsApi.getAll({ pageSize: 100 }),
+  });
+
+  const shulOptions = shulsData?.items.map(shul => ({
+    value: shul.id,
+    label: shul.name,
+  })) || [];
 
   // Populate form with existing data when opened
   useEffect(() => {
@@ -449,7 +454,8 @@ const EditApplicantDrawer = ({ open, onClose, applicant }: EditApplicantDrawerPr
             <Form.Item name="shabbosShul" label="Preferred Shul">
               <Select
                 mode="multiple"
-                options={SHULS}
+                options={shulOptions}
+                loading={shulsLoading}
                 placeholder="Select shuls"
               />
             </Form.Item>

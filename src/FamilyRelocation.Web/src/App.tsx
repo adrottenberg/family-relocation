@@ -17,6 +17,8 @@ const PropertyDetailPage = lazy(() => import('./features/properties/PropertyDeta
 const RemindersPage = lazy(() => import('./features/reminders/RemindersPage'));
 const SettingsPage = lazy(() => import('./features/settings/SettingsPage'));
 const UsersPage = lazy(() => import('./features/users/UsersPage'));
+const ShowingsPage = lazy(() => import('./features/showings/ShowingsPage'));
+const ShulsPage = lazy(() => import('./features/shuls/ShulsPage'));
 
 const LoadingFallback = () => (
   <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
@@ -27,9 +29,12 @@ const LoadingFallback = () => (
 // Protected route wrapper
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const location = window.location;
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    // Pass the intended URL as state so we can redirect after login
+    const returnUrl = location.pathname + location.search;
+    return <Navigate to="/login" state={{ returnUrl }} replace />;
   }
 
   return <>{children}</>;
@@ -59,9 +64,11 @@ function App() {
           <Route path="pipeline" element={<PipelinePage />} />
           <Route path="properties" element={<PropertiesListPage />} />
           <Route path="properties/:id" element={<PropertyDetailPage />} />
+          <Route path="showings" element={<ShowingsPage />} />
           <Route path="reminders" element={<RemindersPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="users" element={<UsersPage />} />
+          <Route path="shuls" element={<ShulsPage />} />
         </Route>
 
         {/* Catch all */}

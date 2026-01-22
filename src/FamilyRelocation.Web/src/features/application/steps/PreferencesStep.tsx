@@ -1,4 +1,6 @@
 import { Form, InputNumber, Select, Button, Checkbox } from 'antd';
+import { useQuery } from '@tanstack/react-query';
+import { shulsApi } from '../../../api';
 import type { ApplicationData } from '../PublicApplicationPage';
 
 interface PreferencesStepProps {
@@ -26,14 +28,19 @@ const MOVE_TIMELINES = [
   { value: 'Flexible', label: 'Flexible' },
 ];
 
-const SHULS = [
-  { value: 'Bobov', label: 'Bobov' },
-  { value: 'Yismach Yisroel', label: 'Yismach Yisroel' },
-  { value: 'Nassad', label: 'Nassad' },
-];
-
 const PreferencesStep = ({ data, onNext, onBack }: PreferencesStepProps) => {
   const [form] = Form.useForm();
+
+  // Fetch shuls from API
+  const { data: shulsData, isLoading: shulsLoading } = useQuery({
+    queryKey: ['shuls'],
+    queryFn: () => shulsApi.getAll({ pageSize: 100 }),
+  });
+
+  const shulOptions = shulsData?.items.map(shul => ({
+    value: shul.id,
+    label: shul.name,
+  })) || [];
 
   const handleFinish = (values: {
     budgetAmount?: number;
@@ -42,7 +49,7 @@ const PreferencesStep = ({ data, onNext, onBack }: PreferencesStepProps) => {
     requiredFeatures?: string[];
     moveTimeline?: string;
     maxWalkingMinutes?: number;
-    preferredShuls?: string[];
+    preferredShulIds?: string[];
   }) => {
     onNext({
       housingPreferences: {
@@ -51,10 +58,10 @@ const PreferencesStep = ({ data, onNext, onBack }: PreferencesStepProps) => {
         minBathrooms: values.minBathrooms,
         requiredFeatures: values.requiredFeatures,
         moveTimeline: values.moveTimeline,
-        shulProximity: values.maxWalkingMinutes || (values.preferredShuls && values.preferredShuls.length > 0)
+        shulProximity: values.maxWalkingMinutes || (values.preferredShulIds && values.preferredShulIds.length > 0)
           ? {
               maxWalkingMinutes: values.maxWalkingMinutes,
-              preferredShuls: values.preferredShuls,
+              preferredShulIds: values.preferredShulIds,
             }
           : undefined,
       },
@@ -72,7 +79,7 @@ const PreferencesStep = ({ data, onNext, onBack }: PreferencesStepProps) => {
         requiredFeatures: data.housingPreferences?.requiredFeatures || [],
         moveTimeline: data.housingPreferences?.moveTimeline,
         maxWalkingMinutes: data.housingPreferences?.shulProximity?.maxWalkingMinutes,
-        preferredShuls: data.housingPreferences?.shulProximity?.preferredShuls || [],
+        preferredShulIds: data.housingPreferences?.shulProximity?.preferredShulIds || [],
       }}
       onFinish={handleFinish}
     >
@@ -112,11 +119,12 @@ const PreferencesStep = ({ data, onNext, onBack }: PreferencesStepProps) => {
         <InputNumber min={1} max={60} placeholder="15" style={{ width: 150 }} />
       </Form.Item>
 
-      <Form.Item name="preferredShuls" label="Preferred Shuls">
+      <Form.Item name="preferredShulIds" label="Preferred Shuls">
         <Select
           mode="multiple"
           placeholder="Select preferred shuls"
-          options={SHULS}
+          options={shulOptions}
+          loading={shulsLoading}
           allowClear
         />
       </Form.Item>

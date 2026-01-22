@@ -1,4 +1,5 @@
 using FamilyRelocation.Application.Common.Behaviors;
+using FamilyRelocation.Application.PropertyMatches.Services;
 using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
@@ -24,6 +25,9 @@ public static class DependencyInjection
         });
 
         services.AddValidatorsFromAssembly(assembly);
+
+        // Application services
+        services.AddScoped<IPropertyMatchingService, PropertyMatchingService>();
 
         return services;
     }

@@ -803,3 +803,357 @@ Authorization: Bearer {{accessToken}}
     "type": "SMS",
     "description": "Reminder about tomorrow's property showing at 2pm."
 }
+
+###############################################################################
+# PROPERTIES API
+# Manage property listings
+###############################################################################
+
+# Variables for Properties
+@propertyId = paste-property-id-here
+@photoId = paste-photo-id-here
+
+### Get All Properties
+# Returns paginated list with optional filters
+GET {{baseUrl}}/api/properties?page=1&pageSize=20
+Authorization: Bearer {{accessToken}}
+
+### Get Properties with Filters
+# Filter by status, city, price range, bedrooms
+GET {{baseUrl}}/api/properties?status=Active&city=Union&minPrice=400000&maxPrice=600000&minBedrooms=3
+Authorization: Bearer {{accessToken}}
+
+### Get Property by ID
+GET {{baseUrl}}/api/properties/{{propertyId}}
+Authorization: Bearer {{accessToken}}
+
+### Create Property
+POST {{baseUrl}}/api/properties
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "street": "123 Oak Street",
+    "city": "Union",
+    "state": "NJ",
+    "zipCode": "07083",
+    "price": 525000,
+    "bedrooms": 4,
+    "bathrooms": 2.5,
+    "squareFeet": 2200,
+    "lotSize": 0.25,
+    "yearBuilt": 1985,
+    "annualTaxes": 12500,
+    "features": ["Basement", "Garage", "Central AC", "Yard"],
+    "mlsNumber": "MLS123456",
+    "notes": "Great family home near shul"
+}
+
+### Update Property
+PUT {{baseUrl}}/api/properties/{{propertyId}}
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "id": "{{propertyId}}",
+    "street": "123 Oak Street",
+    "city": "Union",
+    "state": "NJ",
+    "zipCode": "07083",
+    "price": 515000,
+    "bedrooms": 4,
+    "bathrooms": 2.5,
+    "squareFeet": 2200,
+    "lotSize": 0.25,
+    "yearBuilt": 1985,
+    "annualTaxes": 12500,
+    "features": ["Basement", "Garage", "Central AC", "Yard", "Updated Kitchen"],
+    "mlsNumber": "MLS123456",
+    "notes": "Price reduced - motivated seller"
+}
+
+### Update Property Status
+# Valid statuses: Active, UnderContract, Sold, OffMarket
+PUT {{baseUrl}}/api/properties/{{propertyId}}/status
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "status": "UnderContract"
+}
+
+### Delete Property (Soft Delete)
+DELETE {{baseUrl}}/api/properties/{{propertyId}}
+Authorization: Bearer {{accessToken}}
+
+### Upload Property Photo
+# Use multipart/form-data for file upload
+POST {{baseUrl}}/api/properties/{{propertyId}}/photos
+Authorization: Bearer {{accessToken}}
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary
+
+------WebKitFormBoundary
+Content-Disposition: form-data; name="description"
+
+Front view of house
+------WebKitFormBoundary
+Content-Disposition: form-data; name="file"; filename="house-front.jpg"
+Content-Type: image/jpeg
+
+< ./house-front.jpg
+------WebKitFormBoundary--
+
+### Set Primary Photo
+PUT {{baseUrl}}/api/properties/{{propertyId}}/photos/{{photoId}}/primary
+Authorization: Bearer {{accessToken}}
+
+### Delete Property Photo
+DELETE {{baseUrl}}/api/properties/{{propertyId}}/photos/{{photoId}}
+Authorization: Bearer {{accessToken}}
+
+###############################################################################
+# PROPERTY MATCHES API
+# Manage matches between housing searches and properties
+# Valid statuses: MatchIdentified, ShowingRequested, ApplicantInterested, OfferMade, ApplicantRejected
+###############################################################################
+
+# Variables for Property Matches
+@housingSearchId = paste-housing-search-id-here
+@matchId = paste-match-id-here
+
+### Get Matches for Housing Search
+GET {{baseUrl}}/api/property-matches?housingSearchId={{housingSearchId}}
+Authorization: Bearer {{accessToken}}
+
+### Get Matches for Housing Search with Status Filter
+GET {{baseUrl}}/api/property-matches?housingSearchId={{housingSearchId}}&status=MatchIdentified
+Authorization: Bearer {{accessToken}}
+
+### Get Matches for Property
+GET {{baseUrl}}/api/property-matches?propertyId={{propertyId}}
+Authorization: Bearer {{accessToken}}
+
+### Get Match by ID
+GET {{baseUrl}}/api/property-matches/{{matchId}}
+Authorization: Bearer {{accessToken}}
+
+### Create Manual Property Match
+# Creates a match with calculated score (isAutoMatched = false)
+POST {{baseUrl}}/api/property-matches
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "housingSearchId": "{{housingSearchId}}",
+    "propertyId": "{{propertyId}}",
+    "notes": "Coordinator recommendation - meets all requirements"
+}
+
+### Update Match Status
+# Valid statuses: MatchIdentified, ShowingRequested, ApplicantInterested, OfferMade, ApplicantRejected
+PUT {{baseUrl}}/api/property-matches/{{matchId}}/status
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "status": "ShowingRequested",
+    "notes": "Family wants to see this property"
+}
+
+### Update Match Status - Applicant Interested
+PUT {{baseUrl}}/api/property-matches/{{matchId}}/status
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "status": "ApplicantInterested",
+    "notes": "Very positive reaction after showing"
+}
+
+### Request Showings (Batch)
+# Updates multiple matches to ShowingRequested status
+POST {{baseUrl}}/api/property-matches/request-showings
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+[
+    "match-id-1",
+    "match-id-2",
+    "match-id-3"
+]
+
+### Delete Property Match
+DELETE {{baseUrl}}/api/property-matches/{{matchId}}
+Authorization: Bearer {{accessToken}}
+
+###############################################################################
+# SHOWINGS API
+# Schedule and manage property showings
+# Valid statuses: Scheduled, Completed, Cancelled, NoShow
+###############################################################################
+
+# Variables for Showings
+@showingId = paste-showing-id-here
+
+### Get All Showings
+GET {{baseUrl}}/api/showings
+Authorization: Bearer {{accessToken}}
+
+### Get Showings with Filters
+# Filter by date range, status, broker, or property match
+GET {{baseUrl}}/api/showings?fromDate=2026-01-20&toDate=2026-01-31&status=Scheduled
+Authorization: Bearer {{accessToken}}
+
+### Get Upcoming Showings
+# Returns showings from today forward
+GET {{baseUrl}}/api/showings/upcoming
+Authorization: Bearer {{accessToken}}
+
+### Get Upcoming Showings (Next 7 Days)
+GET {{baseUrl}}/api/showings/upcoming?days=7
+Authorization: Bearer {{accessToken}}
+
+### Get Showing by ID
+GET {{baseUrl}}/api/showings/{{showingId}}
+Authorization: Bearer {{accessToken}}
+
+### Schedule Showing
+POST {{baseUrl}}/api/showings
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "propertyMatchId": "{{matchId}}",
+    "scheduledDate": "2026-01-25",
+    "scheduledTime": "14:00",
+    "notes": "Meet at property. Seller will be home.",
+    "brokerUserId": null
+}
+
+### Reschedule Showing
+PUT {{baseUrl}}/api/showings/{{showingId}}/reschedule
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "newDate": "2026-01-28",
+    "newTime": "10:30"
+}
+
+### Update Showing Status - Completed
+PUT {{baseUrl}}/api/showings/{{showingId}}/status
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "status": "Completed",
+    "notes": "Family loved the house. Interested in making an offer."
+}
+
+### Update Showing Status - Cancelled
+PUT {{baseUrl}}/api/showings/{{showingId}}/status
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "status": "Cancelled",
+    "notes": "Family found another property"
+}
+
+### Update Showing Status - No Show
+PUT {{baseUrl}}/api/showings/{{showingId}}/status
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "status": "NoShow",
+    "notes": "Family did not arrive. Will follow up."
+}
+
+###############################################################################
+# SHULS API
+# Manage synagogues and walking distances from properties
+###############################################################################
+
+# Variables for Shuls
+@shulId = paste-shul-id-here
+
+### Get All Shuls
+# Returns paginated list with optional filters
+GET {{baseUrl}}/api/shuls?page=1&pageSize=50
+Authorization: Bearer {{accessToken}}
+
+### Get Shuls with Filters
+# Filter by city, denomination, or search by name/rabbi
+GET {{baseUrl}}/api/shuls?search=Young Israel&city=Union
+Authorization: Bearer {{accessToken}}
+
+### Get Shuls Including Inactive
+GET {{baseUrl}}/api/shuls?includeInactive=true
+Authorization: Bearer {{accessToken}}
+
+### Get Shul by ID
+GET {{baseUrl}}/api/shuls/{{shulId}}
+Authorization: Bearer {{accessToken}}
+
+### Create Shul
+# Coordinates will be auto-geocoded from address if not provided
+POST {{baseUrl}}/api/shuls
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "name": "Congregation Israel",
+    "street": "339 Mountain Ave",
+    "city": "Springfield",
+    "state": "NJ",
+    "zipCode": "07081",
+    "rabbi": "Rabbi David Cohen",
+    "denomination": "Orthodox",
+    "website": "https://example.com",
+    "notes": "Main shul for the community"
+}
+
+### Create Shul with Coordinates
+POST {{baseUrl}}/api/shuls
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "name": "Young Israel of Union",
+    "street": "2065 Vauxhall Rd",
+    "city": "Union",
+    "state": "NJ",
+    "zipCode": "07083",
+    "latitude": 40.6892,
+    "longitude": -74.2631,
+    "rabbi": "Rabbi Moshe Katz",
+    "denomination": "Young Israel"
+}
+
+### Update Shul
+PUT {{baseUrl}}/api/shuls/{{shulId}}
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "id": "{{shulId}}",
+    "name": "Congregation Israel of Springfield",
+    "street": "339 Mountain Ave",
+    "city": "Springfield",
+    "state": "NJ",
+    "zipCode": "07081",
+    "rabbi": "Rabbi David Cohen",
+    "denomination": "Orthodox",
+    "website": "https://congregationisrael.org",
+    "notes": "Updated notes"
+}
+
+### Delete Shul (Deactivates)
+DELETE {{baseUrl}}/api/shuls/{{shulId}}
+Authorization: Bearer {{accessToken}}
+
+### Get Walking Distances from Property to All Shuls
+# Returns calculated walking distances and times
+GET {{baseUrl}}/api/shuls/distances/property/{{propertyId}}
+Authorization: Bearer {{accessToken}}

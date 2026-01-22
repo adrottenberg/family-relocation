@@ -3,6 +3,7 @@ using FamilyRelocation.Application.Properties.Commands.AddPropertyPhoto;
 using FamilyRelocation.Application.Properties.Commands.CreateProperty;
 using FamilyRelocation.Application.Properties.Commands.DeleteProperty;
 using FamilyRelocation.Application.Properties.Commands.DeletePropertyPhoto;
+using FamilyRelocation.Application.Properties.Commands.SetPrimaryPhoto;
 using FamilyRelocation.Application.Properties.Commands.UpdateProperty;
 using FamilyRelocation.Application.Properties.Commands.UpdatePropertyStatus;
 using FamilyRelocation.Application.Properties.Queries.GetProperties;
@@ -202,6 +203,26 @@ public class PropertiesController : ControllerBase
         try
         {
             await _mediator.Send(new DeletePropertyPhotoCommand(id, photoId));
+            return NoContent();
+        }
+        catch (NotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Sets a photo as the primary photo for a property.
+    /// </summary>
+    [HttpPut("{id:guid}/photos/{photoId:guid}/primary")]
+    [Authorize(Roles = "Coordinator,Admin,Broker")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> SetPrimaryPhoto(Guid id, Guid photoId)
+    {
+        try
+        {
+            await _mediator.Send(new SetPrimaryPhotoCommand(id, photoId));
             return NoContent();
         }
         catch (NotFoundException ex)

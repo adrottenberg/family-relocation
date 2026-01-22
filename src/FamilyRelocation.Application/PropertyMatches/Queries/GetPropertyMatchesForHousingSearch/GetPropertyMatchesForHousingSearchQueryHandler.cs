@@ -1,0 +1,42 @@
+using FamilyRelocation.Application.Common.Interfaces;
+using FamilyRelocation.Application.PropertyMatches.DTOs;
+using FamilyRelocation.Domain.Entities;
+using FamilyRelocation.Domain.Enums;
+using MediatR;
+using Microsoft.EntityFrameworkCore;
+
+namespace FamilyRelocation.Application.PropertyMatches.Queries.GetPropertyMatchesForHousingSearch;
+
+public class GetPropertyMatchesForHousingSearchQueryHandler : IRequestHandler<GetPropertyMatchesForHousingSearchQuery, List<PropertyMatchListDto>>
+{
+    private readonly IApplicationDbContext _context;
+
+    public GetPropertyMatchesForHousingSearchQueryHandler(IApplicationDbContext context)
+    {
+        _context = context;
+    }
+
+    public async Task<List<PropertyMatchListDto>> Handle(GetPropertyMatchesForHousingSearchQuery request, CancellationToken cancellationToken)
+    {
+        var query = _context.Set<PropertyMatch>()
+            .Include(m => m.Property)
+                .ThenInclude(p => p.Photos)
+            .Include(m => m.HousingSearch)
+                .ThenInclude(h => h.Applicant)
+            .Where(m => m.HousingSearchId == request.HousingSearchId);
+
+        // Filter by status if provided
+        if (!string.IsNullOrEmpty(request.Status) && Enum.TryParse<PropertyMatchStatus>(request.Status, true, out var status))
+        {
+            query = query.Where(m => m.Status == status);
+        }
+
+        var matches = await query
+            .OrderByDescending(m => m.MatchScore)
+            .ThenByDescending(m => m.CreatedAt)
+            .Take(100) // Limit for safety
+            .ToListAsync(cancellationToken);
+
+        return matches.Select(m => m.ToListDto()).ToList();
+    }
+}

@@ -7,7 +7,7 @@ import { applicantsApi } from '../../api';
 import type { ApplicantListItemDto } from '../../api/types';
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
 import { colors, statusTagStyles, stageTagStyles } from '../../theme/antd-theme';
-import CreateApplicantDrawer from './CreateApplicantDrawer';
+import CreateApplicantModal from './CreateApplicantModal';
 import './ApplicantListPage.css';
 
 const { Title, Text } = Typography;
@@ -19,7 +19,7 @@ const ApplicantListPage = () => {
   const [boardDecision, setBoardDecision] = useState<string | undefined>();
   const [stage, setStage] = useState<string | undefined>();
   const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
-  const [showCreateDrawer, setShowCreateDrawer] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['applicants', search, boardDecision, stage, pagination.current, pagination.pageSize],
@@ -163,7 +163,7 @@ const ApplicantListPage = () => {
         <Button
           type="primary"
           icon={<PlusOutlined />}
-          onClick={() => setShowCreateDrawer(true)}
+          onClick={() => setShowCreateModal(true)}
         >
           Add Applicant
         </Button>
@@ -247,9 +247,9 @@ const ApplicantListPage = () => {
         />
       </Card>
 
-      <CreateApplicantDrawer
-        open={showCreateDrawer}
-        onClose={() => setShowCreateDrawer(false)}
+      <CreateApplicantModal
+        open={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
       />
     </div>
   );

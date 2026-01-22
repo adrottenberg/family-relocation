@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Form, Input, Button, Checkbox, Alert, Typography, message } from 'antd';
 import { EyeInvisibleOutlined, EyeTwoTone, MailOutlined, LockOutlined, NumberOutlined } from '@ant-design/icons';
 import { useAuthStore } from '../../store/authStore';
@@ -34,7 +34,11 @@ type ForgotPasswordStep = 'email' | 'code' | null;
 
 const LoginPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { setTokens, setUser } = useAuthStore();
+
+  // Get return URL from navigation state (set by ProtectedRoute)
+  const returnUrl = (location.state as { returnUrl?: string })?.returnUrl || '/dashboard';
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -113,7 +117,8 @@ const LoginPage = () => {
     });
     // Roles will be fetched from backend by AppLayout after navigation
     setUser({ email: userEmail, roles: [] });
-    navigate('/dashboard', { replace: true });
+    // Navigate to the original URL they tried to access, or dashboard
+    navigate(returnUrl, { replace: true });
   };
 
   const handleForgotPassword = () => {

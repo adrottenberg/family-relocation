@@ -28,10 +28,15 @@ import {
   DollarOutlined,
   UploadOutlined,
   DeleteOutlined,
+  StarOutlined,
+  StarFilled,
+  EnvironmentOutlined,
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { propertiesApi } from '../../api';
-import type { PropertyPhotoDto } from '../../api/types';
+import { propertiesApi, shulsApi } from '../../api';
+import type { PropertyPhotoDto, PropertyShulDistanceDto } from '../../api/types';
+import { PropertyMatchList, CreatePropertyMatchModal } from '../propertyMatches';
+import { ScheduleShowingModal } from '../showings';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -57,10 +62,21 @@ const PropertyDetailPage = () => {
   const queryClient = useQueryClient();
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [form] = Form.useForm();
+  const [createMatchModalOpen, setCreateMatchModalOpen] = useState(false);
+  const [scheduleShowingModalData, setScheduleShowingModalData] = useState<{
+    propertyMatchId: string;
+    propertyInfo?: { street: string; city: string };
+  } | null>(null);
 
   const { data: property, isLoading, error } = useQuery({
     queryKey: ['property', id],
     queryFn: () => propertiesApi.getById(id!),
+    enabled: !!id,
+  });
+
+  const { data: shulDistances, isLoading: shulDistancesLoading } = useQuery({
+    queryKey: ['property-shul-distances', id],
+    queryFn: () => shulsApi.getPropertyDistances(id!),
     enabled: !!id,
   });
 
@@ -96,6 +112,17 @@ const PropertyDetailPage = () => {
     },
     onError: () => {
       message.error('Failed to delete photo');
+    },
+  });
+
+  const setPrimaryPhotoMutation = useMutation({
+    mutationFn: (photoId: string) => propertiesApi.setPrimaryPhoto(id!, photoId),
+    onSuccess: () => {
+      message.success('Primary photo updated');
+      queryClient.invalidateQueries({ queryKey: ['property', id] });
+    },
+    onError: () => {
+      message.error('Failed to set primary photo');
     },
   });
 
@@ -294,46 +321,106 @@ const PropertyDetailPage = () => {
             }
           >
             {property.photos.length > 0 ? (
-              <Image.PreviewGroup>
-                <Row gutter={[16, 16]}>
-                  {property.photos.map((photo: PropertyPhotoDto) => (
-                    <Col key={photo.id} xs={12} sm={8} md={6}>
-                      <div style={{ position: 'relative' }}>
-                        <Image
-                          src={photo.url}
-                          alt={photo.description || 'Property photo'}
-                          style={{ width: '100%', height: 150, objectFit: 'cover' }}
-                        />
-                        <Popconfirm
-                          title="Delete this photo?"
-                          onConfirm={() => deletePhotoMutation.mutate(photo.id)}
-                          okText="Delete"
-                          cancelText="Cancel"
-                        >
-                          <Button
-                            type="text"
-                            danger
-                            icon={<DeleteOutlined />}
-                            size="small"
-                            style={{
+              <>
+                {/* Primary Photo - Large Display */}
+                {(() => {
+                  const primaryPhoto = property.photos.find(p => p.isPrimary) || property.photos[0];
+                  return primaryPhoto && (
+                    <div style={{ marginBottom: 16 }}>
+                      <Image
+                        src={primaryPhoto.url}
+                        alt={primaryPhoto.description || 'Primary property photo'}
+                        style={{ width: '100%', maxHeight: 400, objectFit: 'cover', borderRadius: 8 }}
+                      />
+                      <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <StarFilled style={{ color: '#faad14' }} />
+                        <Text type="secondary">Primary Photo</Text>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Photo Thumbnails */}
+                <Image.PreviewGroup>
+                  <Row gutter={[16, 16]}>
+                    {property.photos.map((photo: PropertyPhotoDto) => (
+                      <Col key={photo.id} xs={12} sm={8} md={6}>
+                        <div style={{
+                          position: 'relative',
+                          border: photo.isPrimary ? '2px solid #faad14' : '2px solid transparent',
+                          borderRadius: 4,
+                        }}>
+                          <Image
+                            src={photo.url}
+                            alt={photo.description || 'Property photo'}
+                            style={{ width: '100%', height: 150, objectFit: 'cover' }}
+                          />
+                          {/* Primary indicator badge */}
+                          {photo.isPrimary && (
+                            <div style={{
                               position: 'absolute',
                               top: 4,
-                              right: 4,
-                              background: 'rgba(255,255,255,0.8)',
-                            }}
-                            loading={deletePhotoMutation.isPending}
-                          />
-                        </Popconfirm>
-                      </div>
-                      {photo.description && (
-                        <Text type="secondary" style={{ fontSize: 12 }}>
-                          {photo.description}
-                        </Text>
-                      )}
-                    </Col>
-                  ))}
-                </Row>
-              </Image.PreviewGroup>
+                              left: 4,
+                              background: '#faad14',
+                              color: 'white',
+                              padding: '2px 6px',
+                              borderRadius: 4,
+                              fontSize: 11,
+                              fontWeight: 500,
+                            }}>
+                              Primary
+                            </div>
+                          )}
+                          {/* Action buttons */}
+                          <div style={{
+                            position: 'absolute',
+                            top: 4,
+                            right: 4,
+                            display: 'flex',
+                            gap: 4,
+                          }}>
+                            {!photo.isPrimary && (
+                              <Button
+                                type="text"
+                                icon={<StarOutlined />}
+                                size="small"
+                                title="Set as primary"
+                                onClick={() => setPrimaryPhotoMutation.mutate(photo.id)}
+                                style={{
+                                  background: 'rgba(255,255,255,0.8)',
+                                }}
+                                loading={setPrimaryPhotoMutation.isPending}
+                              />
+                            )}
+                            <Popconfirm
+                              title="Delete this photo?"
+                              onConfirm={() => deletePhotoMutation.mutate(photo.id)}
+                              okText="Delete"
+                              cancelText="Cancel"
+                            >
+                              <Button
+                                type="text"
+                                danger
+                                icon={<DeleteOutlined />}
+                                size="small"
+                                style={{
+                                  background: 'rgba(255,255,255,0.8)',
+                                }}
+                                loading={deletePhotoMutation.isPending}
+                              />
+                            </Popconfirm>
+                          </div>
+                        </div>
+                        {photo.description && (
+                          <Text type="secondary" style={{ fontSize: 12 }}>
+                            {photo.description}
+                          </Text>
+                        )}
+                      </Col>
+                    ))}
+                  </Row>
+                </Image.PreviewGroup>
+              </>
             ) : (
               <Empty description="No photos uploaded" />
             )}
@@ -341,6 +428,26 @@ const PropertyDetailPage = () => {
               <Text type="secondary">{property.photos.length}/10 photos</Text>
             </div>
           </Card>
+
+          {/* Interested Families / Property Matches */}
+          <div style={{ marginTop: 24 }}>
+            <PropertyMatchList
+              propertyId={property.id}
+              onCreateMatch={() => setCreateMatchModalOpen(true)}
+              onScheduleShowings={(matchIds) => {
+                const matchId = matchIds[0];
+                setScheduleShowingModalData({
+                  propertyMatchId: matchId,
+                  propertyInfo: {
+                    street: property.address.street,
+                    city: property.address.city,
+                  },
+                });
+              }}
+              showApplicant={true}
+              showProperty={false}
+            />
+          </div>
         </Col>
 
         {/* Sidebar */}
@@ -361,6 +468,47 @@ const PropertyDetailPage = () => {
                 </Descriptions.Item>
               )}
             </Descriptions>
+          </Card>
+
+          {/* Walking Distances to Shuls */}
+          <Card
+            title={
+              <Space>
+                <EnvironmentOutlined />
+                Walking to Shuls
+              </Space>
+            }
+            style={{ marginTop: 24 }}
+            size="small"
+          >
+            {shulDistancesLoading ? (
+              <div style={{ textAlign: 'center', padding: 16 }}>
+                <Spin size="small" />
+              </div>
+            ) : shulDistances && shulDistances.length > 0 ? (
+              <div style={{ maxHeight: 300, overflowY: 'auto' }}>
+                {shulDistances.map((distance: PropertyShulDistanceDto) => (
+                  <div
+                    key={distance.shulId}
+                    style={{
+                      padding: '8px 0',
+                      borderBottom: '1px solid #f0f0f0',
+                    }}
+                  >
+                    <div style={{ fontWeight: 500 }}>{distance.shulName}</div>
+                    <div style={{ display: 'flex', gap: 16, color: '#666', fontSize: 13 }}>
+                      <span>{distance.distanceMiles.toFixed(2)} mi</span>
+                      <span>{distance.walkingTimeMinutes} min walk</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <Empty
+                description="No shul distances calculated yet"
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+              />
+            )}
           </Card>
         </Col>
       </Row>
@@ -490,6 +638,23 @@ const PropertyDetailPage = () => {
           </Form.Item>
         </Form>
       </Modal>
+
+      {/* Create Property Match Modal */}
+      <CreatePropertyMatchModal
+        open={createMatchModalOpen}
+        onClose={() => setCreateMatchModalOpen(false)}
+        propertyId={property.id}
+      />
+
+      {/* Schedule Showing Modal */}
+      {scheduleShowingModalData && (
+        <ScheduleShowingModal
+          open={true}
+          onClose={() => setScheduleShowingModalData(null)}
+          propertyMatchId={scheduleShowingModalData.propertyMatchId}
+          propertyInfo={scheduleShowingModalData.propertyInfo}
+        />
+      )}
     </div>
   );
 };

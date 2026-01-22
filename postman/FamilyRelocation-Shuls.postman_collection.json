@@ -1,0 +1,319 @@
+{
+	"info": {
+		"_postman_id": "family-relocation-shuls-collection",
+		"name": "FamilyRelocation Shuls API",
+		"description": "Collection for testing Shuls (Synagogues) endpoints in the FamilyRelocation API.\n\n## Setup\n1. Import the Auth collection first and login to get an access token\n2. Set the `baseUrl` variable to your API URL (default: https://localhost:7267)\n\n## Endpoints\n- **List Shuls**: Get shuls with filters (city, denomination, search)\n- **Get by ID**: Get a specific shul\n- **Create**: Create new shul (Admin/Coordinator)\n- **Update**: Update shul details (Admin/Coordinator)\n- **Delete**: Soft delete (deactivate) shul (Admin/Coordinator)\n- **Property Distances**: Get walking distances from a property to all shuls\n\n## Features\n- **Auto-geocoding**: If coordinates not provided, system uses Nominatim to geocode address\n- **Distance calculation**: Uses OpenStreetMap/OSRM for walking distance\n- **Event-driven**: Distances auto-calculated on property/shul creation",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "List & Query",
+			"item": [
+				{
+					"name": "Get All Shuls",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/shuls?page=1&pageSize=50",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"shuls"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "pageSize",
+									"value": "50"
+								},
+								{
+									"key": "search",
+									"value": "Young Israel",
+									"disabled": true
+								},
+								{
+									"key": "city",
+									"value": "Union",
+									"disabled": true
+								},
+								{
+									"key": "denomination",
+									"value": "Orthodox",
+									"disabled": true
+								},
+								{
+									"key": "includeInactive",
+									"value": "true",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Get paginated list of shuls with optional filters.\n\n**Query Parameters:**\n- `page`: Page number (default: 1)\n- `pageSize`: Items per page (default: 50)\n- `search`: Search by name or rabbi\n- `city`: Filter by city\n- `denomination`: Filter by denomination\n- `includeInactive`: Include deactivated shuls"
+					}
+				},
+				{
+					"name": "Get Shul by ID",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/shuls/{{shulId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"shuls",
+								"{{shulId}}"
+							]
+						},
+						"description": "Get a specific shul by ID."
+					}
+				},
+				{
+					"name": "Get Walking Distances for Property",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/shuls/distances/property/{{propertyId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"shuls",
+								"distances",
+								"property",
+								"{{propertyId}}"
+							]
+						},
+						"description": "Get walking distances from a specific property to all active shuls.\n\n**Response includes:**\n- `shulId`: Shul identifier\n- `shulName`: Name of the shul\n- `distanceMiles`: Walking distance in miles\n- `walkingTimeMinutes`: Estimated walking time\n- `calculatedAt`: When the distance was calculated\n\n**Note:** Distances are automatically calculated when properties or shuls are created. If no distances exist, the property may not have been geocoded."
+					}
+				}
+			]
+		},
+		{
+			"name": "Create & Update",
+			"item": [
+				{
+					"name": "Create Shul",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.collectionVariables.set('shulId', jsonData.id);",
+									"    pm.test('Shul created - ID saved', function() {",
+									"        pm.expect(jsonData.id).to.be.a('string');",
+									"    });",
+									"    console.log('Created shul ID: ' + jsonData.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Congregation Israel\",\n    \"street\": \"339 Mountain Ave\",\n    \"city\": \"Springfield\",\n    \"state\": \"NJ\",\n    \"zipCode\": \"07081\",\n    \"rabbi\": \"Rabbi David Cohen\",\n    \"denomination\": \"Orthodox\",\n    \"website\": \"https://example.com\",\n    \"notes\": \"Main shul for the community\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/shuls",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"shuls"
+							]
+						},
+						"description": "Create a new shul.\n\n**Required fields:**\n- `name`: Shul name (max 200 chars)\n- `street`: Street address\n- `city`: City\n- `state`: State (2-letter code)\n- `zipCode`: Zip code (12345 or 12345-6789)\n\n**Optional fields:**\n- `street2`: Address line 2\n- `latitude`/`longitude`: Coordinates (auto-geocoded if not provided)\n- `rabbi`: Rabbi name\n- `denomination`: e.g., Orthodox, Young Israel, Chabad\n- `website`: Website URL\n- `notes`: Additional notes\n\n**Roles required:** Coordinator, Admin"
+					}
+				},
+				{
+					"name": "Create Shul with Coordinates",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Young Israel of Union\",\n    \"street\": \"2065 Vauxhall Rd\",\n    \"city\": \"Union\",\n    \"state\": \"NJ\",\n    \"zipCode\": \"07083\",\n    \"latitude\": 40.6892,\n    \"longitude\": -74.2631,\n    \"rabbi\": \"Rabbi Moshe Katz\",\n    \"denomination\": \"Young Israel\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/shuls",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"shuls"
+							]
+						},
+						"description": "Create a shul with explicit coordinates.\n\nProviding coordinates skips the auto-geocoding step and ensures accurate distance calculations."
+					}
+				},
+				{
+					"name": "Update Shul",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"id\": \"{{shulId}}\",\n    \"name\": \"Congregation Israel of Springfield\",\n    \"street\": \"339 Mountain Ave\",\n    \"city\": \"Springfield\",\n    \"state\": \"NJ\",\n    \"zipCode\": \"07081\",\n    \"rabbi\": \"Rabbi David Cohen\",\n    \"denomination\": \"Orthodox\",\n    \"website\": \"https://congregationisrael.org\",\n    \"notes\": \"Updated notes\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/shuls/{{shulId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"shuls",
+								"{{shulId}}"
+							]
+						},
+						"description": "Update an existing shul.\n\n**Note:** The `id` in the body must match the URL parameter.\n\n**Roles required:** Coordinator, Admin"
+					}
+				},
+				{
+					"name": "Delete Shul (Deactivate)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/shuls/{{shulId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"shuls",
+								"{{shulId}}"
+							]
+						},
+						"description": "Soft delete (deactivate) a shul.\n\nThe shul is not permanently deleted but marked as inactive. Inactive shuls:\n- Don't appear in default list queries\n- Can be seen with `includeInactive=true`\n- Are excluded from distance calculations\n\n**Roles required:** Coordinator, Admin"
+					}
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "https://localhost:7267",
+			"type": "string"
+		},
+		{
+			"key": "accessToken",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "shulId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "propertyId",
+			"value": "",
+			"type": "string"
+		}
+	]
+}
