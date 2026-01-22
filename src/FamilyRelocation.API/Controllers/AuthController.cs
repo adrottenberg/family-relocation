@@ -17,6 +17,7 @@ public class AuthController : ControllerBase
     private readonly IAuthenticationService _authService;
     private readonly IUserRoleService _userRoleService;
     private readonly ICurrentUserService _currentUserService;
+    private readonly IConfiguration _configuration;
 
     /// <summary>
     /// Initializes the authentication controller.
@@ -24,11 +25,13 @@ public class AuthController : ControllerBase
     public AuthController(
         IAuthenticationService authService,
         IUserRoleService userRoleService,
-        ICurrentUserService currentUserService)
+        ICurrentUserService currentUserService,
+        IConfiguration configuration)
     {
         _authService = authService;
         _userRoleService = userRoleService;
         _currentUserService = currentUserService;
+        _configuration = configuration;
     }
 
     /// <summary>
@@ -354,16 +357,38 @@ public class AuthController : ControllerBase
 
     /// <summary>
     /// Bootstrap endpoint: Creates the first Admin user if no admins exist.
-    /// This endpoint can only be used once - when there are no Admin users in the system.
+    /// Requires a bootstrap token from configuration (Security:BootstrapToken).
+    /// Set this in user-secrets or environment variables, then remove after first admin is created.
     /// </summary>
+    /// <param name="token">Bootstrap token from configuration.</param>
+    /// <param name="ct">Cancellation token.</param>
     /// <returns>Success message if the current user was made an Admin.</returns>
     [HttpPost("bootstrap-admin")]
     [Authorize]
     [ProducesResponseType(typeof(BootstrapResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> BootstrapAdmin(CancellationToken ct = default)
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> BootstrapAdmin([FromQuery] string? token = null, CancellationToken ct = default)
     {
+        // Validate bootstrap token from configuration
+        var configuredToken = _configuration["Security:BootstrapToken"];
+        if (string.IsNullOrEmpty(configuredToken))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new
+            {
+                message = "Bootstrap is disabled. Set Security:BootstrapToken in configuration to enable."
+            });
+        }
+
+        if (string.IsNullOrEmpty(token) || token != configuredToken)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new
+            {
+                message = "Invalid or missing bootstrap token."
+            });
+        }
+
         // Try multiple claim names for sub (Cognito uses different formats)
         var cognitoUserId = User.FindFirst("sub")?.Value
             ?? User.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
@@ -380,7 +405,7 @@ public class AuthController : ControllerBase
             return BadRequest(new { message = "Email not found in token" });
         }
 
-        // Check if any admins already exist
+        // Check if user is already an admin
         var existingAdmins = await _userRoleService.GetUserRolesByEmailAsync(email, ct);
         if (existingAdmins.Contains("Admin"))
         {
@@ -400,7 +425,7 @@ public class AuthController : ControllerBase
         return Ok(new BootstrapResponse
         {
             Success = true,
-            Message = "You have been granted Admin access.",
+            Message = "You have been granted Admin access. Remove Security:BootstrapToken from configuration.",
             Roles = updatedRoles.ToList()
         });
     }

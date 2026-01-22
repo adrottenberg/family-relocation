@@ -89,7 +89,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateIssuerSigningKey = true,
             ValidateIssuer = true,
             ValidateLifetime = true,
-            // Disable default audience validation - we'll validate client_id in OnTokenValidated
+            // NOTE: ValidateAudience is disabled because AWS Cognito ACCESS tokens use 'client_id'
+            // claim instead of 'aud' for audience. ID tokens have 'aud', but we use access tokens
+            // for API authorization. We manually validate 'client_id' in OnTokenValidated below.
+            // See: https://docs.aws.amazon.com/cognito/latest/developerguide/amazon-cognito-user-pools-using-tokens-verifying-a-jwt.html
             ValidateAudience = false
         };
 
@@ -177,8 +180,8 @@ builder.Services.AddCors(options =>
             ?? ["http://localhost:5173", "http://localhost:3000"];
 
         policy.WithOrigins(allowedOrigins)
-              .AllowAnyMethod()
-              .AllowAnyHeader()
+              .WithMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
+              .WithHeaders("Authorization", "Content-Type", "X-Cognito-Id-Token")
               .AllowCredentials();
     });
 });

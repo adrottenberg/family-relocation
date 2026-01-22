@@ -25,6 +25,16 @@ public class DocumentsController : ControllerBase
 
     private static readonly string[] AllowedContentTypes =
         ["application/pdf", "image/jpeg", "image/png"];
+
+    // Map of allowed extensions to their expected content types
+    private static readonly Dictionary<string, string[]> AllowedExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        { ".pdf", ["application/pdf"] },
+        { ".jpg", ["image/jpeg"] },
+        { ".jpeg", ["image/jpeg"] },
+        { ".png", ["image/png"] }
+    };
+
     private const long MaxFileSize = 10 * 1024 * 1024; // 10MB
 
     public DocumentsController(
@@ -86,6 +96,15 @@ public class DocumentsController : ControllerBase
         if (!AllowedContentTypes.Contains(file.ContentType.ToLowerInvariant()))
         {
             return BadRequest(new { message = "Only PDF and image files (JPEG, PNG) are allowed" });
+        }
+
+        // Validate file extension matches content type (prevents uploading .exe as .pdf)
+        var fileExtension = Path.GetExtension(file.FileName);
+        if (string.IsNullOrEmpty(fileExtension) ||
+            !AllowedExtensions.TryGetValue(fileExtension, out var expectedContentTypes) ||
+            !expectedContentTypes.Contains(file.ContentType.ToLowerInvariant()))
+        {
+            return BadRequest(new { message = "File extension does not match content type or is not allowed" });
         }
 
         // Get document type for naming
