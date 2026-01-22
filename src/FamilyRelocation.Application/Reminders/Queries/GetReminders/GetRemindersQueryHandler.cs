@@ -21,6 +21,10 @@ public class GetRemindersQueryHandler : IRequestHandler<GetRemindersQuery, Remin
 
     public async Task<RemindersListDto> Handle(GetRemindersQuery query, CancellationToken cancellationToken)
     {
+        // Normalize pagination (max 100 per request)
+        var skip = Math.Max(0, query.Skip);
+        var take = Math.Clamp(query.Take, 1, 100);
+
         var today = DateTime.UtcNow.Date;
 
         var queryable = _context.Set<FollowUpReminder>().AsQueryable();
@@ -69,8 +73,8 @@ public class GetRemindersQueryHandler : IRequestHandler<GetRemindersQuery, Remin
             .OrderBy(r => r.DueDate)
             .ThenByDescending(r => r.Priority)
             .ThenBy(r => r.DueTime)
-            .Skip(query.Skip)
-            .Take(query.Take)
+            .Skip(skip)
+            .Take(take)
             .ToListAsync(cancellationToken);
 
         // Fetch applicant names for reminders linked to applicants

@@ -401,7 +401,14 @@ ${printContent.innerHTML}
 
 ### Should Do (High Priority)
 1. Review CORS configuration for staging/production
-2. Add pagination limits to all list endpoints
+2. ~~Add pagination limits to all list endpoints~~ ✅ FIXED
+
+**Pagination Limits Applied:**
+- `GetApplicantsQueryHandler`: Already had `Math.Clamp(pageSize, 1, 100)`
+- `GetAuditLogsQueryHandler`: Already had `Math.Clamp(pageSize, 1, 100)`
+- `GetPropertiesQueryHandler`: Added `Math.Clamp(pageSize, 1, 100)`
+- `GetRemindersQueryHandler`: Added `Math.Clamp(take, 1, 100)`
+- `GetActivitiesByEntityQuery`: Controller already had `Math.Min(pageSize, 100)`
 
 ### Nice to Have
 1. Increase test coverage for handlers

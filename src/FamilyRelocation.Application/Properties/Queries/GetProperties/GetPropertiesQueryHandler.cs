@@ -19,6 +19,10 @@ public class GetPropertiesQueryHandler : IRequestHandler<GetPropertiesQuery, Pag
 
     public async Task<PaginatedList<PropertyListDto>> Handle(GetPropertiesQuery query, CancellationToken ct)
     {
+        // Normalize pagination (max 100 per page)
+        var page = Math.Max(1, query.Page);
+        var pageSize = Math.Clamp(query.PageSize, 1, 100);
+
         var dbQuery = _context.Set<Property>().AsQueryable();
 
         // Search by address or MLS
@@ -78,11 +82,11 @@ public class GetPropertiesQueryHandler : IRequestHandler<GetPropertiesQuery, Pag
         var totalCount = await dbQuery.CountAsync(ct);
 
         var items = await dbQuery
-            .Skip((query.Page - 1) * query.PageSize)
-            .Take(query.PageSize)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .Select(p => p.ToListDto())
             .ToListAsync(ct);
 
-        return new PaginatedList<PropertyListDto>(items, totalCount, query.Page, query.PageSize);
+        return new PaginatedList<PropertyListDto>(items, totalCount, page, pageSize);
     }
 }
