@@ -235,15 +235,31 @@ policy.WithOrigins(allowedOrigins)
 
 ---
 
-### H-006: Hardcoded CORS Origins Fallback
+### H-006: Hardcoded CORS Origins Fallback - ✅ FIXED
 
 **File:** `src/FamilyRelocation.API/Program.cs:177`
+**Status:** **FIXED**
 
+**Original Issue:** Localhost fallback would be used in production if config is missing.
+
+**Fix Applied:**
 ```csharp
-?? ["http://localhost:5173", "http://localhost:3000"];
+if (allowedOrigins == null || allowedOrigins.Length == 0)
+{
+    if (builder.Environment.IsDevelopment())
+    {
+        // Only allow localhost fallback in Development
+        allowedOrigins = ["http://localhost:5173", "http://localhost:3000"];
+    }
+    else
+    {
+        throw new InvalidOperationException(
+            "Cors:AllowedOrigins must be configured in production.");
+    }
+}
 ```
 
-**Recommendation:** Remove fallback for production or make environment-specific.
+Now requires explicit CORS configuration in production - app fails fast if missing.
 
 ---
 

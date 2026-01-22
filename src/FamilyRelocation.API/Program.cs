@@ -173,13 +173,27 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
-// Add CORS policy
+// Add CORS policy (H-006: No hardcoded fallback in production)
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
-            ?? ["http://localhost:5173", "http://localhost:3000"];
+        var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
+
+        if (allowedOrigins == null || allowedOrigins.Length == 0)
+        {
+            if (builder.Environment.IsDevelopment())
+            {
+                // Only allow localhost fallback in Development
+                allowedOrigins = ["http://localhost:5173", "http://localhost:3000"];
+            }
+            else
+            {
+                throw new InvalidOperationException(
+                    "Cors:AllowedOrigins must be configured in production. " +
+                    "Add it to appsettings.Production.json or environment variables.");
+            }
+        }
 
         policy.WithOrigins(allowedOrigins)
               .WithMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
