@@ -64,9 +64,10 @@ public class StageRequirementsController : ControllerBase
     }
 
     /// <summary>
-    /// Creates a new stage transition requirement.
+    /// Creates a new stage transition requirement. Admin only.
     /// </summary>
     [HttpPost]
+    [Authorize(Roles = "Admin")]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Create([FromBody] CreateStageRequirementRequest request)
@@ -92,9 +93,10 @@ public class StageRequirementsController : ControllerBase
     }
 
     /// <summary>
-    /// Deletes a stage transition requirement.
+    /// Deletes a stage transition requirement. Admin only.
     /// </summary>
     [HttpDelete("{id:guid}")]
+    [Authorize(Roles = "Admin")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(Guid id)

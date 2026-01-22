@@ -80,6 +80,7 @@ public class ApplicantsController : ControllerBase
     /// Cannot update: board decision, created date, applicant ID.
     /// </summary>
     [HttpPut("{id:guid}")]
+    [Authorize(Roles = "Coordinator,Admin")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -115,6 +116,7 @@ public class ApplicantsController : ControllerBase
     /// with IsDeleted = true. The applicant can be restored if needed.
     /// </remarks>
     [HttpDelete("{id:guid}")]
+    [Authorize(Roles = "Coordinator,Admin")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(Guid id)
@@ -145,6 +147,7 @@ public class ApplicantsController : ControllerBase
     /// The 'notes' field can be used for approval notes, rejection reason, or deferral reason.
     /// </remarks>
     [HttpPut("{id:guid}/board-review")]
+    [Authorize(Roles = "BoardMember,Admin")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

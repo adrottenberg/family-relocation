@@ -39,9 +39,10 @@ public class DocumentTypesController : ControllerBase
     }
 
     /// <summary>
-    /// Creates a new document type.
+    /// Creates a new document type. Admin only.
     /// </summary>
     [HttpPost]
+    [Authorize(Roles = "Admin")]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Create([FromBody] CreateDocumentTypeRequest request)
@@ -56,9 +57,10 @@ public class DocumentTypesController : ControllerBase
     }
 
     /// <summary>
-    /// Updates an existing document type.
+    /// Updates an existing document type. Admin only.
     /// </summary>
     [HttpPut("{id:guid}")]
+    [Authorize(Roles = "Admin")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateDocumentTypeRequest request)
@@ -76,9 +78,10 @@ public class DocumentTypesController : ControllerBase
     }
 
     /// <summary>
-    /// Deactivates (soft deletes) a document type.
+    /// Deactivates (soft deletes) a document type. Admin only.
     /// </summary>
     [HttpDelete("{id:guid}")]
+    [Authorize(Roles = "Admin")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

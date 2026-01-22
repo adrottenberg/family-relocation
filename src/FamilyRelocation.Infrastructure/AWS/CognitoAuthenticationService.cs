@@ -426,4 +426,212 @@ public class CognitoAuthenticationService : IAuthenticationService
         RefreshToken = result.RefreshToken,
         ExpiresIn = result.ExpiresIn ?? 3600
     };
+
+    public async Task<UserListResult> ListUsersAsync(
+        string? filter = null,
+        int limit = 60,
+        string? paginationToken = null,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var request = new ListUsersRequest
+            {
+                UserPoolId = _userPoolId,
+                Limit = Math.Min(limit, 60),
+                PaginationToken = paginationToken
+            };
+
+            if (!string.IsNullOrEmpty(filter))
+            {
+                request.Filter = filter;
+            }
+
+            var response = await _cognitoClient.ListUsersAsync(request, cancellationToken);
+
+            var users = new List<UserDto>();
+            foreach (var user in response.Users)
+            {
+                var groups = await GetUserGroupsAsync(user.Username, cancellationToken);
+                users.Add(MapToUserDto(user, groups));
+            }
+
+            return UserListResult.SuccessResult(users, response.PaginationToken);
+        }
+        catch (Exception ex)
+        {
+            return UserListResult.ErrorResult($"Failed to list users: {ex.Message}", AuthErrorType.Unknown);
+        }
+    }
+
+    public async Task<GetUserResult> GetUserAsync(string userId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var request = new AdminGetUserRequest
+            {
+                UserPoolId = _userPoolId,
+                Username = userId
+            };
+
+            var response = await _cognitoClient.AdminGetUserAsync(request, cancellationToken);
+            var groups = await GetUserGroupsAsync(userId, cancellationToken);
+
+            var user = new UserDto
+            {
+                Id = GetAttributeValue(response.UserAttributes, "sub") ?? userId,
+                Email = GetAttributeValue(response.UserAttributes, "email") ?? string.Empty,
+                Name = GetAttributeValue(response.UserAttributes, "name"),
+                Roles = groups,
+                Status = response.UserStatus.ToString(),
+                EmailVerified = GetAttributeValue(response.UserAttributes, "email_verified") == "true",
+                MfaEnabled = response.MFAOptions?.Any() == true ||
+                             response.UserMFASettingList?.Any() == true,
+                CreatedAt = response.UserCreateDate ?? DateTime.UtcNow,
+                LastLogin = response.UserLastModifiedDate
+            };
+
+            return GetUserResult.SuccessResult(user);
+        }
+        catch (UserNotFoundException)
+        {
+            return GetUserResult.ErrorResult("User not found", AuthErrorType.UserNotFound);
+        }
+        catch (Exception ex)
+        {
+            return GetUserResult.ErrorResult($"Failed to get user: {ex.Message}", AuthErrorType.Unknown);
+        }
+    }
+
+    public async Task<List<string>> GetUserGroupsAsync(string userId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var request = new AdminListGroupsForUserRequest
+            {
+                UserPoolId = _userPoolId,
+                Username = userId
+            };
+
+            var response = await _cognitoClient.AdminListGroupsForUserAsync(request, cancellationToken);
+            return response.Groups.Select(g => g.GroupName).ToList();
+        }
+        catch
+        {
+            return new List<string>();
+        }
+    }
+
+    public async Task<OperationResult> UpdateUserRolesAsync(
+        string userId,
+        IEnumerable<string> roles,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var targetRoles = roles.ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var currentRoles = await GetUserGroupsAsync(userId, cancellationToken);
+            var currentRolesSet = currentRoles.ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            // Roles to add
+            var rolesToAdd = targetRoles.Except(currentRolesSet, StringComparer.OrdinalIgnoreCase);
+            foreach (var role in rolesToAdd)
+            {
+                await _cognitoClient.AdminAddUserToGroupAsync(new AdminAddUserToGroupRequest
+                {
+                    UserPoolId = _userPoolId,
+                    Username = userId,
+                    GroupName = role
+                }, cancellationToken);
+            }
+
+            // Roles to remove
+            var rolesToRemove = currentRolesSet.Except(targetRoles, StringComparer.OrdinalIgnoreCase);
+            foreach (var role in rolesToRemove)
+            {
+                await _cognitoClient.AdminRemoveUserFromGroupAsync(new AdminRemoveUserFromGroupRequest
+                {
+                    UserPoolId = _userPoolId,
+                    Username = userId,
+                    GroupName = role
+                }, cancellationToken);
+            }
+
+            return OperationResult.SuccessResult("User roles updated successfully");
+        }
+        catch (UserNotFoundException)
+        {
+            return OperationResult.ErrorResult("User not found", AuthErrorType.UserNotFound);
+        }
+        catch (ResourceNotFoundException)
+        {
+            return OperationResult.ErrorResult("One or more specified roles do not exist", AuthErrorType.Unknown);
+        }
+        catch (Exception ex)
+        {
+            return OperationResult.ErrorResult($"Failed to update user roles: {ex.Message}", AuthErrorType.Unknown);
+        }
+    }
+
+    public async Task<OperationResult> DisableUserAsync(string userId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await _cognitoClient.AdminDisableUserAsync(new AdminDisableUserRequest
+            {
+                UserPoolId = _userPoolId,
+                Username = userId
+            }, cancellationToken);
+
+            return OperationResult.SuccessResult("User disabled successfully");
+        }
+        catch (UserNotFoundException)
+        {
+            return OperationResult.ErrorResult("User not found", AuthErrorType.UserNotFound);
+        }
+        catch (Exception ex)
+        {
+            return OperationResult.ErrorResult($"Failed to disable user: {ex.Message}", AuthErrorType.Unknown);
+        }
+    }
+
+    public async Task<OperationResult> EnableUserAsync(string userId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await _cognitoClient.AdminEnableUserAsync(new AdminEnableUserRequest
+            {
+                UserPoolId = _userPoolId,
+                Username = userId
+            }, cancellationToken);
+
+            return OperationResult.SuccessResult("User enabled successfully");
+        }
+        catch (UserNotFoundException)
+        {
+            return OperationResult.ErrorResult("User not found", AuthErrorType.UserNotFound);
+        }
+        catch (Exception ex)
+        {
+            return OperationResult.ErrorResult($"Failed to enable user: {ex.Message}", AuthErrorType.Unknown);
+        }
+    }
+
+    private static UserDto MapToUserDto(UserType user, List<string> groups) => new()
+    {
+        Id = GetAttributeValue(user.Attributes, "sub") ?? user.Username,
+        Email = GetAttributeValue(user.Attributes, "email") ?? string.Empty,
+        Name = GetAttributeValue(user.Attributes, "name"),
+        Roles = groups,
+        Status = user.UserStatus.ToString(),
+        EmailVerified = GetAttributeValue(user.Attributes, "email_verified") == "true",
+        MfaEnabled = user.MFAOptions?.Any() == true,
+        CreatedAt = user.UserCreateDate ?? DateTime.UtcNow,
+        LastLogin = user.UserLastModifiedDate
+    };
+
+    private static string? GetAttributeValue(List<AttributeType> attributes, string name)
+    {
+        return attributes.FirstOrDefault(a => a.Name == name)?.Value;
+    }
 }

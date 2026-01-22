@@ -2820,6 +2820,151 @@ All 351 tests passing:
 
 ---
 
+## SESSION: January 21, 2026 - User Management & RBAC Implementation
+
+### Summary
+
+Implemented User Management APIs (US-042 through US-045) and applied Role-Based Access Control to all controllers (US-046).
+
+### Features Implemented (feature/user-management branch)
+
+#### 1. User Management APIs - COMPLETE
+
+**New Files Created:**
+- `Application/Auth/Models/UserDto.cs` - User model with id, email, name, roles, status, etc.
+- `Application/Auth/Models/UserListResult.cs` - Result type for listing users
+- `Application/Auth/Models/GetUserResult.cs` - Result type for getting single user
+- `API/Controllers/UsersController.cs` - Full user management controller
+
+**IAuthenticationService Extended:**
+- `ListUsersAsync(filter, limit, paginationToken, ct)` - List all users with optional filters
+- `GetUserAsync(userId, ct)` - Get single user details
+- `GetUserGroupsAsync(userId, ct)` - Get user's Cognito groups/roles
+- `UpdateUserRolesAsync(userId, roles, ct)` - Update user roles
+- `DisableUserAsync(userId, ct)` - Deactivate user account
+- `EnableUserAsync(userId, ct)` - Reactivate user account
+
+**CognitoAuthenticationService Implementation:**
+- Implemented all user management methods using AWS SDK
+- Maps Cognito user attributes to UserDto
+- Handles group membership via AdminAddUserToGroup/AdminRemoveUserFromGroup
+
+**UsersController Endpoints (Admin Only):**
+- `GET /api/users` - List users with search (email prefix) and status filters
+- `GET /api/users/{userId}` - Get user details
+- `PUT /api/users/{userId}/roles` - Update user roles (with self-protection)
+- `POST /api/users/{userId}/deactivate` - Disable user (with self-protection)
+- `POST /api/users/{userId}/reactivate` - Enable user
+
+**Valid Roles:** Admin, Coordinator, BoardMember
+
+**Safety Features:**
+- Cannot remove your own Admin role
+- Cannot deactivate your own account
+- All operations log to activity log
+
+#### 2. RBAC Applied to All Controllers - COMPLETE
+
+| Controller | Endpoint | Authorization |
+|------------|----------|---------------|
+| **ApplicantsController** | | |
+| | POST (Create) | `[AllowAnonymous]` (public applications) |
+| | GET (List/Detail) | `[Authorize]` (any authenticated) |
+| | PUT (Update) | `[Authorize(Roles = "Coordinator,Admin")]` |
+| | DELETE | `[Authorize(Roles = "Coordinator,Admin")]` |
+| | PUT /board-review | `[Authorize(Roles = "BoardMember,Admin")]` |
+| **PropertiesController** | | |
+| | GET (List/Detail) | `[Authorize]` (any authenticated) |
+| | POST (Create) | `[Authorize(Roles = "Coordinator,Admin")]` |
+| | PUT (Update) | `[Authorize(Roles = "Coordinator,Admin")]` |
+| | PUT /status | `[Authorize(Roles = "Coordinator,Admin")]` |
+| | DELETE | `[Authorize(Roles = "Coordinator,Admin")]` |
+| | POST /photos | `[Authorize(Roles = "Coordinator,Admin")]` |
+| | DELETE /photos | `[Authorize(Roles = "Coordinator,Admin")]` |
+| **HousingSearchesController** | | |
+| | PUT /stage | `[Authorize(Roles = "Coordinator,Admin")]` |
+| | PUT /preferences | `[Authorize(Roles = "Coordinator,Admin")]` |
+| **DocumentsController** | | |
+| | GET (List/Presigned URL) | `[Authorize]` (any authenticated) |
+| | POST /upload | `[Authorize(Roles = "Coordinator,Admin")]` |
+| | DELETE | `[Authorize(Roles = "Coordinator,Admin")]` |
+| **DocumentTypesController** | | |
+| | GET (List) | `[Authorize]` (any authenticated) |
+| | POST (Create) | `[Authorize(Roles = "Admin")]` |
+| | PUT (Update) | `[Authorize(Roles = "Admin")]` |
+| | DELETE | `[Authorize(Roles = "Admin")]` |
+| **StageRequirementsController** | | |
+| | GET (List) | `[Authorize]` (any authenticated) |
+| | POST (Create) | `[Authorize(Roles = "Admin")]` |
+| | DELETE | `[Authorize(Roles = "Admin")]` |
+| **UsersController** | | Class-level `[Authorize(Roles = "Admin")]` |
+
+### Documentation Updates
+
+**.http File:**
+- Updated user management section with working endpoints
+- Removed "Sprint 4 - Not Yet Implemented" comments
+- Added search by email and filter by status examples
+
+**Postman Collection:**
+- Created `postman/FamilyRelocation-Users.postman_collection.json`
+- 8 requests covering all user management operations
+- Auto-save userId from list response
+
+### Test Results
+
+All 351 tests passing:
+- 230 domain tests
+- 84 API tests
+- 37 integration tests
+
+### Key Technical Details
+
+1. **AuthErrorType.UserNotFound** - Added to distinguish 404 vs other errors
+2. **Cognito Integration** - Uses AdminListUsers, AdminGetUser, AdminAddUserToGroupAsync, AdminRemoveUserFromGroupAsync, AdminDisableUserAsync, AdminEnableUserAsync
+3. **Activity Logging** - All user management actions logged via IActivityLogger
+
+---
+
+## FOR NEXT SESSION
+
+### To Quickly Re-Establish Context
+
+**Just say:**
+> "I'm the developer building the Family Relocation CRM for the Jewish community in Union County. We just completed user management and RBAC."
+
+**I'll know:**
+- Complete domain model (Applicant, HousingSearch, Property, ActivityLog, FollowUpReminder)
+- Tech stack (.NET 10, React + Ant Design, AWS Cognito)
+- **User management complete** - List, Get, Update Roles, Deactivate/Reactivate
+- **RBAC applied** to all controllers with appropriate role restrictions
+- **Three roles:** Admin (full access), Coordinator (manage applicants/properties), BoardMember (board decisions)
+- Query object pattern, all handlers in Application layer
+- EF Core ToJson() for JSON columns
+- Global exception handler and validation pipeline in place
+
+### Sprint 4 Remaining Stories
+
+**Backend:**
+- US-047: Communication Logging via Activity Log (4 pts) - IN PROGRESS
+- US-052: Expand Activity Logging Coverage (2 pts) - IN PROGRESS
+- US-048: SES Email Verification (2 pts)
+- US-049: Automated Agreement Follow-up Emails (3 pts)
+- US-050: Board Approval Report (3 pts)
+- US-051: Broker Role (2 pts)
+
+**Frontend:**
+- US-F12-F15: Reminders UI (12 pts)
+- US-F16: Audit history tab (4 pts)
+- US-F17-F18: User management UI (6 pts)
+- US-F19: Log Activity Modal (3 pts)
+- US-F20: Board Report Print View (2 pts)
+- US-F21: Pipeline MovedIn Column (3 pts)
+
+**And we can pick up exactly where we left off.**
+
+---
+
 **END OF CONVERSATION MEMORY LOG**
 
 This document captures our complete collaboration. Use it to quickly re-establish context in future sessions.

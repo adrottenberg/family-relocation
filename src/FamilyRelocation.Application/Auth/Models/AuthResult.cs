@@ -85,6 +85,8 @@ public enum AuthErrorType
     InvalidPassword,
     /// <summary>User with this email already exists.</summary>
     UserAlreadyExists,
+    /// <summary>User not found.</summary>
+    UserNotFound,
     /// <summary>Unknown or unspecified error.</summary>
     Unknown
 }
