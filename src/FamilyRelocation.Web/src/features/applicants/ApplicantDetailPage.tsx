@@ -28,10 +28,13 @@ import {
   BellOutlined,
   CheckOutlined,
   ClockCircleOutlined,
+  MessageOutlined,
+  FileTextOutlined,
+  HistoryOutlined,
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { applicantsApi, documentsApi, getStageRequirements, housingSearchesApi, remindersApi } from '../../api';
-import type { ApplicantDto, AuditLogDto, ReminderListDto } from '../../api/types';
+import { applicantsApi, documentsApi, getStageRequirements, housingSearchesApi, remindersApi, activitiesApi } from '../../api';
+import type { ApplicantDto, ReminderListDto } from '../../api/types';
 import { colors, statusTagStyles, stageTagStyles } from '../../theme/antd-theme';
 import { useAuthStore } from '../../store/authStore';
 import BoardReviewSection from './BoardReviewSection';
@@ -50,6 +53,7 @@ import ContractInfoModal from '../pipeline/modals/ContractInfoModal';
 import ContractFailedModal from '../pipeline/modals/ContractFailedModal';
 import ClosingConfirmModal from '../pipeline/modals/ClosingConfirmModal';
 import { CreateReminderModal } from '../reminders';
+import { LogActivityModal } from '../activities';
 import './ApplicantDetailPage.css';
 
 const { Title, Text } = Typography;
@@ -63,6 +67,7 @@ const ApplicantDetailPage = () => {
   const [editDrawerOpen, setEditDrawerOpen] = useState(false);
   const [documentUploadModalOpen, setDocumentUploadModalOpen] = useState(false);
   const [reminderModalOpen, setReminderModalOpen] = useState(false);
+  const [activityModalOpen, setActivityModalOpen] = useState(false);
 
   // Stage transition modal state
   const [activeTransitionModal, setActiveTransitionModal] = useState<TransitionType | null>(null);
@@ -73,7 +78,7 @@ const ApplicantDetailPage = () => {
     enabled: !!id,
   });
 
-  const { data: auditLogs } = useQuery({
+  const { data: _auditLogs } = useQuery({
     queryKey: ['applicant-audit', id],
     queryFn: () => applicantsApi.getAuditLogs(id!, { page: 1, pageSize: 20 }),
     enabled: !!id,
@@ -386,7 +391,7 @@ const ApplicantDetailPage = () => {
     {
       key: 'activity',
       label: 'Activity',
-      children: <ActivityTab auditLogs={auditLogs?.items || []} />,
+      children: <ActivityTab applicantId={applicant.id} onLogActivity={() => setActivityModalOpen(true)} />,
     },
   ];
 
@@ -426,6 +431,9 @@ const ApplicantDetailPage = () => {
             </div>
           </div>
           <div className="header-actions">
+            <Button icon={<PhoneOutlined />} onClick={() => setActivityModalOpen(true)}>
+              Log Activity
+            </Button>
             <Button icon={<BellOutlined />} onClick={() => setReminderModalOpen(true)}>
               Add Reminder
             </Button>
@@ -476,6 +484,19 @@ const ApplicantDetailPage = () => {
         entityType="Applicant"
         entityId={applicant.id}
         entityDisplayName={`${applicant.husband.lastName} Family`}
+      />
+
+      {/* Log Activity Modal */}
+      <LogActivityModal
+        open={activityModalOpen}
+        onClose={() => setActivityModalOpen(false)}
+        onSuccess={() => {
+          setActivityModalOpen(false);
+          queryClient.invalidateQueries({ queryKey: ['applicant-audit', applicant.id] });
+        }}
+        entityType="Applicant"
+        entityId={applicant.id}
+        entityName={`${applicant.husband.lastName} Family`}
       />
 
       {/* Stage Transition Modals */}
@@ -937,45 +958,121 @@ const RemindersTab = ({ applicantId, onAddReminder }: RemindersTabProps) => {
 };
 
 // Activity Tab
-const ActivityTab = ({ auditLogs }: { auditLogs: AuditLogDto[] }) => {
-  if (!auditLogs || auditLogs.length === 0) {
-    return <Empty description="No activity recorded" />;
+// Activity Tab with support for different activity types
+interface ActivityTabProps {
+  applicantId: string;
+  onLogActivity: () => void;
+}
+
+const ActivityTab = ({ applicantId, onLogActivity }: ActivityTabProps) => {
+  const { data: activities, isLoading } = useQuery({
+    queryKey: ['applicant-activities', applicantId],
+    queryFn: () => activitiesApi.getByEntity('Applicant', applicantId, 1, 50),
+  });
+
+  if (isLoading) {
+    return (
+      <div style={{ textAlign: 'center', padding: 40 }}>
+        <Spin />
+      </div>
+    );
   }
 
-  const formatAction = (action: string) => {
-    const actions: Record<string, string> = {
-      'Added': 'Created',
-      'Modified': 'Updated',
-      'Deleted': 'Deleted',
-    };
-    return actions[action] || action;
+  if (!activities?.items || activities.items.length === 0) {
+    return (
+      <div className="tab-content">
+        <div style={{ marginBottom: 16 }}>
+          <Button type="primary" icon={<PhoneOutlined />} onClick={onLogActivity}>
+            Log Activity
+          </Button>
+        </div>
+        <Empty description="No activity recorded" />
+      </div>
+    );
+  }
+
+  const getActivityIcon = (type: string, action: string) => {
+    switch (type) {
+      case 'PhoneCall':
+        return <PhoneOutlined style={{ color: '#1890ff' }} />;
+      case 'Email':
+        return <MailOutlined style={{ color: '#722ed1' }} />;
+      case 'SMS':
+        return <MessageOutlined style={{ color: '#13c2c2' }} />;
+      case 'Note':
+        return <FileTextOutlined style={{ color: '#fa8c16' }} />;
+      default:
+        // System activity
+        if (action === 'Added' || action === 'Created') {
+          return <HistoryOutlined style={{ color: '#52c41a' }} />;
+        }
+        return <HistoryOutlined style={{ color: '#8c8c8c' }} />;
+    }
   };
 
-  const getActionColor = (action: string) => {
-    const colorMap: Record<string, string> = {
-      'Added': 'green',
-      'Modified': 'blue',
-      'Deleted': 'red',
-    };
-    return colorMap[action] || 'gray';
+  const getActivityColor = (type: string, action: string) => {
+    switch (type) {
+      case 'PhoneCall':
+        return 'blue';
+      case 'Email':
+        return 'purple';
+      case 'SMS':
+        return 'cyan';
+      case 'Note':
+        return 'orange';
+      default:
+        if (action === 'Added' || action === 'Created') return 'green';
+        if (action === 'Modified' || action === 'Updated') return 'blue';
+        if (action === 'Deleted') return 'red';
+        return 'gray';
+    }
+  };
+
+  const formatActivityTitle = (activity: { type: string; action: string; entityType: string; outcome?: string }) => {
+    switch (activity.type) {
+      case 'PhoneCall':
+        return activity.outcome ? `Phone Call - ${activity.outcome}` : 'Phone Call';
+      case 'Email':
+        return 'Email';
+      case 'SMS':
+        return 'SMS';
+      case 'Note':
+        return 'Note';
+      default:
+        return `${activity.action} ${activity.entityType}`;
+    }
   };
 
   return (
     <div className="tab-content">
+      <div style={{ marginBottom: 16 }}>
+        <Button type="primary" icon={<PhoneOutlined />} onClick={onLogActivity}>
+          Log Activity
+        </Button>
+      </div>
       <Timeline
-        items={auditLogs.map((log) => ({
-          color: getActionColor(log.action),
+        items={activities.items.map((activity) => ({
+          dot: getActivityIcon(activity.type, activity.action),
+          color: getActivityColor(activity.type, activity.action),
           children: (
             <div className="timeline-item">
               <div className="timeline-header">
-                <Text strong>{formatAction(log.action)} {log.entityType}</Text>
+                <Space>
+                  <Text strong>{formatActivityTitle(activity)}</Text>
+                  {activity.type === 'PhoneCall' && activity.durationMinutes && (
+                    <Tag>{activity.durationMinutes} min</Tag>
+                  )}
+                </Space>
                 <Text type="secondary" style={{ fontSize: 12 }}>
-                  {new Date(log.timestamp).toLocaleString()}
+                  {new Date(activity.timestamp).toLocaleString()}
                 </Text>
               </div>
-              {log.userName && (
+              <Text style={{ display: 'block', marginTop: 4 }}>
+                {activity.description}
+              </Text>
+              {activity.userName && (
                 <Text type="secondary" style={{ fontSize: 13 }}>
-                  by {log.userName}
+                  by {activity.userName}
                 </Text>
               )}
             </div>

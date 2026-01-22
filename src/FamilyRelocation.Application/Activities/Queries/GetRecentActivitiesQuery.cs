@@ -21,4 +21,10 @@ public class ActivityDto
     public Guid? UserId { get; init; }
     public string? UserName { get; init; }
     public required DateTime Timestamp { get; init; }
+
+    // New fields for communication logging
+    public required string Type { get; init; }
+    public int? DurationMinutes { get; init; }
+    public string? Outcome { get; init; }
+    public Guid? FollowUpReminderId { get; init; }
 }

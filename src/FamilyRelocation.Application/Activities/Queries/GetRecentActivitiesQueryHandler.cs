@@ -31,7 +31,11 @@ public class GetRecentActivitiesQueryHandler : IRequestHandler<GetRecentActiviti
             Description = a.Description,
             UserId = a.UserId,
             UserName = a.UserName,
-            Timestamp = a.Timestamp
+            Timestamp = a.Timestamp,
+            Type = a.Type.ToString(),
+            DurationMinutes = a.DurationMinutes,
+            Outcome = a.Outcome,
+            FollowUpReminderId = a.FollowUpReminderId
         }).ToList();
     }
 }
@@ -67,7 +71,11 @@ public class GetActivitiesByEntityQueryHandler : IRequestHandler<GetActivitiesBy
             Description = a.Description,
             UserId = a.UserId,
             UserName = a.UserName,
-            Timestamp = a.Timestamp
+            Timestamp = a.Timestamp,
+            Type = a.Type.ToString(),
+            DurationMinutes = a.DurationMinutes,
+            Outcome = a.Outcome,
+            FollowUpReminderId = a.FollowUpReminderId
         }).ToList();
 
         return new PaginatedList<ActivityDto>(items, totalCount, request.Page, request.PageSize);

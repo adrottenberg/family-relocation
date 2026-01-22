@@ -689,3 +689,90 @@ Authorization: Bearer {{accessToken}}
 # Reopen a completed or dismissed reminder
 POST {{baseUrl}}/api/reminders/{{reminderId}}/reopen
 Authorization: Bearer {{accessToken}}
+
+###############################################################################
+# ACTIVITIES API
+# Activity logging for tracking communications and system events
+###############################################################################
+
+### Get Recent Activities
+# Returns most recent activities across all entities
+GET {{baseUrl}}/api/activities/recent?count=20
+Authorization: Bearer {{accessToken}}
+
+### Get Activities for Specific Entity
+# Returns paginated activities for a specific entity
+GET {{baseUrl}}/api/activities/Applicant/{{applicantId}}?page=1&pageSize=50
+Authorization: Bearer {{accessToken}}
+
+### Log Phone Call Activity
+# Records a phone call with the applicant
+POST {{baseUrl}}/api/activities
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "entityType": "Applicant",
+    "entityId": "{{applicantId}}",
+    "type": "PhoneCall",
+    "description": "Discussed housing preferences and timeline. Family interested in Union area.",
+    "durationMinutes": 15,
+    "outcome": "Connected"
+}
+
+### Log Phone Call with Follow-up Reminder
+# Records a phone call and creates a follow-up reminder
+POST {{baseUrl}}/api/activities
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "entityType": "Applicant",
+    "entityId": "{{applicantId}}",
+    "type": "PhoneCall",
+    "description": "Left voicemail about document requirements.",
+    "durationMinutes": 2,
+    "outcome": "Voicemail",
+    "createFollowUp": true,
+    "followUpDate": "2026-01-25",
+    "followUpTitle": "Call back Cohen family about documents"
+}
+
+### Log Note Activity
+# Records a general note about the applicant
+POST {{baseUrl}}/api/activities
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "entityType": "Applicant",
+    "entityId": "{{applicantId}}",
+    "type": "Note",
+    "description": "Rabbi Cohen provided excellent references. Family is very committed to community involvement."
+}
+
+### Log Email Activity
+# Records an email communication
+POST {{baseUrl}}/api/activities
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "entityType": "Applicant",
+    "entityId": "{{applicantId}}",
+    "type": "Email",
+    "description": "Sent list of available properties matching their criteria."
+}
+
+### Log SMS Activity
+# Records a text message communication
+POST {{baseUrl}}/api/activities
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "entityType": "Applicant",
+    "entityId": "{{applicantId}}",
+    "type": "SMS",
+    "description": "Reminder about tomorrow's property showing at 2pm."
+}
