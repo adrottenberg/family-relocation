@@ -1,0 +1,450 @@
+{
+	"info": {
+		"_postman_id": "family-relocation-users-collection",
+		"name": "FamilyRelocation Users API",
+		"description": "Collection for testing User Management endpoints in the FamilyRelocation API.\n\n## Setup\n1. Set the `baseUrl` variable to your API URL (default: https://localhost:7267)\n2. Login first using the Auth collection to get an access token\n3. Ensure you have Admin role to access these endpoints\n\n## Running the API\n```\ndotnet run --project src/FamilyRelocation.API --launch-profile https\n```\n\n## Roles\nValid roles in the system:\n- **Admin**: Full access to all endpoints\n- **Coordinator**: Can manage applicants, properties, housing searches, documents\n- **BoardMember**: Can view applicants and make board decisions\n\n## Important Notes\n- All endpoints require Admin role\n- Cannot remove your own Admin role\n- Cannot deactivate your own account",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "List Users",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('List users successful', function() {",
+							"    pm.response.to.have.status(200);",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.users).to.be.an('array');",
+							"});",
+							"",
+							"var jsonData = pm.response.json();",
+							"if (jsonData.users && jsonData.users.length > 0) {",
+							"    pm.collectionVariables.set('userId', jsonData.users[0].id);",
+							"    console.log('Set userId to first user: ' + jsonData.users[0].id);",
+							"}",
+							"if (jsonData.paginationToken) {",
+							"    pm.collectionVariables.set('paginationToken', jsonData.paginationToken);",
+							"    console.log('More users available - pagination token saved');",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{accessToken}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/users?limit=20",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"users"
+					],
+					"query": [
+						{
+							"key": "limit",
+							"value": "20"
+						}
+					]
+				},
+				"description": "List all users with optional filtering.\n\n**Authorization:**\nRequires Admin role.\n\n**Query Parameters:**\n- `search`: Search by email prefix (e.g., \"john\")\n- `status`: Filter by Cognito status (e.g., \"CONFIRMED\", \"FORCE_CHANGE_PASSWORD\")\n- `limit`: Max users to return (1-60, default 60)\n- `paginationToken`: Token for next page\n\n**Response:**\n- `users`: Array of user objects\n- `paginationToken`: Token for next page (if more results)"
+			}
+		},
+		{
+			"name": "List Users - Search by Email",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Search users successful', function() {",
+							"    pm.response.to.have.status(200);",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.users).to.be.an('array');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{accessToken}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/users?search={{searchEmail}}&limit=20",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"users"
+					],
+					"query": [
+						{
+							"key": "search",
+							"value": "{{searchEmail}}"
+						},
+						{
+							"key": "limit",
+							"value": "20"
+						}
+					]
+				},
+				"description": "Search users by email prefix.\n\n**Example:**\n`?search=john` returns users with emails starting with \"john\""
+			}
+		},
+		{
+			"name": "List Users - Filter by Status",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Filter users by status successful', function() {",
+							"    pm.response.to.have.status(200);",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.users).to.be.an('array');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{accessToken}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/users?status=CONFIRMED&limit=20",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"users"
+					],
+					"query": [
+						{
+							"key": "status",
+							"value": "CONFIRMED"
+						},
+						{
+							"key": "limit",
+							"value": "20"
+						}
+					]
+				},
+				"description": "Filter users by Cognito status.\n\n**Common Statuses:**\n- `CONFIRMED`: Active, confirmed users\n- `FORCE_CHANGE_PASSWORD`: Users who need to set new password\n- `DISABLED`: Deactivated users"
+			}
+		},
+		{
+			"name": "Get User Details",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Get user successful', function() {",
+							"    pm.response.to.have.status(200);",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.id).to.be.a('string');",
+							"    pm.expect(jsonData.email).to.be.a('string');",
+							"    pm.expect(jsonData.roles).to.be.an('array');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{accessToken}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/users/{{userId}}",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"users",
+						"{{userId}}"
+					]
+				},
+				"description": "Get detailed information about a specific user.\n\n**Authorization:**\nRequires Admin role.\n\n**Path Parameter:**\n- `userId`: User's email or Cognito username (sub)\n\n**Response:**\n- `id`: Cognito user ID (sub)\n- `email`: User's email address\n- `name`: User's display name (if set)\n- `roles`: Array of assigned roles\n- `status`: Cognito user status\n- `emailVerified`: Whether email is verified\n- `mfaEnabled`: Whether MFA is enabled\n- `createdAt`: Account creation date\n- `lastLogin`: Last authentication date"
+			}
+		},
+		{
+			"name": "Update User Roles",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Update roles successful', function() {",
+							"    pm.response.to.have.status(200);",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.userId).to.be.a('string');",
+							"    pm.expect(jsonData.roles).to.be.an('array');",
+							"    pm.expect(jsonData.message).to.include('successfully');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{accessToken}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"roles\": [\"Coordinator\"]\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/users/{{userId}}/roles",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"users",
+						"{{userId}}",
+						"roles"
+					]
+				},
+				"description": "Update a user's roles.\n\n**Authorization:**\nRequires Admin role.\n\n**Important:**\n- Replaces ALL existing roles with the new list\n- Cannot remove your own Admin role\n\n**Valid Roles:**\n- `Admin`: Full system access\n- `Coordinator`: Manage applicants, properties, documents\n- `BoardMember`: View applicants, make board decisions\n\n**Request Body:**\n```json\n{\n    \"roles\": [\"Coordinator\", \"BoardMember\"]\n}\n```\n\n**Response:**\n- `userId`: The user's ID\n- `roles`: The updated roles\n- `message`: Success message"
+			}
+		},
+		{
+			"name": "Update User Roles - Grant Admin",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Grant Admin successful', function() {",
+							"    pm.response.to.have.status(200);",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.roles).to.include('Admin');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{accessToken}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"roles\": [\"Admin\"]\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/users/{{userId}}/roles",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"users",
+						"{{userId}}",
+						"roles"
+					]
+				},
+				"description": "Grant Admin role to a user.\n\n**Warning:** This gives full system access."
+			}
+		},
+		{
+			"name": "Deactivate User",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Deactivate user successful', function() {",
+							"    pm.response.to.have.status(200);",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.status).to.equal('Disabled');",
+							"    pm.expect(jsonData.message).to.include('deactivated');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{accessToken}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/users/{{userId}}/deactivate",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"users",
+						"{{userId}}",
+						"deactivate"
+					]
+				},
+				"description": "Deactivate a user account.\n\n**Authorization:**\nRequires Admin role.\n\n**Important:**\n- Cannot deactivate your own account\n- Deactivated users cannot log in\n\n**Response:**\n- `userId`: The user's ID\n- `status`: \"Disabled\"\n- `message`: Success message"
+			}
+		},
+		{
+			"name": "Reactivate User",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Reactivate user successful', function() {",
+							"    pm.response.to.have.status(200);",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.status).to.equal('Enabled');",
+							"    pm.expect(jsonData.message).to.include('reactivated');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{accessToken}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/users/{{userId}}/reactivate",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"users",
+						"{{userId}}",
+						"reactivate"
+					]
+				},
+				"description": "Reactivate a disabled user account.\n\n**Authorization:**\nRequires Admin role.\n\n**Response:**\n- `userId`: The user's ID\n- `status`: \"Enabled\"\n- `message`: Success message"
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "https://localhost:7267",
+			"type": "string"
+		},
+		{
+			"key": "accessToken",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "userId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "searchEmail",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "paginationToken",
+			"value": "",
+			"type": "string"
+		}
+	]
+}

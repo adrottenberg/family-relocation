@@ -1,5 +1,6 @@
 using FamilyRelocation.Application.Auth;
 using FamilyRelocation.Application.Auth.Models;
+using FamilyRelocation.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using AuthModels = FamilyRelocation.API.Models.Auth;
@@ -14,14 +15,20 @@ namespace FamilyRelocation.API.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly IAuthenticationService _authService;
+    private readonly IUserRoleService _userRoleService;
+    private readonly ICurrentUserService _currentUserService;
 
     /// <summary>
     /// Initializes the authentication controller.
     /// </summary>
-    /// <param name="authService">The authentication service.</param>
-    public AuthController(IAuthenticationService authService)
+    public AuthController(
+        IAuthenticationService authService,
+        IUserRoleService userRoleService,
+        ICurrentUserService currentUserService)
     {
         _authService = authService;
+        _userRoleService = userRoleService;
+        _currentUserService = currentUserService;
     }
 
     /// <summary>
@@ -314,4 +321,113 @@ public class AuthController : ControllerBase
             Message = result.Message
         });
     }
+
+    /// <summary>
+    /// Gets the current user's roles from the database.
+    /// </summary>
+    /// <returns>List of roles assigned to the current user.</returns>
+    [HttpGet("me/roles")]
+    [Authorize]
+    [ProducesResponseType(typeof(UserRolesResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetMyRoles(CancellationToken ct = default)
+    {
+        // Try multiple claim names for sub (Cognito uses different formats)
+        var cognitoUserId = User.FindFirst("sub")?.Value
+            ?? User.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
+            ?? User.FindFirst("username")?.Value;
+
+        if (string.IsNullOrEmpty(cognitoUserId))
+        {
+            return Unauthorized(new { message = "User ID not found in token" });
+        }
+
+        var roles = await _userRoleService.GetUserRolesAsync(cognitoUserId, ct);
+
+        return Ok(new UserRolesResponse
+        {
+            UserId = cognitoUserId,
+            Email = _currentUserService.Email,
+            Roles = roles.ToList()
+        });
+    }
+
+    /// <summary>
+    /// Bootstrap endpoint: Creates the first Admin user if no admins exist.
+    /// This endpoint can only be used once - when there are no Admin users in the system.
+    /// </summary>
+    /// <returns>Success message if the current user was made an Admin.</returns>
+    [HttpPost("bootstrap-admin")]
+    [Authorize]
+    [ProducesResponseType(typeof(BootstrapResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> BootstrapAdmin(CancellationToken ct = default)
+    {
+        // Try multiple claim names for sub (Cognito uses different formats)
+        var cognitoUserId = User.FindFirst("sub")?.Value
+            ?? User.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
+            ?? User.FindFirst("username")?.Value;
+        var email = User.FindFirst("email")?.Value ?? _currentUserService.Email;
+
+        if (string.IsNullOrEmpty(cognitoUserId))
+        {
+            return Unauthorized(new { message = "User ID not found in token" });
+        }
+
+        if (string.IsNullOrEmpty(email))
+        {
+            return BadRequest(new { message = "Email not found in token" });
+        }
+
+        // Check if any admins already exist
+        var existingAdmins = await _userRoleService.GetUserRolesByEmailAsync(email, ct);
+        if (existingAdmins.Contains("Admin"))
+        {
+            return Ok(new BootstrapResponse
+            {
+                Success = true,
+                Message = "You are already an Admin.",
+                Roles = existingAdmins.ToList()
+            });
+        }
+
+        // Add the Admin role to this user
+        await _userRoleService.AddRoleAsync(cognitoUserId, email, "Admin", "System Bootstrap", ct);
+
+        var updatedRoles = await _userRoleService.GetUserRolesAsync(cognitoUserId, ct);
+
+        return Ok(new BootstrapResponse
+        {
+            Success = true,
+            Message = "You have been granted Admin access.",
+            Roles = updatedRoles.ToList()
+        });
+    }
+}
+
+/// <summary>
+/// Response containing user roles.
+/// </summary>
+public record UserRolesResponse
+{
+    /// <summary>User's Cognito ID.</summary>
+    public string UserId { get; init; } = string.Empty;
+    /// <summary>User's email address.</summary>
+    public string? Email { get; init; }
+    /// <summary>List of roles.</summary>
+    public List<string> Roles { get; init; } = new();
+}
+
+/// <summary>
+/// Response from bootstrap admin endpoint.
+/// </summary>
+public record BootstrapResponse
+{
+    /// <summary>Whether the operation succeeded.</summary>
+    public bool Success { get; init; }
+    /// <summary>Status message.</summary>
+    public string Message { get; init; } = string.Empty;
+    /// <summary>User's roles after the operation.</summary>
+    public List<string> Roles { get; init; } = new();
 }

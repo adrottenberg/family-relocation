@@ -478,6 +478,7 @@ Authorization: Bearer {{accessToken}}
 ###############################################################################
 # USER MANAGEMENT (Admin Only)
 # Manage system users and their roles
+# Valid roles: Admin, Coordinator, BoardMember
 ###############################################################################
 
 # Variables for User Management
@@ -494,34 +495,60 @@ Authorization: Bearer {{accessToken}}
     "temporaryPassword": "TempPass123!"
 }
 
-### List Users (Sprint 4 - Not Yet Implemented)
+### List Users (Admin Only)
 # Returns paginated list of all users
-# GET {{baseUrl}}/api/users?page=1&pageSize=20&role=Coordinator&status=active
-# Authorization: Bearer {{accessToken}}
+# Optional filters: search (email prefix), status (e.g., "CONFIRMED", "FORCE_CHANGE_PASSWORD")
+# limit: 1-60 (default 60)
+GET {{baseUrl}}/api/users?limit=20
+Authorization: Bearer {{accessToken}}
 
-### Get User Details (Sprint 4 - Not Yet Implemented)
+### List Users with Email Search
+# Search by email prefix
+GET {{baseUrl}}/api/users?search=john&limit=20
+Authorization: Bearer {{accessToken}}
+
+### List Users by Status
+# Filter by Cognito user status
+GET {{baseUrl}}/api/users?status=CONFIRMED&limit=20
+Authorization: Bearer {{accessToken}}
+
+### Get User Details (Admin Only)
 # Returns detailed information about a specific user
-# GET {{baseUrl}}/api/users/{{userId}}
-# Authorization: Bearer {{accessToken}}
+# userId can be email or Cognito username (sub)
+GET {{baseUrl}}/api/users/{{userId}}
+Authorization: Bearer {{accessToken}}
 
-### Update User Roles (Sprint 4 - Not Yet Implemented)
-# Assigns new roles to a user
-# PUT {{baseUrl}}/api/users/{{userId}}/roles
-# Content-Type: application/json
-# Authorization: Bearer {{accessToken}}
-# {
-#     "roles": ["Coordinator", "BoardMember"]
-# }
+### Update User Roles (Admin Only)
+# Assigns new roles to a user (replaces all existing roles)
+# Valid roles: Admin, Coordinator, BoardMember
+# Cannot remove your own Admin role
+PUT {{baseUrl}}/api/users/{{userId}}/roles
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
 
-### Deactivate User (Sprint 4 - Not Yet Implemented)
+{
+    "roles": ["Coordinator", "BoardMember"]
+}
+
+### Update User Roles - Grant Admin
+PUT {{baseUrl}}/api/users/{{userId}}/roles
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "roles": ["Admin"]
+}
+
+### Deactivate User (Admin Only)
 # Disables a user account (prevents login)
-# POST {{baseUrl}}/api/users/{{userId}}/deactivate
-# Authorization: Bearer {{accessToken}}
+# Cannot deactivate your own account
+POST {{baseUrl}}/api/users/{{userId}}/deactivate
+Authorization: Bearer {{accessToken}}
 
-### Reactivate User (Sprint 4 - Not Yet Implemented)
+### Reactivate User (Admin Only)
 # Re-enables a disabled user account
-# POST {{baseUrl}}/api/users/{{userId}}/reactivate
-# Authorization: Bearer {{accessToken}}
+POST {{baseUrl}}/api/users/{{userId}}/reactivate
+Authorization: Bearer {{accessToken}}
 
 ###############################################################################
 # DOCUMENT TYPES & DOCUMENTS

@@ -7,6 +7,7 @@ import {
   LogoutOutlined,
   HomeOutlined,
   BellOutlined,
+  UserOutlined,
 } from '@ant-design/icons';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
@@ -29,8 +30,11 @@ const Sidebar = () => {
     if (path.startsWith('/properties')) return 'properties';
     if (path.startsWith('/reminders')) return 'reminders';
     if (path.startsWith('/settings')) return 'settings';
+    if (path.startsWith('/users')) return 'users';
     return 'dashboard';
   };
+
+  const isAdmin = user?.roles?.includes('Admin');
 
   const handleMenuClick: MenuProps['onClick'] = (e) => {
     if (e.key === 'logout') {
@@ -72,6 +76,16 @@ const Sidebar = () => {
       icon: <SettingOutlined />,
       label: 'Settings',
     },
+    // Admin-only menu items
+    ...(isAdmin
+      ? [
+          {
+            key: 'users',
+            icon: <UserOutlined />,
+            label: 'Users',
+          },
+        ]
+      : []),
   ];
 
   // Get user initials for avatar

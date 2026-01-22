@@ -1059,6 +1059,29 @@ Creating:
 - TECHNICAL_SPECS_COMPLETE.md (complete project specs)
 - SOLUTION_STRUCTURE_AND_CODE.md (Visual Studio solution + code)
 
+### Pre-Deployment Tasks (Before v1.0.0 Release)
+
+**1. Complete GitHub Actions Workflows for AWS**
+- Workflow files created but deployment steps are placeholders
+- Files: `.github/workflows/ci.yml`, `deploy-staging.yml`, `deploy-production.yml`
+- TODO: Add AWS-specific deployment commands (ECS, Elastic Beanstalk, or Lambda)
+- TODO: Configure GitHub Secrets for AWS credentials
+- TODO: Set up staging and production environments in GitHub
+- Reference: `docs/BRANCHING_STRATEGY.md` for full CI/CD documentation
+
+**2. Set Up AWS Infrastructure**
+- Configure target deployment service (ECS, Elastic Beanstalk, etc.)
+- Set up RDS PostgreSQL for staging and production
+- Configure Cognito user pools
+- Set up S3 buckets for document storage
+- Configure SES for email notifications
+
+**3. Finalize Git Flow Setup**
+- Create `develop` branch from `master`
+- Merge feature branches to `develop`
+- Create `release/1.0.0` branch for final testing
+- Set up branch protection rules in GitHub
+
 ### Short-Term Next Steps (Week 1)
 
 **1. Set Up Development Environment**
@@ -2815,6 +2838,219 @@ All 351 tests passing:
 - US-F19: Log Activity Modal (3 pts)
 - US-F20: Board Report Print View (2 pts)
 - US-F21: Pipeline MovedIn Column (3 pts)
+
+**And we can pick up exactly where we left off.**
+
+---
+
+## SESSION: January 21, 2026 - User Management & RBAC Implementation
+
+### Summary
+
+Implemented User Management APIs (US-042 through US-045) and applied Role-Based Access Control to all controllers (US-046).
+
+### Features Implemented (feature/user-management branch)
+
+#### 1. User Management APIs - COMPLETE
+
+**New Files Created:**
+- `Application/Auth/Models/UserDto.cs` - User model with id, email, name, roles, status, etc.
+- `Application/Auth/Models/UserListResult.cs` - Result type for listing users
+- `Application/Auth/Models/GetUserResult.cs` - Result type for getting single user
+- `API/Controllers/UsersController.cs` - Full user management controller
+
+**IAuthenticationService Extended:**
+- `ListUsersAsync(filter, limit, paginationToken, ct)` - List all users with optional filters
+- `GetUserAsync(userId, ct)` - Get single user details
+- `GetUserGroupsAsync(userId, ct)` - Get user's Cognito groups/roles
+- `UpdateUserRolesAsync(userId, roles, ct)` - Update user roles
+- `DisableUserAsync(userId, ct)` - Deactivate user account
+- `EnableUserAsync(userId, ct)` - Reactivate user account
+
+**CognitoAuthenticationService Implementation:**
+- Implemented all user management methods using AWS SDK
+- Maps Cognito user attributes to UserDto
+- Handles group membership via AdminAddUserToGroup/AdminRemoveUserFromGroup
+
+**UsersController Endpoints (Admin Only):**
+- `GET /api/users` - List users with search (email prefix) and status filters
+- `GET /api/users/{userId}` - Get user details
+- `PUT /api/users/{userId}/roles` - Update user roles (with self-protection)
+- `POST /api/users/{userId}/deactivate` - Disable user (with self-protection)
+- `POST /api/users/{userId}/reactivate` - Enable user
+
+**Valid Roles:** Admin, Coordinator, BoardMember
+
+**Safety Features:**
+- Cannot remove your own Admin role
+- Cannot deactivate your own account
+- All operations log to activity log
+
+#### 2. RBAC Applied to All Controllers - COMPLETE
+
+| Controller | Endpoint | Authorization |
+|------------|----------|---------------|
+| **ApplicantsController** | | |
+| | POST (Create) | `[AllowAnonymous]` (public applications) |
+| | GET (List/Detail) | `[Authorize]` (any authenticated) |
+| | PUT (Update) | `[Authorize(Roles = "Coordinator,Admin")]` |
+| | DELETE | `[Authorize(Roles = "Coordinator,Admin")]` |
+| | PUT /board-review | `[Authorize(Roles = "BoardMember,Admin")]` |
+| **PropertiesController** | | |
+| | GET (List/Detail) | `[Authorize]` (any authenticated) |
+| | POST (Create) | `[Authorize(Roles = "Coordinator,Admin")]` |
+| | PUT (Update) | `[Authorize(Roles = "Coordinator,Admin")]` |
+| | PUT /status | `[Authorize(Roles = "Coordinator,Admin")]` |
+| | DELETE | `[Authorize(Roles = "Coordinator,Admin")]` |
+| | POST /photos | `[Authorize(Roles = "Coordinator,Admin")]` |
+| | DELETE /photos | `[Authorize(Roles = "Coordinator,Admin")]` |
+| **HousingSearchesController** | | |
+| | PUT /stage | `[Authorize(Roles = "Coordinator,Admin")]` |
+| | PUT /preferences | `[Authorize(Roles = "Coordinator,Admin")]` |
+| **DocumentsController** | | |
+| | GET (List/Presigned URL) | `[Authorize]` (any authenticated) |
+| | POST /upload | `[Authorize(Roles = "Coordinator,Admin")]` |
+| | DELETE | `[Authorize(Roles = "Coordinator,Admin")]` |
+| **DocumentTypesController** | | |
+| | GET (List) | `[Authorize]` (any authenticated) |
+| | POST (Create) | `[Authorize(Roles = "Admin")]` |
+| | PUT (Update) | `[Authorize(Roles = "Admin")]` |
+| | DELETE | `[Authorize(Roles = "Admin")]` |
+| **StageRequirementsController** | | |
+| | GET (List) | `[Authorize]` (any authenticated) |
+| | POST (Create) | `[Authorize(Roles = "Admin")]` |
+| | DELETE | `[Authorize(Roles = "Admin")]` |
+| **UsersController** | | Class-level `[Authorize(Roles = "Admin")]` |
+
+### Documentation Updates
+
+**.http File:**
+- Updated user management section with working endpoints
+- Removed "Sprint 4 - Not Yet Implemented" comments
+- Added search by email and filter by status examples
+
+**Postman Collection:**
+- Created `postman/FamilyRelocation-Users.postman_collection.json`
+- 8 requests covering all user management operations
+- Auto-save userId from list response
+
+### Test Results
+
+All 351 tests passing:
+- 230 domain tests
+- 84 API tests
+- 37 integration tests
+
+### Key Technical Details
+
+1. **AuthErrorType.UserNotFound** - Added to distinguish 404 vs other errors
+2. **Cognito Integration** - Uses AdminListUsers, AdminGetUser, AdminAddUserToGroupAsync, AdminRemoveUserFromGroupAsync, AdminDisableUserAsync, AdminEnableUserAsync
+3. **Activity Logging** - All user management actions logged via IActivityLogger
+
+---
+
+## SESSION UPDATE: January 22, 2026
+
+### Database-Managed Roles Implementation
+
+**Problem Solved:** Cognito groups weren't working reliably for role management. The user's ID token didn't contain `cognito:groups` even when groups existed.
+
+**Solution:** Implemented database-managed roles instead of relying on Cognito groups.
+
+**New Files Created:**
+- `src/FamilyRelocation.Domain/Entities/UserRole.cs` - Entity for storing user roles
+- `src/FamilyRelocation.Application/Common/Interfaces/IUserRoleService.cs` - Service interface
+- `src/FamilyRelocation.Infrastructure/Services/UserRoleService.cs` - Implementation
+- `src/FamilyRelocation.Infrastructure/Persistence/Configurations/UserRoleConfiguration.cs` - EF config
+- Migrations: `AddUserRolesTable`, `SeedAdminUser`
+
+**Key Changes:**
+1. **Program.cs** - OnTokenValidated now looks up roles from database
+   - Fixed Cognito claim name issue: uses `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier` instead of `sub`
+2. **AuthController.cs** - Added endpoints:
+   - `GET /api/auth/me/roles` - Get current user's roles
+   - `POST /api/auth/bootstrap-admin` - Bootstrap first admin
+3. **Frontend authStore.ts** - Added `fetchAndSetRoles()` method
+4. **AppLayout.tsx** - Calls `fetchAndSetRoles()` after login (non-blocking)
+5. **LoginPage.tsx** - Sets `roles: []` initially, real roles fetched by AppLayout
+
+**Commit:** `666347c feat(auth): implement database-managed roles for user management`
+
+### Sprint 4 Status - MOSTLY COMPLETE
+
+**COMPLETED:**
+- ✅ US-037 to US-040: Reminders system (CRUD, filters, due report)
+- ✅ US-042 to US-045: User Management APIs
+- ✅ US-046: RBAC review (database-managed roles)
+- ✅ US-047: Communication Logging (LogActivityCommand)
+- ✅ US-051: Broker Role (added to PropertiesController)
+- ✅ US-052: Activity Logging expanded to 10 handlers
+- ✅ US-F12 to US-F15: Reminders frontend
+- ✅ US-F17 & US-F18: User Management frontend
+- ✅ US-F19: Log Activity Modal
+- ✅ US-F21: Pipeline Moved In Column
+- ✅ CR-001 to CR-007: Code review fixes
+
+**REMAINING (~15 points):**
+- US-041: Audit log viewer API enhancements (2 pts)
+- US-048: SES Email Verification (2 pts)
+- US-049: Automated Agreement Follow-up (3 pts)
+- US-050: Board Approval Report (3 pts)
+- US-F16: Audit History Tab on detail pages (4 pts)
+- US-F20: Board Report Print View (2 pts)
+
+### Ready for v0.1.0 Dev Release
+
+**Next Steps (Tomorrow):**
+1. Set up `develop` branch (Git Flow)
+2. Configure GitHub branch protection rules
+3. Finalize deployment workflows (AWS ECS/S3)
+4. Set up GitHub Environments with secrets
+5. Create v0.1.0-dev tag
+
+**Existing Infrastructure:**
+- `.github/workflows/ci.yml` - Build & test on PRs
+- `.github/workflows/deploy-staging.yml` - Deploy to staging (needs completion)
+- `.github/workflows/deploy-production.yml` - Deploy to production (needs completion)
+- `docs/BRANCHING_STRATEGY.md` - Complete Git Flow documentation
+
+**Code Review Running:**
+A comprehensive code review is running in background (agent af9c221). Check results at:
+`C:\Users\adrot\AppData\Local\Temp\claude\C--Users-adrot-github-adrottenberg-FamilyRelocation\tasks\af9c221.output`
+
+---
+
+## FOR NEXT SESSION
+
+### To Quickly Re-Establish Context
+
+**Just say:**
+> "I'm the developer building the Family Relocation CRM. We just finished Sprint 4 and are ready for v0.1.0 dev release. Let's work on deployment and CI/CD."
+
+**I'll know:**
+- Complete domain model (Applicant, HousingSearch, Property, ActivityLog, FollowUpReminder, UserRole)
+- Tech stack (.NET 10, React + Ant Design, AWS Cognito, PostgreSQL)
+- **Database-managed roles** (not Cognito groups) via UserRole entity
+- **Four roles:** Admin, Coordinator, BoardMember, Broker
+- User management, Reminders, Activity Logging all complete
+- Query object pattern, all handlers in Application layer
+- EF Core ToJson() for JSON columns
+- Global exception handler and validation pipeline
+- GitHub workflows exist but deployment steps need completion
+
+### Key Technical Details
+
+1. **Cognito Claim Names:**
+   - Cognito uses `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier` NOT `sub`
+   - Code checks multiple claim names for compatibility
+
+2. **Role Lookup Flow:**
+   - User logs in → tokens stored → navigate to dashboard
+   - AppLayout useEffect calls `fetchAndSetRoles()`
+   - Calls `GET /api/auth/me/roles` → updates authStore with real roles
+   - Sidebar re-renders with correct menu items
+
+3. **Current Branch:** `feature/user-management` (pushed to origin)
 
 **And we can pick up exactly where we left off.**
 

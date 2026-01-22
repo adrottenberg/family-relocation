@@ -18,10 +18,12 @@ interface AuthState {
   tokens: AuthTokens | null;
   user: User | null;
   isAuthenticated: boolean;
+  rolesFetched: boolean;
   setTokens: (tokens: AuthTokens) => void;
   setUser: (user: User) => void;
   logout: () => void;
   canApproveBoardDecisions: () => boolean;
+  fetchAndSetRoles: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -30,11 +32,13 @@ export const useAuthStore = create<AuthState>()(
       tokens: null,
       user: null,
       isAuthenticated: false,
+      rolesFetched: false,
 
       setTokens: (tokens) =>
         set({
           tokens,
           isAuthenticated: true,
+          rolesFetched: false, // Reset so roles are fetched fresh after login
         }),
 
       setUser: (user) =>
@@ -47,6 +51,7 @@ export const useAuthStore = create<AuthState>()(
           tokens: null,
           user: null,
           isAuthenticated: false,
+          rolesFetched: false,
         }),
 
       canApproveBoardDecisions: () => {
@@ -56,6 +61,30 @@ export const useAuthStore = create<AuthState>()(
           role === 'Admin' || role === 'BoardMember'
         );
       },
+
+      fetchAndSetRoles: async () => {
+        const { isAuthenticated, user, rolesFetched } = get();
+        if (!isAuthenticated || !user || rolesFetched) return;
+
+        try {
+          // Import dynamically to avoid circular dependency
+          const { authApi } = await import('../api');
+
+          // Bootstrap admin if needed (only works for first user)
+          await authApi.bootstrapAdmin().catch(() => {});
+
+          // Fetch actual roles
+          const rolesResponse = await authApi.getMyRoles();
+
+          set({
+            user: { ...user, roles: rolesResponse.roles },
+            rolesFetched: true,
+          });
+        } catch (error) {
+          console.error('Failed to fetch roles:', error);
+          set({ rolesFetched: true }); // Mark as fetched to prevent retry loop
+        }
+      },
     }),
     {
       name: 'auth-storage',
@@ -63,6 +92,7 @@ export const useAuthStore = create<AuthState>()(
         tokens: state.tokens,
         user: state.user,
         isAuthenticated: state.isAuthenticated,
+        rolesFetched: state.rolesFetched,
       }),
     }
   )

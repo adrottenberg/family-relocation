@@ -59,6 +59,9 @@ public static class DependencyInjection
         // Email Service
         services.AddScoped<IEmailService, SesEmailService>();
 
+        // User Role Service
+        services.AddScoped<IUserRoleService, UserRoleService>();
+
         return services;
     }
 }
