@@ -71,6 +71,7 @@ jobs:
     name: Build & Deploy Frontend
     runs-on: ubuntu-latest
     needs: build-api
+    environment: dev
 
     steps:
       - name: Checkout code
@@ -116,6 +117,7 @@ jobs:
     name: Deploy API to EC2
     runs-on: ubuntu-latest
     needs: build-api
+    environment: dev
 
     steps:
       - name: Configure AWS credentials
@@ -147,7 +149,19 @@ jobs:
             docker rm familyrelocation-api || true
 
             # Get secrets from Secrets Manager
-            DB_CONNECTION=$(aws secretsmanager get-secret-value --secret-id familyrelocation/dev/database --query SecretString --output text | jq -r '.ConnectionStrings__DefaultConnection')
+            # NOTE: Dev uses RDS-managed secret with rotation DISABLED.
+            # TODO (PROD): Switch to IAM Database Authentication instead of username/password.
+            #   - Enable IAM auth on RDS instance
+            #   - Use EC2 IAM role to generate auth tokens
+            #   - Connection string: "Host=...;Database=...;Username=<iam_user>;Password=<generated_token>"
+            #   - See: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.html
+            RDS_SECRET=$(aws secretsmanager get-secret-value --secret-id "rds!db-801f66af-8d3a-4f82-82bb-bfd53f741372" --query SecretString --output text)
+            DB_USER=$(echo $RDS_SECRET | jq -r '.username')
+            DB_PASS=$(echo $RDS_SECRET | jq -r '.password')
+            DB_HOST="familyrelocation-dev.cytoakkck81s.us-east-1.rds.amazonaws.com"
+            DB_NAME="familyrelocation"
+            DB_CONNECTION="Host=${DB_HOST};Database=${DB_NAME};Username=${DB_USER};Password=${DB_PASS}"
+
             COGNITO_POOL_ID=$(aws secretsmanager get-secret-value --secret-id familyrelocation/dev/cognito --query SecretString --output text | jq -r '.UserPoolId')
             COGNITO_CLIENT_ID=$(aws secretsmanager get-secret-value --secret-id familyrelocation/dev/cognito --query SecretString --output text | jq -r '.ClientId')
             S3_BUCKET=$(aws secretsmanager get-secret-value --secret-id familyrelocation/dev/s3 --query SecretString --output text | jq -r '.BucketName')
