@@ -54,7 +54,8 @@ public class PropertyConfiguration : IEntityTypeConfiguration<Property>
         builder.Property(p => p.ModifiedBy);
         builder.Property(p => p.ModifiedAt);
 
-        // Photos relationship
+        // Photos relationship - use backing field for proper change tracking
+        builder.Navigation(p => p.Photos).UsePropertyAccessMode(PropertyAccessMode.Field);
         builder.HasMany(p => p.Photos)
             .WithOne()
             .HasForeignKey(ph => ph.PropertyId)

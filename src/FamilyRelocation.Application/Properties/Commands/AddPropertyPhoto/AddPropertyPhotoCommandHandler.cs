@@ -30,9 +30,9 @@ public class AddPropertyPhotoCommandHandler : IRequestHandler<AddPropertyPhotoCo
             throw new NotFoundException(nameof(Property), request.PropertyId);
         }
 
-        if (property.Photos.Count >= 10)
+        if (property.Photos.Count >= 50)
         {
-            throw new ValidationException("Maximum 10 photos allowed per property");
+            throw new ValidationException("Maximum 50 photos allowed per property");
         }
 
         // Upload to S3
@@ -53,6 +53,8 @@ public class AddPropertyPhotoCommandHandler : IRequestHandler<AddPropertyPhotoCo
             request.Description,
             displayOrder);
 
+        // Explicitly add to context to ensure EF Core treats it as a new entity
+        _context.Add(photo);
         property.AddPhoto(photo);
         await _context.SaveChangesAsync(cancellationToken);
 

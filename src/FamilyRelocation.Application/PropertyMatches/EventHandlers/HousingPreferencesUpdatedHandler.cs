@@ -78,13 +78,17 @@ public class HousingPreferencesUpdatedHandler : INotificationHandler<DomainEvent
         }
 
         var familyName = applicant.Husband?.LastName ?? "Unknown";
+        var userId = _currentUserService.UserId ?? Guid.Empty;
 
-        // Update existing matches
+        // Update existing matches - recalculate scores and remove low-scoring ones
         var existingMatches = await _context.Set<PropertyMatch>()
             .Where(pm => pm.HousingSearchId == housingSearch.Id)
             .ToListAsync(cancellationToken);
 
         var updatedCount = 0;
+        var removedCount = 0;
+        var matchesToRemove = new List<PropertyMatch>();
+
         foreach (var match in existingMatches)
         {
             var property = await _context.Set<Property>()
@@ -96,35 +100,75 @@ public class HousingPreferencesUpdatedHandler : INotificationHandler<DomainEvent
             var (newScore, details) = _matchingService.CalculateMatchScore(property, housingSearch);
             var matchDetails = _matchingService.SerializeMatchDetails(details);
 
-            // Update the match with new score (using reflection to update since we don't have a public method)
-            // In a real scenario, you'd add an UpdateScore method to PropertyMatch
-            if (match.MatchScore != newScore)
+            // Check if score falls below threshold
+            if (newScore < MinimumMatchScore)
             {
-                // For now, we'll just log the change - the entity should have an UpdateScore method
+                // Only remove if applicant hasn't shown interest (still in MatchIdentified status)
+                if (match.Status == PropertyMatchStatus.MatchIdentified)
+                {
+                    matchesToRemove.Add(match);
+                    _logger.LogInformation(
+                        "Match {MatchId} for property {PropertyStreet} will be removed (score {Score} < {Threshold})",
+                        match.Id, property.Address.Street, newScore, MinimumMatchScore);
+                }
+                else
+                {
+                    // Keep match but update score - applicant has shown interest
+                    match.UpdateScore(newScore, matchDetails, userId);
+                    _logger.LogInformation(
+                        "Match {MatchId} score below threshold ({Score}) but kept due to status {Status}",
+                        match.Id, newScore, match.Status);
+                    updatedCount++;
+                }
+            }
+            else if (match.MatchScore != newScore)
+            {
+                // Update the match with new score
+                match.UpdateScore(newScore, matchDetails, userId);
                 _logger.LogInformation(
-                    "Match {MatchId} score changed from {OldScore} to {NewScore}",
+                    "Match {MatchId} score updated from {OldScore} to {NewScore}",
                     match.Id, match.MatchScore, newScore);
                 updatedCount++;
             }
         }
 
+        // Remove low-scoring matches that haven't progressed
+        foreach (var match in matchesToRemove)
+        {
+            _context.Remove(match);
+            removedCount++;
+        }
+
+        if (updatedCount > 0 || removedCount > 0)
+        {
+            await _context.SaveChangesAsync(cancellationToken);
+            _logger.LogInformation(
+                "Updated {Updated} match scores, removed {Removed} low-scoring matches for {Family} family",
+                updatedCount, removedCount, familyName);
+        }
+
         // Find and create new matches for properties not yet matched
+        // Exclude properties that were just removed due to low scores
+        var removedPropertyIds = matchesToRemove.Select(m => m.PropertyId).ToHashSet();
         var activeProperties = await _context.Set<Property>()
             .Include(p => p.Address)
             .Where(p => p.Status == ListingStatus.Active)
             .ToListAsync(cancellationToken);
 
-        var matchedPropertyIds = existingMatches.Select(m => m.PropertyId).ToHashSet();
+        var matchedPropertyIds = existingMatches
+            .Where(m => !matchesToRemove.Contains(m))
+            .Select(m => m.PropertyId)
+            .ToHashSet();
+
         var newMatchesCreated = 0;
         var highScoreMatches = new List<(PropertyMatch Match, Property Property)>();
 
-        foreach (var property in activeProperties.Where(p => !matchedPropertyIds.Contains(p.Id)))
+        foreach (var property in activeProperties.Where(p => !matchedPropertyIds.Contains(p.Id) && !removedPropertyIds.Contains(p.Id)))
         {
             var (score, details) = _matchingService.CalculateMatchScore(property, housingSearch);
 
             if (score < MinimumMatchScore) continue;
 
-            var userId = _currentUserService.UserId ?? Guid.Empty;
             var matchDetails = _matchingService.SerializeMatchDetails(details);
             var match = PropertyMatch.Create(
                 housingSearch.Id,
@@ -158,8 +202,8 @@ public class HousingPreferencesUpdatedHandler : INotificationHandler<DomainEvent
         }
 
         _logger.LogInformation(
-            "Completed preference update processing for {Family} family: {Updated} existing matches updated, {New} new matches created",
-            familyName, updatedCount, newMatchesCreated);
+            "Completed preference update processing for {Family} family: {Updated} scores updated, {Removed} removed, {New} new matches created",
+            familyName, updatedCount, removedCount, newMatchesCreated);
     }
 
     private async Task CreateHighScoreMatchReminder(

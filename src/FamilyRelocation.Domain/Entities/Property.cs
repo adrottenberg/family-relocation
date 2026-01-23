@@ -125,8 +125,8 @@ public class Property : Entity<Guid>
 
     public void AddPhoto(PropertyPhoto photo)
     {
-        if (_photos.Count >= 10)
-            throw new InvalidOperationException("Maximum 10 photos allowed per property");
+        if (_photos.Count >= 50)
+            throw new InvalidOperationException("Maximum 50 photos allowed per property");
         _photos.Add(photo);
     }
 

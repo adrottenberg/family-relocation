@@ -226,6 +226,66 @@ public class DocumentsController : ControllerBase
     }
 
     /// <summary>
+    /// Downloads a document by ID (proxied from S3).
+    /// </summary>
+    /// <remarks>
+    /// Returns the document file directly. Use the optional 'download' query parameter
+    /// to force download behavior (Content-Disposition: attachment) instead of inline viewing.
+    /// </remarks>
+    [HttpGet("{id:guid}/download")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Download(
+        Guid id,
+        [FromQuery] bool download = false,
+        CancellationToken cancellationToken = default)
+    {
+        // Look up the document
+        var document = await _context.Set<ApplicantDocument>()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
+
+        if (document == null)
+        {
+            return NotFound(new { message = "Document not found" });
+        }
+
+        // Download from S3
+        var result = await _storageService.DownloadAsync(document.StorageKey, cancellationToken);
+        if (result == null)
+        {
+            return NotFound(new { message = "Document file not found in storage" });
+        }
+
+        // Set Content-Disposition header
+        var contentDisposition = download ? "attachment" : "inline";
+        Response.Headers.ContentDisposition = $"{contentDisposition}; filename=\"{document.FileName}\"";
+
+        // Set cache headers (documents don't change, so we can cache)
+        Response.Headers.CacheControl = "private, max-age=3600";
+        if (!string.IsNullOrEmpty(result.ETag))
+        {
+            Response.Headers.ETag = result.ETag;
+        }
+
+        return File(result.Content, result.ContentType);
+    }
+
+    /// <summary>
+    /// Views a document inline by ID (alias for download with inline disposition).
+    /// </summary>
+    /// <remarks>
+    /// PDFs and images will typically be displayed inline in the browser.
+    /// </remarks>
+    [HttpGet("{id:guid}/view")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public Task<IActionResult> View(Guid id, CancellationToken cancellationToken = default)
+    {
+        return Download(id, download: false, cancellationToken);
+    }
+
+    /// <summary>
     /// Generates a storage key using the naming convention: {DocumentType}_{FamilyName}_{yyyyMMdd_HHmmss}.{ext}
     /// </summary>
     private static string GenerateStorageKey(string documentType, string familyName, string originalFileName)

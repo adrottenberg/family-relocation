@@ -31,6 +31,16 @@ public interface IDocumentStorageService
         string storageKey,
         TimeSpan expiry,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Downloads a document from storage.
+    /// </summary>
+    /// <param name="storageKey">The storage key/path of the document.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Download result with stream and metadata, or null if not found.</returns>
+    Task<DocumentDownloadResult?> DownloadAsync(
+        string storageKey,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -42,3 +52,15 @@ public record DocumentUploadResult(
     long FileSize,
     string ContentType,
     DateTime UploadedAt);
+
+/// <summary>
+/// Result of a document download operation.
+/// </summary>
+public record DocumentDownloadResult(
+    Stream Content,
+    string ContentType,
+    long ContentLength,
+    string? ETag) : IDisposable
+{
+    public void Dispose() => Content.Dispose();
+}
