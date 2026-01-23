@@ -161,6 +161,24 @@ After deployment, the stack provides these outputs:
 
 Total estimated cost: **~$0.50/month** + existing RDS costs
 
+## Database Authentication
+
+### Dev Environment
+- Uses RDS-managed secret with rotation **disabled**
+- Credentials are read at container startup and passed as environment variables
+
+### Production (TODO)
+Switch to **IAM Database Authentication** for production:
+1. Enable IAM auth on RDS instance
+2. Create IAM policy allowing `rds-db:connect`
+3. Modify connection string to use IAM auth token
+4. See: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.html
+
+Benefits:
+- No passwords to manage or rotate
+- Uses EC2 IAM role (already configured)
+- Short-lived tokens (15 min) generated automatically
+
 ## Troubleshooting
 
 ### SSH to EC2
