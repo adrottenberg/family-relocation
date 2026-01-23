@@ -1,5 +1,6 @@
 using FamilyRelocation.Application.Common.Exceptions;
 using FamilyRelocation.Application.HousingSearches.Commands.ChangeStage;
+using FamilyRelocation.Application.HousingSearches.Commands.DeactivateHousingSearch;
 using FamilyRelocation.Application.HousingSearches.Commands.UpdatePreferences;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -94,6 +95,29 @@ public class HousingSearchesController : ControllerBase
         catch (ValidationException ex)
         {
             return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Deactivates a housing search.
+    /// </summary>
+    /// <remarks>
+    /// Used to clean up duplicate or orphaned housing searches.
+    /// </remarks>
+    [HttpDelete("{id:guid}")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Deactivate(Guid id)
+    {
+        try
+        {
+            await _mediator.Send(new DeactivateHousingSearchCommand(id));
+            return NoContent();
+        }
+        catch (NotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
         }
     }
 }

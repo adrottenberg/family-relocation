@@ -38,6 +38,11 @@ public static class PropertyMapper
     /// </summary>
     public static PropertyListDto ToListDto(this Property property)
     {
+        // Generate proxy URL for primary photo
+        var primaryPhotoUrl = property.PrimaryPhoto != null
+            ? $"/api/properties/{property.Id}/photos/{property.PrimaryPhoto.Id}/image"
+            : null;
+
         return new PropertyListDto
         {
             Id = property.Id,
@@ -49,7 +54,7 @@ public static class PropertyMapper
             SquareFeet = property.SquareFeet,
             Status = property.Status.ToString(),
             MlsNumber = property.MlsNumber,
-            PrimaryPhotoUrl = property.PrimaryPhoto?.Url
+            PrimaryPhotoUrl = primaryPhotoUrl
         };
     }
 
@@ -70,13 +75,17 @@ public static class PropertyMapper
 
     /// <summary>
     /// Maps a PropertyPhoto entity to a PropertyPhotoDto.
+    /// Uses proxy URL for images to avoid direct S3 access issues.
     /// </summary>
     public static PropertyPhotoDto ToDto(this PropertyPhoto photo)
     {
+        // Generate proxy URL instead of direct S3 URL
+        var proxyUrl = $"/api/properties/{photo.PropertyId}/photos/{photo.Id}/image";
+
         return new PropertyPhotoDto
         {
             Id = photo.Id,
-            Url = photo.Url,
+            Url = proxyUrl,
             Description = photo.Description,
             DisplayOrder = photo.DisplayOrder,
             IsPrimary = photo.IsPrimary,

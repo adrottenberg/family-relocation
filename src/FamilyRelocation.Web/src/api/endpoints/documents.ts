@@ -69,4 +69,18 @@ export const documentsApi = {
     });
     return response.data;
   },
+
+  /**
+   * Get the URL for viewing a document inline (PDF/images displayed in browser)
+   */
+  getViewUrl: (documentId: string): string => {
+    return `/api/documents/${documentId}/view`;
+  },
+
+  /**
+   * Get the URL for downloading a document (triggers file download)
+   */
+  getDownloadUrl: (documentId: string): string => {
+    return `/api/documents/${documentId}/download?download=true`;
+  },
 };

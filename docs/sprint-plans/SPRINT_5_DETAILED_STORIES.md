@@ -672,3 +672,6 @@ import { formatStageName, getStatusTagStyle } from '@/utils/formatting';
 - Consider security penetration testing after this sprint
 - Frontend accessibility improvements align with WCAG 2.1 AA compliance goal
 - Performance optimizations target the pipeline page which has most complexity
+- **Property Matches Cleanup**: When a property is no longer actively on the market (status changed to Sold, OffMarket, etc.), all property matches associated with that property should be automatically removed
+- **User Documentation**: Create extensive user documentation consisting of: (1) A brief overview of the entire system for new users, and (2) A comprehensive guide covering all features and workflows in detail
+- **Contextual Help**: Implement contextual help throughout the website - tooltips, info icons, and inline guidance to help users understand features without leaving the current page

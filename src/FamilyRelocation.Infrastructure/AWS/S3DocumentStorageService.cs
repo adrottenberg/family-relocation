@@ -64,4 +64,31 @@ public class S3DocumentStorageService : IDocumentStorageService
         var url = _s3Client.GetPreSignedURL(request);
         return Task.FromResult(url);
     }
+
+    /// <inheritdoc />
+    public async Task<DocumentDownloadResult?> DownloadAsync(
+        string storageKey,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var request = new GetObjectRequest
+            {
+                BucketName = _bucketName,
+                Key = storageKey
+            };
+
+            var response = await _s3Client.GetObjectAsync(request, cancellationToken);
+
+            return new DocumentDownloadResult(
+                Content: response.ResponseStream,
+                ContentType: response.Headers.ContentType,
+                ContentLength: response.Headers.ContentLength,
+                ETag: response.ETag);
+        }
+        catch (AmazonS3Exception ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+    }
 }

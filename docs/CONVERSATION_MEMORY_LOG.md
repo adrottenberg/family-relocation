@@ -21,6 +21,7 @@
 9. [Templates & Frameworks Created](#templates--frameworks-created)
 10. [Next Steps Identified](#next-steps-identified)
 11. [Quick Reference for Future Sessions](#quick-reference-for-future-sessions)
+12. [Operational Procedures](#operational-procedures)
 
 ---
 
@@ -3295,6 +3296,44 @@ New:
 5. **Current Branch:** `feature/property-matching-showings`
 
 **And we can pick up exactly where we left off.**
+
+---
+
+## 12. OPERATIONAL PROCEDURES
+
+### Importing Property Data from GSMLS
+
+When importing property data from GSMLS email reports:
+
+**1. Property Details URL Format:**
+```
+https://emailrpt.gsmls.com/public/show_public_report_rpt.do?emailsite=Y&report=clientfull&Id={listingId}
+```
+
+**2. Property Images URL Format:**
+```
+https://emailrpt.gsmls.com/public/getAllMedia.do?method=getAllMedia&membersessionId={sessionId}&sysId={sysId}
+```
+
+**3. Image Download URLs:**
+Images are hosted at `https://img.gsmls.com/imagedb/highres/{prefix}/{imageId}.jpg`
+- Use `curl -k -L` to bypass SSL issues when downloading
+- Example: `curl -k -L -o "local_file.jpg" "https://img.gsmls.com/imagedb/highres/04/106171352_34.jpg"`
+
+**4. Process:**
+1. Use WebFetch to extract property details (address, price, beds, baths, sq ft, lot size, year built, taxes, features, MLS number, notes)
+2. Use WebFetch to get list of images with descriptions from the getAllMedia URL
+3. Download images locally using curl with `-k` flag (SSL bypass)
+4. Upload images to API: `POST /api/properties/{id}/photos` with `file` and `description` form fields
+5. Set primary photo: `PUT /api/properties/{id}/photos/{photoId}/primary`
+
+**5. Property Photo Limits:**
+- Maximum 50 photos per property (increased from 10 on 2026-01-22)
+
+**6. Image Proxy:**
+- Property photos are served via proxy endpoint: `GET /api/properties/{id}/photos/{photoId}/image`
+- Includes in-memory caching (30 min sliding, 1 hour absolute, ~100MB limit)
+- Returns proper Cache-Control headers and ETag for browser caching
 
 ---
 

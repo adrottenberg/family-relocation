@@ -31,6 +31,8 @@ import {
   MessageOutlined,
   FileTextOutlined,
   HistoryOutlined,
+  EyeOutlined,
+  DownloadOutlined,
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { applicantsApi, documentsApi, getStageRequirements, housingSearchesApi, remindersApi, activitiesApi } from '../../api';
@@ -870,6 +872,16 @@ const DocumentsTab = ({ applicantId, onUploadDocuments }: DocumentsTabProps) => 
     queryFn: () => documentsApi.getApplicantDocuments(applicantId),
   });
 
+  const handleView = (documentId: string) => {
+    const url = documentsApi.getViewUrl(documentId);
+    window.open(url, '_blank');
+  };
+
+  const handleDownload = (documentId: string) => {
+    const url = documentsApi.getDownloadUrl(documentId);
+    window.open(url, '_blank');
+  };
+
   const columns = [
     {
       title: 'Document Type',
@@ -892,6 +904,31 @@ const DocumentsTab = ({ applicantId, onUploadDocuments }: DocumentsTabProps) => 
       title: 'Status',
       key: 'status',
       render: () => <Tag color="success">Uploaded</Tag>,
+    },
+    {
+      title: 'Actions',
+      key: 'actions',
+      width: 150,
+      render: (_: unknown, record: { id: string }) => (
+        <Space>
+          <Button
+            type="link"
+            size="small"
+            icon={<EyeOutlined />}
+            onClick={() => handleView(record.id)}
+          >
+            View
+          </Button>
+          <Button
+            type="link"
+            size="small"
+            icon={<DownloadOutlined />}
+            onClick={() => handleDownload(record.id)}
+          >
+            Download
+          </Button>
+        </Space>
+      ),
     },
   ];
 

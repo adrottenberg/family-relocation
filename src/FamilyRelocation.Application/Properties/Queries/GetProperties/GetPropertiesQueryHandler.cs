@@ -82,6 +82,7 @@ public class GetPropertiesQueryHandler : IRequestHandler<GetPropertiesQuery, Pag
         var totalCount = await dbQuery.CountAsync(ct);
 
         var items = await dbQuery
+            .Include(p => p.Photos)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .Select(p => p.ToListDto())

@@ -76,6 +76,13 @@ builder.Services.AddHealthChecks()
         name: "postgresql",
         tags: ["db", "sql", "postgresql"]);
 
+// Add memory cache for image proxying
+builder.Services.AddMemoryCache(options =>
+{
+    // Limit cache to ~100MB for images
+    options.SizeLimit = 100 * 1024 * 1024;
+});
+
 // Add JWT authentication
 var cognitoAuthority = builder.Configuration["AWS:Cognito:Authority"]
     ?? throw new InvalidOperationException("AWS:Cognito:Authority configuration is required");
