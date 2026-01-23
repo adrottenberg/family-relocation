@@ -73,7 +73,8 @@ public class PropertyMatchingService : IPropertyMatchingService
     {
         if (preferences?.Budget == null)
         {
-            return (MaxBudgetScore / 2, "No budget specified");
+            // Give 1/3 of max for unset preferences (contributes to baseline score of 50)
+            return (MaxBudgetScore / 3, "No budget specified");
         }
 
         var budget = preferences.Budget.Amount;
@@ -101,7 +102,8 @@ public class PropertyMatchingService : IPropertyMatchingService
     {
         if (preferences?.MinBedrooms == null)
         {
-            return (MaxBedroomsScore / 2, "No bedroom preference specified");
+            // Give 1/3 of max for unset preferences (contributes to baseline score of 50)
+            return (MaxBedroomsScore / 3, "No bedroom preference specified");
         }
 
         var minBedrooms = preferences.MinBedrooms.Value;
@@ -124,7 +126,8 @@ public class PropertyMatchingService : IPropertyMatchingService
     {
         if (preferences?.MinBathrooms == null)
         {
-            return (MaxBathroomsScore / 2, "No bathroom preference specified");
+            // Give 1/3 of max for unset preferences (contributes to baseline score of 50)
+            return (MaxBathroomsScore / 3, "No bathroom preference specified");
         }
 
         var minBathrooms = preferences.MinBathrooms.Value;
@@ -163,7 +166,8 @@ public class PropertyMatchingService : IPropertyMatchingService
     {
         if (preferences?.RequiredFeatures == null || !preferences.RequiredFeatures.Any())
         {
-            return (MaxFeaturesScore / 2, "No feature preferences specified");
+            // Give 1/3 of max for unset preferences (contributes to baseline score of 50)
+            return (MaxFeaturesScore / 3, "No feature preferences specified");
         }
 
         var requiredFeatures = preferences.RequiredFeatures.Select(f => f.ToLowerInvariant()).ToList();

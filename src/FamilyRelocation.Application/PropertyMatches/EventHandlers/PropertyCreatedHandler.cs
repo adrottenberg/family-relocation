@@ -16,8 +16,8 @@ namespace FamilyRelocation.Application.PropertyMatches.EventHandlers;
 
 /// <summary>
 /// Handles PropertyCreated events by matching the new property against all active housing searches.
-/// Creates automatic matches for properties with score >= 50.
-/// Creates reminders for high-score matches (>= 70).
+/// Creates automatic matches for properties with score > 70.
+/// Creates reminders for high-score matches (>= 85).
 /// </summary>
 public class PropertyCreatedHandler : INotificationHandler<DomainEventNotification<PropertyCreated>>
 {
@@ -27,7 +27,7 @@ public class PropertyCreatedHandler : INotificationHandler<DomainEventNotificati
     private readonly ICurrentUserService _currentUserService;
     private readonly ILogger<PropertyCreatedHandler> _logger;
 
-    private const int MinimumMatchScore = 50;
+    private const int MinimumMatchScore = 70;
     private const int HighScoreThreshold = 70;
 
     public PropertyCreatedHandler(
