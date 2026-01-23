@@ -40,3 +40,4 @@ The Application layer currently has 63+ handlers that reference `Microsoft.Entit
 63 files in `src/FamilyRelocation.Application/` - search for `using Microsoft.EntityFrameworkCore`
 
 **Effort Estimate:** Large (affects core architecture pattern)
+
