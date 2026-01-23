@@ -16,7 +16,7 @@ namespace FamilyRelocation.Application.PropertyMatches.EventHandlers;
 /// <summary>
 /// Handles HousingPreferencesUpdated events.
 /// Re-calculates match scores for existing matches and creates new matches for properties
-/// that now meet the minimum threshold after preference changes.
+/// that now meet the minimum threshold (> 70) after preference changes.
 /// </summary>
 public class HousingPreferencesUpdatedHandler : INotificationHandler<DomainEventNotification<HousingPreferencesUpdated>>
 {
@@ -26,7 +26,7 @@ public class HousingPreferencesUpdatedHandler : INotificationHandler<DomainEvent
     private readonly ICurrentUserService _currentUserService;
     private readonly ILogger<HousingPreferencesUpdatedHandler> _logger;
 
-    private const int MinimumMatchScore = 50;
+    private const int MinimumMatchScore = 70;
     private const int HighScoreThreshold = 70;
 
     public HousingPreferencesUpdatedHandler(

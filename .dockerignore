@@ -1,0 +1,56 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# IDE
+.idea
+.vscode
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Build outputs
+**/bin
+**/obj
+**/out
+
+# Node modules (frontend)
+**/node_modules
+src/FamilyRelocation.Web/dist
+
+# Test results
+**/TestResults
+**/coverage
+
+# Local development
+**/*.local
+**/appsettings.Development.json
+**/.env
+**/.env.*
+!**/.env.example
+
+# Docker
+**/Dockerfile*
+**/docker-compose*
+**/.docker
+
+# Documentation
+docs
+*.md
+!CLAUDE.md
+
+# Misc
+**/.DS_Store
+**/Thumbs.db
+*.log
+*.tmp
+
+# AWS and deployment
+infrastructure
+scripts
+.github
+
+# User secrets
+secrets.json

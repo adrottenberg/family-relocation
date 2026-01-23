@@ -5,6 +5,9 @@
 
 # dotenv files
 .env
+.env.local
+.env.*.local
+*.env
 
 # User-specific files
 *.rsuser
@@ -491,6 +494,9 @@ $RECYCLE.BIN/
 
 # Vite cache
 .vite/
+
+# Frontend build output
+**/dist/
 
 # Temp files
 *temp-swagger.json

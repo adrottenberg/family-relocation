@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: familyrelocation-api
+    ports:
+      - "8080:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=${DB_CONNECTION_STRING}
+      - AWS__Region=${AWS_REGION:-us-east-1}
+      - AWS__CognitoUserPoolId=${AWS_COGNITO_USER_POOL_ID}
+      - AWS__CognitoClientId=${AWS_COGNITO_CLIENT_ID}
+      - AWS__S3BucketName=${AWS_S3_BUCKET_NAME}
+    depends_on:
+      - db
+    networks:
+      - familyrelocation-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  db:
+    image: postgres:16-alpine
+    container_name: familyrelocation-db
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_DB=${POSTGRES_DB:-familyrelocation}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - familyrelocation-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build:
+      context: ./src/FamilyRelocation.Web
+      dockerfile: Dockerfile
+    container_name: familyrelocation-web
+    ports:
+      - "3000:80"
+    environment:
+      - VITE_API_URL=http://localhost:8080/api
+    depends_on:
+      - api
+    networks:
+      - familyrelocation-network
+    restart: unless-stopped
+
+networks:
+  familyrelocation-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
