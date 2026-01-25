@@ -22,7 +22,6 @@ import {
   PhoneOutlined,
   MailOutlined,
   HomeOutlined,
-  UserOutlined,
   PrinterOutlined,
   SwapOutlined,
   BellOutlined,
@@ -302,7 +301,7 @@ const ApplicantDetailPage = () => {
 
     const propertyMatchesHtml = propertyMatches && propertyMatches.length > 0
       ? `
-        <h3>Property Matches (${propertyMatches.length})</h3>
+        <h3>Suggested Listings (${propertyMatches.length})</h3>
         <table>
           <thead>
             <tr><th>Property</th><th>Price</th><th>Beds/Baths</th><th>Score</th><th>Status</th></tr>
@@ -429,7 +428,7 @@ const ApplicantDetailPage = () => {
     },
     ...(hs ? [{
       key: 'matches',
-      label: 'Property Matches',
+      label: 'Suggested Listings',
       children: (
         <PropertyMatchesTab
           housingSearchId={hs.id}
@@ -568,7 +567,7 @@ const ApplicantDetailPage = () => {
         entityName={`${applicant.husband.lastName} Family`}
       />
 
-      {/* Create Property Match Modal */}
+      {/* Create Suggested Listing Modal */}
       {hs && (
         <CreatePropertyMatchModal
           open={createMatchModalOpen}
@@ -677,103 +676,121 @@ const OverviewTab = ({ applicant, onRecordBoardDecision, onUploadDocuments, canA
     housingSearchStage === 'AwaitingAgreements' ||
     !housingSearchStage;
 
+  // Format all phone numbers for display
+  const formatPhones = (phoneNumbers?: { number: string; type: string; isPrimary: boolean }[]) => {
+    if (!phoneNumbers || phoneNumbers.length === 0) return 'N/A';
+    return phoneNumbers.map(p => `${p.number} (${p.type}${p.isPrimary ? ', Primary' : ''})`).join(', ');
+  };
+
   return (
     <div className="tab-content">
-      <div className="info-grid">
-        {/* Board Review - Show only for pending/awaiting stages */}
-        {showBoardReview && (
+      {/* Board Review - Show only for pending/awaiting stages */}
+      {showBoardReview && (
+        <div style={{ marginBottom: 16 }}>
           <BoardReviewSection
             applicant={applicant}
             onRecordDecision={onRecordBoardDecision}
             onUploadDocuments={onUploadDocuments}
             canApprove={canApprove}
           />
-        )}
+        </div>
+      )}
 
+      {/* Two-column layout for Husband and Wife */}
+      <div className="family-info-grid">
         {/* Husband Info */}
-        <Card title="Husband" size="small" className="info-card">
-          <Descriptions column={1} size="small">
-            <Descriptions.Item label={<><UserOutlined /> Name</>}>
+        <Card title="Husband" size="small">
+          <Descriptions column={1} size="small" labelStyle={{ width: 120 }}>
+            <Descriptions.Item label="Name">
               {husband.firstName} {husband.lastName}
             </Descriptions.Item>
-            <Descriptions.Item label={<><MailOutlined /> Email</>}>
-              {husband.email || 'N/A'}
+            <Descriptions.Item label="Father's Name">
+              {husband.fatherName || 'N/A'}
             </Descriptions.Item>
-            <Descriptions.Item label={<><PhoneOutlined /> Phone</>}>
-              {getPrimaryPhone(husband.phoneNumbers)}
+            <Descriptions.Item label="Email">
+              {husband.email ? <a href={`mailto:${husband.email}`}>{husband.email}</a> : 'N/A'}
+            </Descriptions.Item>
+            <Descriptions.Item label="Phone">
+              {formatPhones(husband.phoneNumbers)}
             </Descriptions.Item>
             <Descriptions.Item label="Occupation">
               {husband.occupation || 'N/A'}
+            </Descriptions.Item>
+            <Descriptions.Item label="Employer">
+              {husband.employerName || 'N/A'}
             </Descriptions.Item>
           </Descriptions>
         </Card>
 
         {/* Wife Info */}
-        {wife && (
-          <Card title="Wife" size="small" className="info-card">
-            <Descriptions column={1} size="small">
-              <Descriptions.Item label={<><UserOutlined /> Name</>}>
+        <Card title="Wife" size="small">
+          {wife ? (
+            <Descriptions column={1} size="small" labelStyle={{ width: 120 }}>
+              <Descriptions.Item label="Name">
                 {wife.firstName} {wife.maidenName ? `(${wife.maidenName})` : ''}
               </Descriptions.Item>
-              <Descriptions.Item label={<><MailOutlined /> Email</>}>
-                {wife.email || 'N/A'}
+              <Descriptions.Item label="Father's Name">
+                {wife.fatherName || 'N/A'}
               </Descriptions.Item>
-              <Descriptions.Item label={<><PhoneOutlined /> Phone</>}>
-                {getPrimaryPhone(wife.phoneNumbers)}
+              <Descriptions.Item label="Email">
+                {wife.email ? <a href={`mailto:${wife.email}`}>{wife.email}</a> : 'N/A'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Phone">
+                {formatPhones(wife.phoneNumbers)}
               </Descriptions.Item>
               <Descriptions.Item label="Occupation">
                 {wife.occupation || 'N/A'}
               </Descriptions.Item>
-            </Descriptions>
-          </Card>
-        )}
-
-        {/* Address */}
-        {address && (
-          <Card title="Current Address" size="small" className="info-card">
-            <Descriptions column={1} size="small">
-              <Descriptions.Item label={<><HomeOutlined /> Street</>}>
-                {address.street}
-              </Descriptions.Item>
-              <Descriptions.Item label="City">
-                {address.city}, {address.state} {address.zipCode}
+              <Descriptions.Item label="High School">
+                {wife.highSchool || 'N/A'}
               </Descriptions.Item>
             </Descriptions>
-          </Card>
-        )}
-
-        {/* Community */}
-        <Card title="Community" size="small" className="info-card">
-          <Descriptions column={1} size="small">
-            <Descriptions.Item label="Current Kehila">
-              {applicant.currentKehila || 'N/A'}
-            </Descriptions.Item>
-            <Descriptions.Item label="Shabbos Shul">
-              {applicant.shabbosShul || 'N/A'}
-            </Descriptions.Item>
-          </Descriptions>
-        </Card>
-
-        {/* Children */}
-        <Card title={`Children (${applicant.children?.length || 0})`} size="small" className="info-card">
-          {applicant.children && applicant.children.length > 0 ? (
-            <Table
-              dataSource={applicant.children}
-              columns={[
-                { title: 'Name', dataIndex: 'name', key: 'name' },
-                { title: 'Age', dataIndex: 'age', key: 'age', width: 60 },
-                { title: 'Gender', dataIndex: 'gender', key: 'gender', width: 80 },
-                { title: 'School', dataIndex: 'school', key: 'school', render: (v: string) => v || '-' },
-              ]}
-              rowKey="name"
-              pagination={false}
-              size="small"
-            />
           ) : (
-            <Empty description="No children listed" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+            <Text type="secondary">No wife information</Text>
           )}
         </Card>
       </div>
+
+      {/* Family Details - Address & Community combined */}
+      <Card title="Family Details" size="small" style={{ marginTop: 16 }}>
+        <Descriptions column={{ xs: 1, sm: 2, md: 3 }} size="small">
+          <Descriptions.Item label={<><HomeOutlined /> Address</>} span={2}>
+            {address ? (
+              <>
+                {address.street}{address.street2 ? `, ${address.street2}` : ''}, {address.city}, {address.state} {address.zipCode}
+              </>
+            ) : (
+              'N/A'
+            )}
+          </Descriptions.Item>
+          <Descriptions.Item label="Current Kehila">
+            {applicant.currentKehila || 'N/A'}
+          </Descriptions.Item>
+          <Descriptions.Item label="Shabbos Shul" span={2}>
+            {applicant.shabbosShul || 'N/A'}
+          </Descriptions.Item>
+        </Descriptions>
+      </Card>
+
+      {/* Children */}
+      <Card title={`Children (${applicant.children?.length || 0})`} size="small" style={{ marginTop: 16 }}>
+        {applicant.children && applicant.children.length > 0 ? (
+          <Table
+            dataSource={applicant.children}
+            columns={[
+              { title: 'Name', dataIndex: 'name', key: 'name', render: (v: string) => v || '-' },
+              { title: 'Age', dataIndex: 'age', key: 'age', width: 80 },
+              { title: 'Gender', dataIndex: 'gender', key: 'gender', width: 100 },
+              { title: 'School', dataIndex: 'school', key: 'school', render: (v: string) => v || '-' },
+            ]}
+            rowKey={(record, index) => record.name || `child-${index}`}
+            pagination={false}
+            size="small"
+          />
+        ) : (
+          <Empty description="No children listed" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+        )}
+      </Card>
     </div>
   );
 };
@@ -881,7 +898,7 @@ const HousingSearchTab = ({ applicant, onEditPreferences }: HousingSearchTabProp
   );
 };
 
-// Property Matches Tab
+// Suggested Listings Tab
 interface PropertyMatchesTabProps {
   housingSearchId: string;
   applicantName: string;

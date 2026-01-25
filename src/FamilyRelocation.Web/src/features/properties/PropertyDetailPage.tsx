@@ -427,7 +427,7 @@ const PropertyDetailPage = () => {
             </div>
           </Card>
 
-          {/* Interested Families / Property Matches */}
+          {/* Interested Families / Suggested Listings */}
           <div style={{ marginTop: 24 }}>
             <PropertyMatchList
               propertyId={property.id}
@@ -631,7 +631,7 @@ const PropertyDetailPage = () => {
         </Form>
       </Modal>
 
-      {/* Create Property Match Modal */}
+      {/* Create Suggested Listing Modal */}
       <CreatePropertyMatchModal
         open={createMatchModalOpen}
         onClose={() => setCreateMatchModalOpen(false)}

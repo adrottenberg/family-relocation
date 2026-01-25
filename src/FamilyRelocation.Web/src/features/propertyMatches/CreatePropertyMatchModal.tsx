@@ -52,12 +52,12 @@ const CreatePropertyMatchModal = ({
   const createMutation = useMutation({
     mutationFn: propertyMatchesApi.create,
     onSuccess: () => {
-      message.success('Property match created successfully');
+      message.success('Suggestion created successfully');
       queryClient.invalidateQueries({ queryKey: ['propertyMatches'] });
       onClose();
     },
     onError: (error: Error) => {
-      message.error(error.message || 'Failed to create property match');
+      message.error(error.message || 'Failed to create suggestion');
     },
   });
 
@@ -80,9 +80,12 @@ const CreatePropertyMatchModal = ({
     (a: ApplicantListItemDto) => a.housingSearchId && a.stage
   );
 
+  // Context-aware title
+  const modalTitle = propertyId ? 'Suggest Applicant' : 'Suggest Listing';
+
   return (
     <Modal
-      title="Create Property Match"
+      title={modalTitle}
       open={open}
       onCancel={onClose}
       onOk={handleSubmit}

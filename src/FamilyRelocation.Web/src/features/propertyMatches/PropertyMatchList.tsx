@@ -43,6 +43,9 @@ const PropertyMatchList = ({
   const [activeTab, setActiveTab] = useState('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
+  // Context-aware title: from applicant view = "Suggested Listings", from property view = "Suggested Applicants"
+  const title = propertyId ? 'Suggested Applicants' : 'Suggested Listings';
+
   // Always fetch all matches - filter client-side for display, keeps tab counts stable
   const queryKey = housingSearchId
     ? ['propertyMatches', 'housingSearch', housingSearchId]
@@ -111,7 +114,7 @@ const PropertyMatchList = ({
 
   return (
     <Card
-      title="Property Matches"
+      title={title}
       extra={
         <Space>
           {showingRequestedMatches.length > 0 && onScheduleShowings && (
@@ -129,7 +132,7 @@ const PropertyMatchList = ({
           )}
           {onCreateMatch && (
             <Button type="primary" icon={<PlusOutlined />} onClick={onCreateMatch}>
-              Add Match
+              {propertyId ? 'Add Applicant' : 'Add Listing'}
             </Button>
           )}
         </Space>
