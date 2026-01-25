@@ -18,6 +18,7 @@ interface PropertyMatchListProps {
   propertyId?: string;
   onCreateMatch?: () => void;
   onScheduleShowings?: (matches: MatchScheduleData[]) => void;
+  onOpenScheduler?: () => void;
   showApplicant?: boolean;
   showProperty?: boolean;
 }
@@ -36,6 +37,7 @@ const PropertyMatchList = ({
   propertyId,
   onCreateMatch,
   onScheduleShowings,
+  onOpenScheduler,
   showApplicant = true,
   showProperty = true,
 }: PropertyMatchListProps) => {
@@ -117,21 +119,17 @@ const PropertyMatchList = ({
       title={title}
       extra={
         <Space>
-          {showingRequestedMatches.length > 0 && onScheduleShowings && (
+          {showingRequestedMatches.length > 0 && onOpenScheduler && (
             <Button
+              type="primary"
               icon={<CalendarOutlined />}
-              onClick={() => onScheduleShowings(showingRequestedMatches.map(m => ({
-                id: m.id,
-                propertyStreet: m.propertyStreet,
-                propertyCity: m.propertyCity,
-                applicantName: m.applicantName,
-              })))}
+              onClick={onOpenScheduler}
             >
               Schedule Showings ({showingRequestedMatches.length})
             </Button>
           )}
           {onCreateMatch && (
-            <Button type="primary" icon={<PlusOutlined />} onClick={onCreateMatch}>
+            <Button icon={<PlusOutlined />} onClick={onCreateMatch}>
               {propertyId ? 'Add Applicant' : 'Add Listing'}
             </Button>
           )}

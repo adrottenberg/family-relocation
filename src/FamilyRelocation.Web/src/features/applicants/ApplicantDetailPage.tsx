@@ -21,7 +21,6 @@ import {
   EditOutlined,
   PhoneOutlined,
   MailOutlined,
-  HomeOutlined,
   PrinterOutlined,
   SwapOutlined,
   BellOutlined,
@@ -59,6 +58,7 @@ import { CreateReminderModal } from '../reminders';
 import { LogActivityModal } from '../activities';
 import { PropertyMatchList, CreatePropertyMatchModal, type MatchScheduleData } from '../propertyMatches';
 import { ScheduleShowingModal } from '../showings';
+import { ShowingSchedulerModal } from '../showings/scheduler';
 import './ApplicantDetailPage.css';
 
 const { Title, Text } = Typography;
@@ -77,6 +77,8 @@ const ApplicantDetailPage = () => {
   const [editPreferencesModalOpen, setEditPreferencesModalOpen] = useState(false);
   // Queue of showings to schedule - each modal close advances to the next
   const [showingsToSchedule, setShowingsToSchedule] = useState<MatchScheduleData[]>([]);
+  // Drag-and-drop scheduler modal
+  const [schedulerModalOpen, setSchedulerModalOpen] = useState(false);
 
   // Stage transition modal state
   const [activeTransitionModal, setActiveTransitionModal] = useState<TransitionType | null>(null);
@@ -165,7 +167,7 @@ const ApplicantDetailPage = () => {
 
   const hs = applicant.housingSearch;
   const boardDecision = applicant.boardReview?.decision || 'Pending';
-  const stage = hs?.stage || 'N/A';
+  const stage = hs?.stage || 'Submitted';
 
   // Get the current pipeline stage
   const currentPipelineStage = getPipelineStage(boardDecision, stage);
@@ -265,10 +267,10 @@ const ApplicantDetailPage = () => {
           <tbody>
             ${children.map(c => `
               <tr>
-                <td>${c.name || 'N/A'}</td>
+                <td>${c.name || '-'}</td>
                 <td>${c.age}</td>
                 <td>${c.gender}</td>
-                <td>${c.school || 'N/A'}</td>
+                <td>${c.school || '-'}</td>
               </tr>
             `).join('')}
           </tbody>
@@ -280,10 +282,10 @@ const ApplicantDetailPage = () => {
       ? `
         <h3>Housing Preferences</h3>
         <table>
-          <tr><td><strong>Budget</strong></td><td>${prefs.budgetAmount ? `$${prefs.budgetAmount.toLocaleString()}` : 'N/A'}</td></tr>
-          <tr><td><strong>Min Bedrooms</strong></td><td>${prefs.minBedrooms || 'N/A'}</td></tr>
-          <tr><td><strong>Min Bathrooms</strong></td><td>${prefs.minBathrooms || 'N/A'}</td></tr>
-          <tr><td><strong>Move Timeline</strong></td><td>${prefs.moveTimeline || 'N/A'}</td></tr>
+          <tr><td><strong>Budget</strong></td><td>${prefs.budgetAmount ? `$${prefs.budgetAmount.toLocaleString()}` : '-'}</td></tr>
+          <tr><td><strong>Min Bedrooms</strong></td><td>${prefs.minBedrooms || '-'}</td></tr>
+          <tr><td><strong>Min Bathrooms</strong></td><td>${prefs.minBathrooms || '-'}</td></tr>
+          <tr><td><strong>Move Timeline</strong></td><td>${prefs.moveTimeline || '-'}</td></tr>
           ${prefs.requiredFeatures && prefs.requiredFeatures.length > 0
             ? `<tr><td><strong>Required Features</strong></td><td>${prefs.requiredFeatures.join(', ')}</td></tr>`
             : ''}
@@ -325,7 +327,7 @@ const ApplicantDetailPage = () => {
       <!DOCTYPE html>
       <html>
       <head>
-        <title>${husband.lastName} Family - Application Details</title>
+        <title>${husband.firstName} ${husband.lastName} - Application Details</title>
         <style>
           body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
           h1 { color: #2d7a3a; border-bottom: 2px solid #2d7a3a; padding-bottom: 10px; }
@@ -356,11 +358,11 @@ const ApplicantDetailPage = () => {
             <h3>Husband</h3>
             <table>
               <tr><td><strong>Name</strong></td><td>${husband.firstName} ${husband.lastName}</td></tr>
-              <tr><td><strong>Father's Name</strong></td><td>${husband.fatherName || 'N/A'}</td></tr>
-              <tr><td><strong>Email</strong></td><td>${husband.email || 'N/A'}</td></tr>
+              <tr><td><strong>Father's Name</strong></td><td>${husband.fatherName || '-'}</td></tr>
+              <tr><td><strong>Email</strong></td><td>${husband.email || '-'}</td></tr>
               <tr><td><strong>Phone</strong></td><td>${getPrimaryPhone(husband.phoneNumbers)}</td></tr>
-              <tr><td><strong>Occupation</strong></td><td>${husband.occupation || 'N/A'}</td></tr>
-              <tr><td><strong>Employer</strong></td><td>${husband.employerName || 'N/A'}</td></tr>
+              <tr><td><strong>Occupation</strong></td><td>${husband.occupation || '-'}</td></tr>
+              <tr><td><strong>Employer</strong></td><td>${husband.employerName || '-'}</td></tr>
             </table>
           </div>
           ${wife ? `
@@ -368,11 +370,11 @@ const ApplicantDetailPage = () => {
             <h3>Wife</h3>
             <table>
               <tr><td><strong>Name</strong></td><td>${wife.firstName} ${wife.maidenName ? `(${wife.maidenName})` : ''}</td></tr>
-              <tr><td><strong>Father's Name</strong></td><td>${wife.fatherName || 'N/A'}</td></tr>
-              <tr><td><strong>Email</strong></td><td>${wife.email || 'N/A'}</td></tr>
+              <tr><td><strong>Father's Name</strong></td><td>${wife.fatherName || '-'}</td></tr>
+              <tr><td><strong>Email</strong></td><td>${wife.email || '-'}</td></tr>
               <tr><td><strong>Phone</strong></td><td>${getPrimaryPhone(wife.phoneNumbers)}</td></tr>
-              <tr><td><strong>Occupation</strong></td><td>${wife.occupation || 'N/A'}</td></tr>
-              <tr><td><strong>High School</strong></td><td>${wife.highSchool || 'N/A'}</td></tr>
+              <tr><td><strong>Occupation</strong></td><td>${wife.occupation || '-'}</td></tr>
+              <tr><td><strong>High School</strong></td><td>${wife.highSchool || '-'}</td></tr>
             </table>
           </div>
           ` : ''}
@@ -388,8 +390,8 @@ const ApplicantDetailPage = () => {
 
         <h3>Community</h3>
         <table>
-          <tr><td><strong>Current Kehila</strong></td><td>${applicant.currentKehila || 'N/A'}</td></tr>
-          <tr><td><strong>Shabbos Shul</strong></td><td>${applicant.shabbosShul || 'N/A'}</td></tr>
+          <tr><td><strong>Current Kehila</strong></td><td>${applicant.currentKehila || '-'}</td></tr>
+          <tr><td><strong>Shabbos Shul</strong></td><td>${applicant.shabbosShul || '-'}</td></tr>
         </table>
 
         ${childrenHtml}
@@ -432,12 +434,14 @@ const ApplicantDetailPage = () => {
       children: (
         <PropertyMatchesTab
           housingSearchId={hs.id}
+          applicantId={applicant.id}
           applicantName={`${applicant.husband.firstName} ${applicant.husband.lastName}`}
           onCreateMatch={() => setCreateMatchModalOpen(true)}
           onScheduleShowing={(matches) => {
             // Queue all matches for sequential scheduling
             setShowingsToSchedule(matches);
           }}
+          onOpenScheduler={() => setSchedulerModalOpen(true)}
         />
       ),
     }] : []),
@@ -479,12 +483,8 @@ const ApplicantDetailPage = () => {
             </div>
             <div className="header-info">
               <Title level={3} style={{ margin: 0 }}>
-                {applicant.husband.lastName} Family
+                {applicant.husband.firstName} {applicant.husband.lastName}
               </Title>
-              <Text type="secondary">
-                {applicant.husband.firstName}
-                {applicant.wife && ` & ${applicant.wife.firstName}`}
-              </Text>
               <div className="header-tags">
                 <Tag style={getStatusTagStyle(boardDecision)}>{boardDecision}</Tag>
                 <Tag style={getStageTagStyle(stage)}>{formatStageName(stage)}</Tag>
@@ -551,7 +551,7 @@ const ApplicantDetailPage = () => {
         }}
         entityType="Applicant"
         entityId={applicant.id}
-        entityDisplayName={`${applicant.husband.lastName} Family`}
+        entityDisplayName={`${applicant.husband.firstName} ${applicant.husband.lastName}`}
       />
 
       {/* Log Activity Modal */}
@@ -564,7 +564,7 @@ const ApplicantDetailPage = () => {
         }}
         entityType="Applicant"
         entityId={applicant.id}
-        entityName={`${applicant.husband.lastName} Family`}
+        entityName={`${applicant.husband.firstName} ${applicant.husband.lastName}`}
       />
 
       {/* Create Suggested Listing Modal */}
@@ -605,6 +605,17 @@ const ApplicantDetailPage = () => {
           housingSearchId={hs.id}
           applicantId={applicant.id}
           preferences={hs.preferences}
+        />
+      )}
+
+      {/* Showing Scheduler Modal (Drag-and-Drop) */}
+      {hs && (
+        <ShowingSchedulerModal
+          open={schedulerModalOpen}
+          onClose={() => setSchedulerModalOpen(false)}
+          mode="applicant"
+          applicantId={applicant.id}
+          housingSearchId={hs.id}
         />
       )}
 
@@ -649,9 +660,9 @@ const ApplicantDetailPage = () => {
 
 // Helper to get primary phone
 const getPrimaryPhone = (phoneNumbers?: { number: string; isPrimary: boolean }[]) => {
-  if (!phoneNumbers || phoneNumbers.length === 0) return 'N/A';
+  if (!phoneNumbers || phoneNumbers.length === 0) return '-';
   const primary = phoneNumbers.find(p => p.isPrimary);
-  return primary?.number || phoneNumbers[0]?.number || 'N/A';
+  return primary?.number || phoneNumbers[0]?.number || '-';
 };
 
 // Overview Tab
@@ -678,7 +689,7 @@ const OverviewTab = ({ applicant, onRecordBoardDecision, onUploadDocuments, canA
 
   // Format all phone numbers for display
   const formatPhones = (phoneNumbers?: { number: string; type: string; isPrimary: boolean }[]) => {
-    if (!phoneNumbers || phoneNumbers.length === 0) return 'N/A';
+    if (!phoneNumbers || phoneNumbers.length === 0) return '-';
     return phoneNumbers.map(p => `${p.number} (${p.type}${p.isPrimary ? ', Primary' : ''})`).join(', ');
   };
 
@@ -699,50 +710,50 @@ const OverviewTab = ({ applicant, onRecordBoardDecision, onUploadDocuments, canA
       {/* Two-column layout for Husband and Wife */}
       <div className="family-info-grid">
         {/* Husband Info */}
-        <Card title="Husband" size="small">
+        <Card title="Husband" size="small" className="info-card">
           <Descriptions column={1} size="small" labelStyle={{ width: 120 }}>
             <Descriptions.Item label="Name">
               {husband.firstName} {husband.lastName}
             </Descriptions.Item>
             <Descriptions.Item label="Father's Name">
-              {husband.fatherName || 'N/A'}
+              {husband.fatherName || '-'}
             </Descriptions.Item>
             <Descriptions.Item label="Email">
-              {husband.email ? <a href={`mailto:${husband.email}`}>{husband.email}</a> : 'N/A'}
+              {husband.email ? <a href={`mailto:${husband.email}`}>{husband.email}</a> : '-'}
             </Descriptions.Item>
             <Descriptions.Item label="Phone">
               {formatPhones(husband.phoneNumbers)}
             </Descriptions.Item>
             <Descriptions.Item label="Occupation">
-              {husband.occupation || 'N/A'}
+              {husband.occupation || '-'}
             </Descriptions.Item>
             <Descriptions.Item label="Employer">
-              {husband.employerName || 'N/A'}
+              {husband.employerName || '-'}
             </Descriptions.Item>
           </Descriptions>
         </Card>
 
         {/* Wife Info */}
-        <Card title="Wife" size="small">
+        <Card title="Wife" size="small" className="info-card">
           {wife ? (
             <Descriptions column={1} size="small" labelStyle={{ width: 120 }}>
               <Descriptions.Item label="Name">
                 {wife.firstName} {wife.maidenName ? `(${wife.maidenName})` : ''}
               </Descriptions.Item>
               <Descriptions.Item label="Father's Name">
-                {wife.fatherName || 'N/A'}
+                {wife.fatherName || '-'}
               </Descriptions.Item>
               <Descriptions.Item label="Email">
-                {wife.email ? <a href={`mailto:${wife.email}`}>{wife.email}</a> : 'N/A'}
+                {wife.email ? <a href={`mailto:${wife.email}`}>{wife.email}</a> : '-'}
               </Descriptions.Item>
               <Descriptions.Item label="Phone">
                 {formatPhones(wife.phoneNumbers)}
               </Descriptions.Item>
               <Descriptions.Item label="Occupation">
-                {wife.occupation || 'N/A'}
+                {wife.occupation || '-'}
               </Descriptions.Item>
               <Descriptions.Item label="High School">
-                {wife.highSchool || 'N/A'}
+                {wife.highSchool || '-'}
               </Descriptions.Item>
             </Descriptions>
           ) : (
@@ -752,28 +763,28 @@ const OverviewTab = ({ applicant, onRecordBoardDecision, onUploadDocuments, canA
       </div>
 
       {/* Family Details - Address & Community combined */}
-      <Card title="Family Details" size="small" style={{ marginTop: 16 }}>
+      <Card title="Family Details" size="small" className="info-card" style={{ marginTop: 16 }}>
         <Descriptions column={{ xs: 1, sm: 2, md: 3 }} size="small">
-          <Descriptions.Item label={<><HomeOutlined /> Address</>} span={2}>
+          <Descriptions.Item label="Address" span={2}>
             {address ? (
               <>
                 {address.street}{address.street2 ? `, ${address.street2}` : ''}, {address.city}, {address.state} {address.zipCode}
               </>
             ) : (
-              'N/A'
+              '-'
             )}
           </Descriptions.Item>
           <Descriptions.Item label="Current Kehila">
-            {applicant.currentKehila || 'N/A'}
+            {applicant.currentKehila || '-'}
           </Descriptions.Item>
           <Descriptions.Item label="Shabbos Shul" span={2}>
-            {applicant.shabbosShul || 'N/A'}
+            {applicant.shabbosShul || '-'}
           </Descriptions.Item>
         </Descriptions>
       </Card>
 
       {/* Children */}
-      <Card title={`Children (${applicant.children?.length || 0})`} size="small" style={{ marginTop: 16 }}>
+      <Card title={`Children (${applicant.children?.length || 0})`} size="small" className="info-card" style={{ marginTop: 16 }}>
         {applicant.children && applicant.children.length > 0 ? (
           <Table
             dataSource={applicant.children}
@@ -847,16 +858,16 @@ const HousingSearchTab = ({ applicant, onEditPreferences }: HousingSearchTabProp
               <Descriptions.Item label="Budget">
                 {prefs.budgetAmount
                   ? `$${prefs.budgetAmount.toLocaleString()}`
-                  : 'N/A'}
+                  : '-'}
               </Descriptions.Item>
               <Descriptions.Item label="Bedrooms">
-                {prefs.minBedrooms ? `${prefs.minBedrooms}+` : 'N/A'}
+                {prefs.minBedrooms ? `${prefs.minBedrooms}+` : '-'}
               </Descriptions.Item>
               <Descriptions.Item label="Bathrooms">
-                {prefs.minBathrooms ? `${prefs.minBathrooms}+` : 'N/A'}
+                {prefs.minBathrooms ? `${prefs.minBathrooms}+` : '-'}
               </Descriptions.Item>
               <Descriptions.Item label="Move Timeline">
-                {prefs.moveTimeline || 'N/A'}
+                {prefs.moveTimeline || '-'}
               </Descriptions.Item>
             </Descriptions>
           ) : (
@@ -901,18 +912,21 @@ const HousingSearchTab = ({ applicant, onEditPreferences }: HousingSearchTabProp
 // Suggested Listings Tab
 interface PropertyMatchesTabProps {
   housingSearchId: string;
+  applicantId: string;
   applicantName: string;
   onCreateMatch: () => void;
   onScheduleShowing: (matches: MatchScheduleData[]) => void;
+  onOpenScheduler: () => void;
 }
 
-const PropertyMatchesTab = ({ housingSearchId, onCreateMatch, onScheduleShowing }: PropertyMatchesTabProps) => {
+const PropertyMatchesTab = ({ housingSearchId, onCreateMatch, onScheduleShowing, onOpenScheduler }: PropertyMatchesTabProps) => {
   return (
     <div className="tab-content">
       <PropertyMatchList
         housingSearchId={housingSearchId}
         onCreateMatch={onCreateMatch}
         onScheduleShowings={onScheduleShowing}
+        onOpenScheduler={onOpenScheduler}
         showApplicant={false}
         showProperty={true}
       />
@@ -1288,6 +1302,179 @@ interface AuditHistoryTabProps {
   isLoading: boolean;
 }
 
+// Friendly names for entity types
+const entityTypeLabels: Record<string, string> = {
+  Applicant: 'Applicant',
+  HousingSearch: 'Housing Search',
+  PropertyMatch: 'Property Match',
+  Showing: 'Showing',
+};
+
+// Friendly names for common field names
+const fieldLabels: Record<string, string> = {
+  Status: 'Status',
+  Stage: 'Stage',
+  ScheduledDate: 'Scheduled Date',
+  ScheduledTime: 'Scheduled Time',
+  MatchScore: 'Match Score',
+  IsAutoMatched: 'Auto Matched',
+  Notes: 'Notes',
+  BoardDecision: 'Board Decision',
+  MinBedrooms: 'Min Bedrooms',
+  MaxBudget: 'Max Budget',
+  MinBudget: 'Min Budget',
+  PreferredCities: 'Preferred Cities',
+  MustHaveFeatures: 'Must Have Features',
+  NiceToHaveFeatures: 'Nice to Have Features',
+  BrokerUserId: 'Broker',
+  CompletedAt: 'Completed At',
+  PropertyMatchId: 'Property Match',
+  HousingSearchId: 'Housing Search',
+  PropertyId: 'Property',
+  ApplicantId: 'Applicant',
+  ShowingId: 'Showing',
+  CreatedAt: 'Created',
+  CreatedById: 'Created By',
+  CreatedDate: 'Created',
+  LastModifiedAt: 'Modified',
+  LastModifiedById: 'Modified By',
+  LastModifiedDate: 'Modified',
+  ModifiedAt: 'Modified',
+  ModifiedById: 'Modified By',
+  ModifiedDate: 'Modified',
+};
+
+// Fields that should only show new value (no old → new comparison)
+const metadataFields = new Set([
+  'CreatedAt', 'CreatedById', 'LastModifiedAt', 'LastModifiedById',
+  'ModifiedAt', 'ModifiedById', 'CreatedBy', 'ModifiedBy',
+  'CreatedDate', 'ModifiedDate', 'LastModifiedDate',
+]);
+
+// Status value labels
+const statusLabels: Record<string, string> = {
+  MatchIdentified: 'Match Identified',
+  ShowingRequested: 'Showing Requested',
+  ApplicantInterested: 'Interested',
+  ApplicantRejected: 'Rejected',
+  OfferMade: 'Offer Made',
+  Scheduled: 'Scheduled',
+  Completed: 'Completed',
+  Cancelled: 'Cancelled',
+  NoShow: 'No Show',
+  Submitted: 'Submitted',
+  AwaitingAgreements: 'Awaiting Agreements',
+  BoardReview: 'Board Review',
+  HouseHunting: 'House Hunting',
+  UnderContract: 'Under Contract',
+  Closed: 'Closed',
+};
+
+// Format timestamp in friendly format with full date and time
+const formatTimestamp = (timestamp: string): string => {
+  const date = new Date(timestamp);
+  const now = new Date();
+  const isToday = date.toDateString() === now.toDateString();
+  const isYesterday = new Date(now.getTime() - 86400000).toDateString() === date.toDateString();
+
+  const timeStr = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+
+  if (isToday) {
+    return `Today at ${timeStr}`;
+  }
+  if (isYesterday) {
+    return `Yesterday at ${timeStr}`;
+  }
+
+  const dateStr = date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
+  });
+
+  return `${dateStr} at ${timeStr}`;
+};
+
+// Check if a value looks like a GUID
+const isGuid = (value: string): boolean => {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+};
+
+// Format a value for display, with optional resolved names lookup
+const formatValue = (field: string, value: string, resolvedNames?: Record<string, string>): string => {
+  // Handle null/undefined values
+  if (value === 'null' || value === 'undefined' || value === '') {
+    return '';
+  }
+
+  // Check if this GUID has a resolved name
+  if (isGuid(value) && resolvedNames?.[value]) {
+    return resolvedNames[value];
+  }
+
+  // Check for status labels
+  if (statusLabels[value]) return statusLabels[value];
+
+  // Format booleans
+  if (value === 'true' || value === 'True') return 'Yes';
+  if (value === 'false' || value === 'False') return 'No';
+
+  // Format datetimes (fields ending in 'At' OR Modified/Created dates - these have time component)
+  const isDateTimeField = field.toLowerCase().endsWith('at') ||
+    field.toLowerCase().includes('modified') ||
+    field.toLowerCase().includes('created');
+  if (isDateTimeField && !field.toLowerCase().includes('time')) {
+    const date = new Date(value);
+    if (!isNaN(date.getTime())) {
+      return date.toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+      });
+    }
+  }
+
+  // Format dates (without time) - for fields like ScheduledDate
+  if (field.toLowerCase().includes('date') && !field.toLowerCase().includes('time') && !isDateTimeField) {
+    const date = new Date(value);
+    if (!isNaN(date.getTime()) && value.includes('-')) {
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+  }
+
+  // Format times
+  if (field.toLowerCase().includes('time') && value.includes(':')) {
+    const [hours, minutes] = value.split(':');
+    const hour = parseInt(hours, 10);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const hour12 = hour % 12 || 12;
+    return `${hour12}:${minutes} ${ampm}`;
+  }
+
+  // Format currency
+  if (field.toLowerCase().includes('budget') || field.toLowerCase().includes('price')) {
+    const num = parseFloat(value);
+    if (!isNaN(num)) {
+      return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(num);
+    }
+  }
+
+  // If it's still a GUID without a resolved name
+  if (isGuid(value)) {
+    // Handle empty/zero GUID (system/no user)
+    if (value.startsWith('00000000-0000-0000') || value === '00000000-0000-0000-0000-000000000000') {
+      return 'System';
+    }
+    // Show truncated version for other unresolved GUIDs
+    return value.substring(0, 8) + '...';
+  }
+
+  return value;
+};
+
 const AuditHistoryTab = ({ auditLogs, isLoading }: AuditHistoryTabProps) => {
   if (isLoading) {
     return (
@@ -1320,20 +1507,60 @@ const AuditHistoryTab = ({ auditLogs, isLoading }: AuditHistoryTabProps) => {
     }
   };
 
-  const formatChanges = (oldValues?: Record<string, unknown>, newValues?: Record<string, unknown>) => {
+  const getActionLabel = (action: string) => {
+    switch (action.toLowerCase()) {
+      case 'added': return 'Created';
+      case 'modified': return 'Updated';
+      case 'deleted': return 'Deleted';
+      default: return action;
+    }
+  };
+
+  const formatChanges = (
+    oldValues?: Record<string, unknown>,
+    newValues?: Record<string, unknown>,
+    resolvedNames?: Record<string, string>
+  ) => {
     if (!newValues) return null;
-    const changes: { field: string; oldValue?: string; newValue: string }[] = [];
+    const changes: { field: string; fieldLabel: string; oldValue?: string; newValue: string; isMetadata: boolean }[] = [];
 
     for (const [key, newVal] of Object.entries(newValues)) {
+      // Skip the primary Id field
+      if (key === 'Id') continue;
+
       const oldVal = oldValues?.[key];
-      if (oldVal !== newVal) {
-        changes.push({
-          field: key,
-          oldValue: oldVal !== undefined ? String(oldVal) : undefined,
-          newValue: String(newVal),
-        });
-      }
+
+      // Normalize empty values: treat null, undefined, "" as equivalent
+      const normalizeEmpty = (v: unknown) => (v === null || v === undefined || v === '' ? null : v);
+      const normalizedOld = normalizeEmpty(oldVal);
+      const normalizedNew = normalizeEmpty(newVal);
+
+      // Skip if no actual change (after normalizing empties)
+      if (normalizedOld === normalizedNew) continue;
+
+      const newValStr = String(newVal ?? '');
+      // For metadata fields (Created/Modified dates and users), only show new value
+      const isMetadata = metadataFields.has(key);
+      const oldValStr = !isMetadata && oldVal !== undefined && oldVal !== null && oldVal !== ''
+        ? String(oldVal)
+        : undefined;
+
+      changes.push({
+        field: key,
+        fieldLabel: fieldLabels[key] || key.replace(/([A-Z])/g, ' $1').trim(),
+        oldValue: oldValStr ? formatValue(key, oldValStr, resolvedNames) : undefined,
+        newValue: formatValue(key, newValStr, resolvedNames),
+        isMetadata,
+      });
     }
+
+    // Sort: metadata fields (Modified/Created) first, then others
+    changes.sort((a, b) => {
+      if (a.isMetadata && !b.isMetadata) return -1;
+      if (!a.isMetadata && b.isMetadata) return 1;
+      return 0;
+    });
+
     return changes;
   };
 
@@ -1341,7 +1568,14 @@ const AuditHistoryTab = ({ auditLogs, isLoading }: AuditHistoryTabProps) => {
     <div className="tab-content">
       <Timeline
         items={auditLogs.map((log) => {
-          const changes = formatChanges(log.oldValues, log.newValues);
+          const changes = formatChanges(log.oldValues, log.newValues, log.resolvedNames);
+          const entityLabel = entityTypeLabels[log.entityType] || log.entityType;
+          const actionLabel = getActionLabel(log.action);
+          // Use entityDescription if available, otherwise just the entity type
+          const entityInfo = log.entityDescription
+            ? `${entityLabel} - ${log.entityDescription}`
+            : entityLabel;
+
           return {
             dot: <HistoryOutlined style={{ color: '#8c8c8c' }} />,
             color: getActionColor(log.action),
@@ -1349,33 +1583,35 @@ const AuditHistoryTab = ({ auditLogs, isLoading }: AuditHistoryTabProps) => {
               <div className="timeline-item">
                 <div className="timeline-header">
                   <Space>
-                    <Tag color={getActionColor(log.action)}>{log.action}</Tag>
-                    <Text strong>{log.entityType}</Text>
+                    <Tag color={getActionColor(log.action)}>{actionLabel}</Tag>
+                    <Text strong>{entityInfo}</Text>
                   </Space>
                   <Text type="secondary" style={{ fontSize: 12 }}>
-                    {new Date(log.timestamp).toLocaleString()}
+                    {formatTimestamp(log.timestamp)}
                   </Text>
                 </div>
                 {changes && changes.length > 0 && (
                   <div style={{ marginTop: 8, fontSize: 13 }}>
                     {changes.map((change, idx) => (
-                      <div key={idx} style={{ color: '#666' }}>
-                        <Text code>{change.field}</Text>:{' '}
+                      <div key={idx} style={{ color: '#666', marginBottom: 2 }}>
+                        <Text style={{ color: change.isMetadata ? '#595959' : '#8c8c8c', fontWeight: change.isMetadata ? 600 : 400 }}>
+                          {change.fieldLabel}:
+                        </Text>{' '}
                         {change.oldValue && <Text delete type="secondary">{change.oldValue}</Text>}
                         {change.oldValue && ' → '}
-                        <Text>{change.newValue}</Text>
+                        <Text strong={change.isMetadata}>{change.newValue}</Text>
                       </div>
                     ))}
                   </div>
                 )}
-                {!changes?.length && (
-                  <Text style={{ display: 'block', marginTop: 4 }}>
-                    {log.action} {log.entityType}
+                {(!changes || changes.length === 0) && (
+                  <Text type="secondary" style={{ display: 'block', marginTop: 4, fontSize: 13 }}>
+                    {actionLabel} {entityLabel.toLowerCase()}
                   </Text>
                 )}
-                {log.userName && (
-                  <Text type="secondary" style={{ fontSize: 13, display: 'block', marginTop: 4 }}>
-                    by {log.userName}
+                {log.userEmail && (
+                  <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 4 }}>
+                    by {log.userEmail}
                   </Text>
                 )}
               </div>
