@@ -16,15 +16,18 @@ namespace FamilyRelocation.API.Controllers;
 public class UsersController : ControllerBase
 {
     private readonly IAuthenticationService _authService;
+    private readonly IUserRoleService _userRoleService;
     private readonly ICurrentUserService _currentUserService;
     private readonly IActivityLogger _activityLogger;
 
     public UsersController(
         IAuthenticationService authService,
+        IUserRoleService userRoleService,
         ICurrentUserService currentUserService,
         IActivityLogger activityLogger)
     {
         _authService = authService;
+        _userRoleService = userRoleService;
         _currentUserService = currentUserService;
         _activityLogger = activityLogger;
     }
@@ -71,10 +74,10 @@ public class UsersController : ControllerBase
             return BadRequest(new { error = result.ErrorMessage });
         }
 
-        // Assign roles if provided
+        // Assign roles if provided (stored in database, not Cognito groups)
         if (request.Roles?.Any() == true)
         {
-            await _authService.UpdateUserRolesAsync(request.Email, request.Roles, ct);
+            await _userRoleService.SetUserRolesAsync(result.UserId, request.Email, request.Roles, _currentUserService.Email, ct);
         }
 
         // Log activity
@@ -129,9 +132,17 @@ public class UsersController : ControllerBase
             return BadRequest(new { error = result.ErrorMessage });
         }
 
+        // Fetch roles from database (not Cognito groups) for each user
+        var usersWithDbRoles = new List<UserDto>();
+        foreach (var user in result.Users)
+        {
+            var dbRoles = await _userRoleService.GetUserRolesByEmailAsync(user.Email, ct);
+            usersWithDbRoles.Add(user with { Roles = dbRoles.ToList() });
+        }
+
         return Ok(new UserListResponse
         {
-            Users = result.Users,
+            Users = usersWithDbRoles,
             PaginationToken = result.PaginationToken
         });
     }
@@ -156,13 +167,17 @@ public class UsersController : ControllerBase
             return BadRequest(new { error = result.ErrorMessage });
         }
 
-        return Ok(result.User);
+        // Get roles from database instead of Cognito groups
+        var dbRoles = await _userRoleService.GetUserRolesByEmailAsync(result.User!.Email, ct);
+        var userWithDbRoles = result.User with { Roles = dbRoles.ToList() };
+
+        return Ok(userWithDbRoles);
     }
 
     /// <summary>
     /// Updates a user's roles.
     /// </summary>
-    /// <param name="userId">The user's ID.</param>
+    /// <param name="userId">The user's ID (email).</param>
     /// <param name="request">The new roles to assign.</param>
     [HttpPut("{userId}/roles")]
     [ProducesResponseType(typeof(UpdateRolesResponse), StatusCodes.Status200OK)]
@@ -173,12 +188,25 @@ public class UsersController : ControllerBase
         [FromBody] UpdateRolesRequest request,
         CancellationToken ct = default)
     {
-        // Prevent removing own Admin role
-        var currentUserId = _currentUserService.UserId?.ToString();
-        if (userId.Equals(currentUserId, StringComparison.OrdinalIgnoreCase) ||
-            userId.Equals(_currentUserService.Email, StringComparison.OrdinalIgnoreCase))
+        // Get the user from Cognito to verify they exist and get their Cognito ID
+        var userResult = await _authService.GetUserAsync(userId, ct);
+        if (!userResult.Success)
         {
-            var currentRoles = await _authService.GetUserGroupsAsync(userId, ct);
+            if (userResult.ErrorType == AuthErrorType.UserNotFound)
+            {
+                return NotFound(new { error = "User not found" });
+            }
+            return BadRequest(new { error = userResult.ErrorMessage });
+        }
+
+        var cognitoUserId = userResult.User!.Id;
+        var email = userResult.User.Email;
+
+        // Prevent removing own Admin role
+        var currentUserEmail = _currentUserService.Email;
+        if (email.Equals(currentUserEmail, StringComparison.OrdinalIgnoreCase))
+        {
+            var currentRoles = await _userRoleService.GetUserRolesByEmailAsync(email, ct);
             if (currentRoles.Contains("Admin", StringComparer.OrdinalIgnoreCase) &&
                 !request.Roles.Contains("Admin", StringComparer.OrdinalIgnoreCase))
             {
@@ -197,30 +225,22 @@ public class UsersController : ControllerBase
             return BadRequest(new { error = $"Invalid roles: {string.Join(", ", invalidRoles)}" });
         }
 
-        var result = await _authService.UpdateUserRolesAsync(userId, request.Roles, ct);
-
-        if (!result.Success)
-        {
-            if (result.ErrorType == AuthErrorType.UserNotFound)
-            {
-                return NotFound(new { error = result.ErrorMessage });
-            }
-            return BadRequest(new { error = result.ErrorMessage });
-        }
+        // Update roles in database
+        await _userRoleService.SetUserRolesAsync(cognitoUserId, email, request.Roles, _currentUserService.Email, ct);
 
         // Log activity
         await _activityLogger.LogAsync(
             "User",
-            Guid.Empty, // We don't have a GUID for users
+            Guid.Empty,
             "RolesUpdated",
-            $"User {userId} roles updated to: {string.Join(", ", request.Roles)}",
+            $"User {email} roles updated to: {string.Join(", ", request.Roles)}",
             ct);
 
         return Ok(new UpdateRolesResponse
         {
             UserId = userId,
             Roles = request.Roles.ToList(),
-            Message = result.Message ?? "Roles updated successfully"
+            Message = "Roles updated successfully"
         });
     }
 

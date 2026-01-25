@@ -368,8 +368,14 @@ public class CognitoAuthenticationService : IAuthenticationService
 
             var response = await _cognitoClient.AdminCreateUserAsync(request);
 
+            // Get the 'sub' attribute which is the unique Cognito user ID
+            // This must match what appears in JWT tokens for role lookups to work
+            var cognitoUserId = response.User.Attributes
+                .FirstOrDefault(a => a.Name == "sub")?.Value
+                ?? response.User.Username;
+
             return RegisterUserResult.SuccessResult(
-                response.User.Username,
+                cognitoUserId,
                 tempPassword,
                 "User created successfully. They will need to change their password on first login.");
         }
@@ -516,8 +522,15 @@ public class CognitoAuthenticationService : IAuthenticationService
             var response = await _cognitoClient.AdminListGroupsForUserAsync(request, cancellationToken);
             return response.Groups.Select(g => g.GroupName).ToList();
         }
-        catch
+        catch (UserNotFoundException)
         {
+            // User doesn't exist in this pool - return empty (expected for mismatched pools)
+            return new List<string>();
+        }
+        catch (Exception ex)
+        {
+            // Log unexpected errors but don't break the user list
+            Console.WriteLine($"[CognitoAuth] Failed to get groups for user {userId}: {ex.Message}");
             return new List<string>();
         }
     }

@@ -3,7 +3,7 @@ namespace FamilyRelocation.Application.Auth.Models;
 /// <summary>
 /// Represents a system user from Cognito.
 /// </summary>
-public class UserDto
+public record UserDto
 {
     /// <summary>
     /// User's unique identifier (Cognito sub).
