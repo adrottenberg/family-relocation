@@ -38,7 +38,9 @@ const LoginPage = () => {
   const { setTokens, setUser } = useAuthStore();
 
   // Get return URL from navigation state (set by ProtectedRoute)
-  const returnUrl = (location.state as { returnUrl?: string })?.returnUrl || '/dashboard';
+  // Never redirect back to /login - that would create an infinite loop
+  const stateReturnUrl = (location.state as { returnUrl?: string })?.returnUrl;
+  const returnUrl = stateReturnUrl && stateReturnUrl !== '/login' ? stateReturnUrl : '/dashboard';
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
