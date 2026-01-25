@@ -38,9 +38,11 @@ const LoginPage = () => {
   const { setTokens, setUser } = useAuthStore();
 
   // Get return URL from navigation state (set by ProtectedRoute)
-  // Never redirect back to /login - that would create an infinite loop
+  // Never redirect back to /login or / (root) - that would create a redirect loop
   const stateReturnUrl = (location.state as { returnUrl?: string })?.returnUrl;
-  const returnUrl = stateReturnUrl && stateReturnUrl !== '/login' ? stateReturnUrl : '/dashboard';
+  const returnUrl = stateReturnUrl && stateReturnUrl !== '/login' && stateReturnUrl !== '/'
+    ? stateReturnUrl
+    : '/dashboard';
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -360,11 +362,21 @@ const LoginPage = () => {
               <img src="/logo.png" alt="Vaad HaYishuv Logo" className="logo-image" />
             </div>
 
-            <Title level={4} className="login-title">{challenge.message}</Title>
+            <Alert
+              message="Password Change Required"
+              description={
+                challenge.challengeName === 'NEW_PASSWORD_REQUIRED'
+                  ? 'Your account requires a new password. This is typically required on first login or after an administrator reset your password.'
+                  : 'Additional verification is required to complete your sign in.'
+              }
+              type="info"
+              showIcon
+              style={{ marginBottom: 24 }}
+            />
+
+            <Title level={4} className="login-title">Set New Password</Title>
             <Text type="secondary" className="login-subtitle">
-              {challenge.challengeName === 'NEW_PASSWORD_REQUIRED'
-                ? 'Please set a new password to continue'
-                : 'Additional verification required'}
+              Create a secure password for your account
             </Text>
 
             {error && (
@@ -372,6 +384,7 @@ const LoginPage = () => {
                 message={error}
                 type="error"
                 showIcon
+                closable={false}
                 className="error-alert"
               />
             )}
@@ -475,9 +488,11 @@ const LoginPage = () => {
 
           {error && (
             <Alert
-              message={error}
+              message="Sign In Failed"
+              description={error}
               type="error"
               showIcon
+              closable={false}
               className="error-alert"
             />
           )}

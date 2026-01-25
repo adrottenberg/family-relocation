@@ -36,8 +36,14 @@ apiClient.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config;
 
-    // Handle 401 Unauthorized
-    if (error.response?.status === 401) {
+    // Don't handle 401 for auth endpoints - let the caller handle it
+    const isAuthEndpoint = originalRequest?.url?.includes('/auth/login') ||
+                           originalRequest?.url?.includes('/auth/respond-to-challenge') ||
+                           originalRequest?.url?.includes('/auth/forgot-password') ||
+                           originalRequest?.url?.includes('/auth/confirm-forgot-password');
+
+    // Handle 401 Unauthorized (but not for auth endpoints)
+    if (error.response?.status === 401 && !isAuthEndpoint) {
       const { tokens, logout } = useAuthStore.getState();
 
       // Try to refresh token
@@ -61,11 +67,12 @@ apiClient.interceptors.response.use(
           originalRequest.headers.Authorization = `Bearer ${accessToken}`;
           return apiClient(originalRequest);
         } catch {
-          // Refresh failed, logout
+          // Refresh failed, logout and redirect
           logout();
           window.location.href = '/login';
         }
       } else {
+        // No refresh token, logout and redirect
         logout();
         window.location.href = '/login';
       }
