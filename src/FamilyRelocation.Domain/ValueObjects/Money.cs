@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace FamilyRelocation.Domain.ValueObjects;
 
 /// <summary>
@@ -43,7 +45,7 @@ public sealed record Money
 
         var result = Amount - other.Amount;
         if (result < 0)
-            throw new InvalidOperationException($"Cannot subtract {other.Amount:C} from {Amount:C} - would result in negative amount");
+            throw new InvalidOperationException($"Cannot subtract {other.Amount.ToString("C", UsCulture)} from {Amount.ToString("C", UsCulture)} - would result in negative amount");
 
         return new Money(result, Currency);
     }
@@ -61,7 +63,9 @@ public sealed record Money
 
     public Money Multiply(decimal factor) => new(Amount * factor, Currency);
 
-    public override string ToString() => $"{Amount:C}";
+    private static readonly CultureInfo UsCulture = CultureInfo.GetCultureInfo("en-US");
+
+    public override string ToString() => Amount.ToString("C", UsCulture);
 
     public string ToFormattedString() => $"{Amount:N0}";
 
