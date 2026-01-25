@@ -54,7 +54,7 @@ public class UsersController : ControllerBase
         {
             var validRoles = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
-                "Admin", "Coordinator", "BoardMember"
+                "Admin", "Coordinator", "BoardMember", "Broker"
             };
             var invalidRoles = request.Roles.Where(r => !validRoles.Contains(r)).ToList();
             if (invalidRoles.Any())
@@ -217,7 +217,7 @@ public class UsersController : ControllerBase
         // Validate roles
         var validRoles = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            "Admin", "Coordinator", "BoardMember"
+            "Admin", "Coordinator", "BoardMember", "Broker"
         };
         var invalidRoles = request.Roles.Where(r => !validRoles.Contains(r)).ToList();
         if (invalidRoles.Any())

@@ -28,6 +28,11 @@ const AVAILABLE_ROLES = [
     label: 'Board Member',
     description: 'View applicants and approve board reviews',
   },
+  {
+    value: 'Broker',
+    label: 'Broker',
+    description: 'Real estate broker with property access',
+  },
 ];
 
 const CreateUserModal = ({ open, onClose, onSuccess }: CreateUserModalProps) => {
