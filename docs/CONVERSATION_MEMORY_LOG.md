@@ -3337,6 +3337,90 @@ Images are hosted at `https://img.gsmls.com/imagedb/highres/{prefix}/{imageId}.j
 
 ---
 
+## 13. SESSION: 2026-01-23 - Dev Deployment Fixes & Login Double-Click Issue
+
+### Overview
+Continued work on v0.1.0 dev deployment at dev.unionvaad.com. Fixed database-based role management and encountered a persistent login double-click issue that remains unresolved.
+
+### Key Accomplishments
+
+#### 1. Database-Based Role Management (FIXED)
+- **Issue:** Users page was blank, roles weren't showing
+- **Root Cause:** Code was trying to use Cognito groups instead of database UserRoles table
+- **Solution:** Refactored `UsersController.cs` to use `IUserRoleService` for all role operations:
+  - CreateUser: `_userRoleService.SetUserRolesAsync()`
+  - ListUsers: `_userRoleService.GetUserRolesByEmailAsync()` for each user
+  - GetUser: `_userRoleService.GetUserRolesByEmailAsync()`
+  - UpdateRoles: `_userRoleService.SetUserRolesAsync()`
+
+#### 2. UserDto Class to Record (BUILD FIX)
+- **Issue:** Build was failing with CS8858 error - can't use `with` expression on class
+- **Solution:** Changed `UserDto` from `class` to `record` in `src/FamilyRelocation.Application/Auth/Models/UserDto.cs`
+
+#### 3. Cognito RegisterUserAsync Fix
+- **Issue:** Roles weren't saving because RegisterUserAsync returned `Username` instead of `sub`
+- **Solution:** Extract `sub` attribute from AdminCreateUser response to match JWT claims
+
+#### 4. Frontend rolesFetched Persistence Fix
+- **Issue:** Roles persisted in localStorage, not refreshing on page load
+- **Solution:** Removed `rolesFetched` from zustand persist partialize
+
+### Unresolved Issue: Login Double-Click Problem
+
+**Symptom:**
+- First login after fresh page load: WORKS
+- After logout, login again: Requires 2 clicks
+- Even hard refresh doesn't fix it
+- **KEY INSIGHT:** API call WORKS on first click (200 response with token), but navigation doesn't happen
+
+**Attempted Solutions (NONE WORKED):**
+1. `validateTrigger="onBlur"` changes
+2. `onClick` instead of `htmlType="submit"`
+3. `useEffect` to reset form on mount
+4. Explicit `validateFields()` before submit
+5. Direct `getFieldValue()` instead of async validation
+6. `onMouseDown` instead of `onClick` (fires before blur)
+7. `key={Date.now()}` on route to force remount
+8. Remove zustand subscription (`useAuthStore.getState()` instead of hook)
+9. Plain HTML form with refs (bypassed Ant Design entirely)
+10. `window.location.href` instead of `navigate()` (caused 304 caching)
+11. `setTimeout(0)` to defer navigation
+
+**Current State:**
+- Using Ant Design Form with `htmlType="submit"`
+- Using `useAuthStore.getState()` to avoid store subscription
+- Using `setTimeout(0)` before `navigate()`
+- Still requires 2 clicks after logout
+
+**Relevant Research:**
+- [React Issue #4210](https://github.com/facebook/react/issues/4210) - onBlur/onClick conflict
+- [Redux Form Issue #860](https://github.com/redux-form/redux-form/issues/860) - Two clicks required
+- Zustand persist rehydration timing issues
+
+### Files Modified This Session
+
+```
+src/FamilyRelocation.API/Controllers/UsersController.cs - Database roles
+src/FamilyRelocation.Application/Auth/Models/UserDto.cs - Class to record
+src/FamilyRelocation.Infrastructure/AWS/CognitoAuthenticationService.cs - Use sub attribute
+src/FamilyRelocation.Web/src/store/authStore.ts - Don't persist rolesFetched
+src/FamilyRelocation.Web/src/features/auth/LoginPage.tsx - Many login form changes
+src/FamilyRelocation.Web/src/App.tsx - Tried key={Date.now()} on LoginPage route
+```
+
+### Next Steps for Login Issue
+
+1. Add detailed logging to see where execution stops after successful API call
+2. Check React DevTools to observe state changes during login
+3. Investigate if there's an uncaught error after the API success
+4. Consider if zustand persist middleware is interfering with navigation timing
+5. Test in different browsers to rule out browser-specific issues
+
+### Current Branch
+`develop` - all changes pushed and deployed to dev.unionvaad.com
+
+---
+
 **END OF CONVERSATION MEMORY LOG**
 
 This document captures our complete collaboration. Use it to quickly re-establish context in future sessions.
