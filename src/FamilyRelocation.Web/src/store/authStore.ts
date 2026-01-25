@@ -89,7 +89,7 @@ export const useAuthStore = create<AuthState>()(
         tokens: state.tokens,
         user: state.user,
         isAuthenticated: state.isAuthenticated,
-        rolesFetched: state.rolesFetched,
+        // Don't persist rolesFetched - we want to fetch fresh roles on page refresh
       }),
     }
   )

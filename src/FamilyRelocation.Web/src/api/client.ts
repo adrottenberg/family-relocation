@@ -1,9 +1,10 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { useAuthStore } from '../store/authStore';
+import { config } from '../config';
 
 // Create axios instance
 const apiClient = axios.create({
-  baseURL: '/api',
+  baseURL: config.apiBaseUrl,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -42,7 +43,7 @@ apiClient.interceptors.response.use(
       // Try to refresh token
       if (tokens?.refreshToken && originalRequest) {
         try {
-          const response = await axios.post('/api/auth/refresh', {
+          const response = await axios.post(`${config.apiBaseUrl}/auth/refresh`, {
             username: useAuthStore.getState().user?.email,
             refreshToken: tokens.refreshToken,
           });
