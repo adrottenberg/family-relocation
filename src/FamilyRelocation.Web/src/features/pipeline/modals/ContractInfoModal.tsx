@@ -73,7 +73,7 @@ const ContractInfoModal = ({
       destroyOnClose
     >
       <div style={{ marginBottom: 16, padding: 12, background: '#f5f5f5', borderRadius: 6 }}>
-        Moving <strong>{familyName} Family</strong> to Under Contract
+        Moving <strong>{familyName}</strong> to Under Contract
       </div>
 
       <Form

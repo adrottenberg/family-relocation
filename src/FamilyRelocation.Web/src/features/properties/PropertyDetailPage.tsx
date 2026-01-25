@@ -35,7 +35,7 @@ import {
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { propertiesApi, shulsApi } from '../../api';
 import type { PropertyPhotoDto, PropertyShulDistanceDto } from '../../api/types';
-import { PropertyMatchList, CreatePropertyMatchModal } from '../propertyMatches';
+import { PropertyMatchList, CreatePropertyMatchModal, type MatchScheduleData } from '../propertyMatches';
 import { ScheduleShowingModal } from '../showings';
 
 const { Title, Text } = Typography;
@@ -63,10 +63,8 @@ const PropertyDetailPage = () => {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [form] = Form.useForm();
   const [createMatchModalOpen, setCreateMatchModalOpen] = useState(false);
-  const [scheduleShowingModalData, setScheduleShowingModalData] = useState<{
-    propertyMatchId: string;
-    propertyInfo?: { street: string; city: string };
-  } | null>(null);
+  // Queue of showings to schedule - each modal close advances to the next
+  const [showingsToSchedule, setShowingsToSchedule] = useState<MatchScheduleData[]>([]);
 
   const { data: property, isLoading, error } = useQuery({
     queryKey: ['property', id],
@@ -434,15 +432,9 @@ const PropertyDetailPage = () => {
             <PropertyMatchList
               propertyId={property.id}
               onCreateMatch={() => setCreateMatchModalOpen(true)}
-              onScheduleShowings={(matchIds) => {
-                const matchId = matchIds[0];
-                setScheduleShowingModalData({
-                  propertyMatchId: matchId,
-                  propertyInfo: {
-                    street: property.address.street,
-                    city: property.address.city,
-                  },
-                });
+              onScheduleShowings={(matches) => {
+                // Queue all matches for sequential scheduling
+                setShowingsToSchedule(matches);
               }}
               showApplicant={true}
               showProperty={false}
@@ -646,13 +638,24 @@ const PropertyDetailPage = () => {
         propertyId={property.id}
       />
 
-      {/* Schedule Showing Modal */}
-      {scheduleShowingModalData && (
+      {/* Schedule Showing Modal - processes queue of showings sequentially */}
+      {showingsToSchedule.length > 0 && (
         <ScheduleShowingModal
           open={true}
-          onClose={() => setScheduleShowingModalData(null)}
-          propertyMatchId={scheduleShowingModalData.propertyMatchId}
-          propertyInfo={scheduleShowingModalData.propertyInfo}
+          onClose={() => {
+            // Advance to next showing in queue, or clear if done
+            setShowingsToSchedule((prev) => prev.slice(1));
+          }}
+          propertyMatchId={showingsToSchedule[0].id}
+          propertyInfo={{
+            street: showingsToSchedule[0].propertyStreet,
+            city: showingsToSchedule[0].propertyCity,
+          }}
+          applicantInfo={{ name: showingsToSchedule[0].applicantName }}
+          queueInfo={showingsToSchedule.length > 1 ? {
+            current: 1,
+            total: showingsToSchedule.length,
+          } : undefined}
         />
       )}
     </div>

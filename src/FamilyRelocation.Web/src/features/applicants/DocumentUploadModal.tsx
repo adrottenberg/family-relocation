@@ -271,7 +271,7 @@ const DocumentUploadModal = ({ open, onClose, applicant }: DocumentUploadModalPr
       width={520}
     >
       <div style={{ marginBottom: 16, padding: 12, background: '#f5f5f5', borderRadius: 6 }}>
-        <strong>{applicant.husband.lastName} Family</strong> - Upload required documents.
+        <strong>{applicant.husband.firstName} {applicant.husband.lastName}</strong> - Upload required documents.
       </div>
 
       {isLoading ? (

@@ -49,6 +49,10 @@ public record PropertyMatchListDto
     // Lightweight applicant info
     public required Guid ApplicantId { get; init; }
     public required string ApplicantName { get; init; }
+
+    // Showing info - populated if a showing is scheduled for this match
+    public DateTime? ScheduledShowingDate { get; init; }
+    public TimeOnly? ScheduledShowingTime { get; init; }
 }
 
 /// <summary>

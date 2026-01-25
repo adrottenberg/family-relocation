@@ -17,6 +17,10 @@ interface ScheduleShowingModalProps {
   applicantInfo?: {
     name: string;
   };
+  queueInfo?: {
+    current: number;
+    total: number;
+  };
 }
 
 const ScheduleShowingModal = ({
@@ -25,6 +29,7 @@ const ScheduleShowingModal = ({
   propertyMatchId,
   propertyInfo,
   applicantInfo,
+  queueInfo,
 }: ScheduleShowingModalProps) => {
   const queryClient = useQueryClient();
   const [form] = Form.useForm();
@@ -70,10 +75,11 @@ const ScheduleShowingModal = ({
 
   return (
     <Modal
-      title="Schedule Showing"
+      title={queueInfo ? `Schedule Showing (${queueInfo.current} of ${queueInfo.total})` : 'Schedule Showing'}
       open={open}
       onCancel={onClose}
       onOk={handleSubmit}
+      okText={queueInfo && queueInfo.current < queueInfo.total ? 'Schedule & Next' : 'Schedule'}
       confirmLoading={scheduleMutation.isPending}
       width={450}
     >
@@ -83,7 +89,7 @@ const ScheduleShowingModal = ({
           {applicantInfo && (
             <>
               <br />
-              <strong>Family:</strong> {applicantInfo.name}
+              <strong>Applicant:</strong> {applicantInfo.name}
             </>
           )}
         </div>

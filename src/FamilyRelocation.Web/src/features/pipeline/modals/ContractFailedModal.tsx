@@ -79,7 +79,7 @@ const ContractFailedModal = ({
       destroyOnClose
     >
       <div style={{ marginBottom: 16, padding: 12, background: '#fff2f0', borderRadius: 6, border: '1px solid #ffccc7' }}>
-        Recording that <strong>{familyName} Family</strong>'s contract fell through
+        Recording that <strong>{familyName}</strong>'s contract fell through
       </div>
 
       <Form form={form} layout="vertical">

@@ -210,7 +210,7 @@ const DashboardPage = () => {
                   }
                   description={
                     <Space direction="vertical" size={0}>
-                      <Text>{showing.applicantName} Family</Text>
+                      <Text>{showing.applicantName}</Text>
                       <Space>
                         <Tag
                           color={dayjs(showing.scheduledDate).isSame(dayjs(), 'day') ? 'red' : 'blue'}

@@ -1,4 +1,5 @@
 using FamilyRelocation.Application.AuditLogs.Queries.GetAuditLogs;
+using FamilyRelocation.Application.AuditLogs.Queries.GetApplicantFullAuditLogs;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -65,7 +66,7 @@ public class AuditLogsController : ControllerBase
     }
 
     /// <summary>
-    /// Gets audit history for a specific applicant.
+    /// Gets audit history for a specific applicant including their housing search history.
     /// </summary>
     /// <param name="applicantId">The applicant ID.</param>
     /// <param name="page">Page number (1-based). Default: 1</param>
@@ -79,10 +80,9 @@ public class AuditLogsController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 50)
     {
-        var query = new GetAuditLogsQuery
+        var query = new GetApplicantFullAuditLogsQuery
         {
-            EntityType = "Applicant",
-            EntityId = applicantId,
+            ApplicantId = applicantId,
             Page = page,
             PageSize = pageSize
         };

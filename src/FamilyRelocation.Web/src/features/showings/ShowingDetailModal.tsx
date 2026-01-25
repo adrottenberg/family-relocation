@@ -166,11 +166,11 @@ const ShowingDetailModal = ({ open, onClose, showingId }: ShowingDetailModalProp
             </div>
 
             <Divider orientation="left">
-              <UserOutlined /> Family
+              <UserOutlined /> Applicant
             </Divider>
 
             <div style={{ marginBottom: 16 }}>
-              <div style={{ fontWeight: 600, fontSize: 16 }}>{showing.applicantName} Family</div>
+              <div style={{ fontWeight: 600, fontSize: 16 }}>{showing.applicantName}</div>
             </div>
 
             {showing.brokerUserName && (

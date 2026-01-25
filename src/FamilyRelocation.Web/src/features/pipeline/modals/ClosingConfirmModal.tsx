@@ -68,7 +68,7 @@ const ClosingConfirmModal = ({
       destroyOnClose
     >
       <div style={{ marginBottom: 16, padding: 12, background: '#f6ffed', borderRadius: 6, border: '1px solid #b7eb8f' }}>
-        Congratulations! <strong>{familyName} Family</strong> is closing on their new home!
+        Congratulations! <strong>{familyName}</strong> is closing on their new home!
       </div>
 
       <Form

@@ -341,6 +341,9 @@ export interface PropertyMatchListDto {
   propertyPhotoUrl?: string;
   applicantId: string;
   applicantName: string;
+  // Showing info - populated if a showing is scheduled for this match
+  scheduledShowingDate?: string;
+  scheduledShowingTime?: string;
 }
 
 export interface MatchScoreBreakdownDto {

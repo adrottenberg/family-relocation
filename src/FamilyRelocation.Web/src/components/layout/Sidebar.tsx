@@ -30,6 +30,7 @@ const Sidebar = () => {
     if (path.startsWith('/applicants')) return 'applicants';
     if (path.startsWith('/pipeline')) return 'pipeline';
     if (path.startsWith('/properties')) return 'properties';
+    if (path.startsWith('/broker-showings')) return 'broker-showings';
     if (path.startsWith('/showings')) return 'showings';
     if (path.startsWith('/reminders')) return 'reminders';
     if (path.startsWith('/shuls')) return 'shuls';
@@ -74,6 +75,16 @@ const Sidebar = () => {
       key: 'showings',
       icon: <CalendarOutlined />,
       label: 'Showings',
+      children: [
+        {
+          key: 'showings',
+          label: 'All Showings',
+        },
+        {
+          key: 'broker-showings',
+          label: 'Broker Schedule',
+        },
+      ],
     },
     {
       key: 'reminders',

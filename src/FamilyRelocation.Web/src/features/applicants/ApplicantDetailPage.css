@@ -74,6 +74,13 @@
   border-radius: 4px;
 }
 
+/* Header Actions */
+.header-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 /* Tabs Card */
 .tabs-card .ant-card-body {
   padding: 0 24px 24px;

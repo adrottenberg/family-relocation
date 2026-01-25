@@ -163,7 +163,7 @@ const PropertyMatchCard = ({
                 Request Showing
               </Button>
             )}
-            {match.status === 'ShowingRequested' && onScheduleShowing && (
+            {match.status === 'ShowingRequested' && onScheduleShowing && !match.scheduledShowingDate && (
               <Button
                 size="small"
                 type="primary"
@@ -172,6 +172,11 @@ const PropertyMatchCard = ({
               >
                 Schedule Showing
               </Button>
+            )}
+            {match.scheduledShowingDate && (
+              <Tag icon={<CalendarOutlined />} color="processing">
+                Showing: {new Date(match.scheduledShowingDate).toLocaleDateString()}
+              </Tag>
             )}
           </Space>
         </div>

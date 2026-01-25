@@ -6,11 +6,18 @@ import { propertyMatchesApi } from '../../api';
 import type { PropertyMatchListDto } from '../../api/types';
 import PropertyMatchCard from './PropertyMatchCard';
 
+export interface MatchScheduleData {
+  id: string;
+  propertyStreet: string;
+  propertyCity: string;
+  applicantName: string;
+}
+
 interface PropertyMatchListProps {
   housingSearchId?: string;
   propertyId?: string;
   onCreateMatch?: () => void;
-  onScheduleShowings?: (matchIds: string[]) => void;
+  onScheduleShowings?: (matches: MatchScheduleData[]) => void;
   showApplicant?: boolean;
   showProperty?: boolean;
 }
@@ -36,21 +43,22 @@ const PropertyMatchList = ({
   const [activeTab, setActiveTab] = useState('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
+  // Always fetch all matches - filter client-side for display, keeps tab counts stable
   const queryKey = housingSearchId
-    ? ['propertyMatches', 'housingSearch', housingSearchId, activeTab]
-    : ['propertyMatches', 'property', propertyId, activeTab];
+    ? ['propertyMatches', 'housingSearch', housingSearchId]
+    : ['propertyMatches', 'property', propertyId];
 
-  const { data: matches, isLoading } = useQuery({
+  const { data: allMatches, isLoading } = useQuery({
     queryKey,
     queryFn: () => {
-      const status = activeTab === 'all' ? undefined : activeTab;
       if (housingSearchId) {
-        return propertyMatchesApi.getForHousingSearch(housingSearchId, status);
+        return propertyMatchesApi.getForHousingSearch(housingSearchId);
       }
-      return propertyMatchesApi.getForProperty(propertyId!, status);
+      return propertyMatchesApi.getForProperty(propertyId!);
     },
     enabled: !!(housingSearchId || propertyId),
   });
+
 
   const requestShowingsMutation = useMutation({
     mutationFn: (matchIds: string[]) => propertyMatchesApi.requestShowings(matchIds),
@@ -75,11 +83,11 @@ const PropertyMatchList = ({
   };
 
   const handleSelectAll = () => {
-    const identifiedMatches = (matches || []).filter(m => m.status === 'MatchIdentified');
-    if (selectedIds.size === identifiedMatches.length) {
+    const identified = (allMatches || []).filter(m => m.status === 'MatchIdentified');
+    if (selectedIds.size === identified.length) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(identifiedMatches.map(m => m.id)));
+      setSelectedIds(new Set(identified.map(m => m.id)));
     }
   };
 
@@ -92,13 +100,14 @@ const PropertyMatchList = ({
     requestShowingsMutation.mutate([matchId]);
   };
 
-  const identifiedMatches = (matches || []).filter(m => m.status === 'MatchIdentified');
-  const showingRequestedMatches = (matches || []).filter(m => m.status === 'ShowingRequested');
+  const identifiedMatches = (allMatches || []).filter(m => m.status === 'MatchIdentified');
+  const showingRequestedMatches = (allMatches || []).filter(m => m.status === 'ShowingRequested');
   const hasSelectable = identifiedMatches.length > 0;
 
+  // Filter for display based on active tab
   const filteredMatches = activeTab === 'all'
-    ? matches
-    : matches?.filter(m => m.status === activeTab);
+    ? allMatches
+    : allMatches?.filter(m => m.status === activeTab);
 
   return (
     <Card
@@ -108,7 +117,12 @@ const PropertyMatchList = ({
           {showingRequestedMatches.length > 0 && onScheduleShowings && (
             <Button
               icon={<CalendarOutlined />}
-              onClick={() => onScheduleShowings(showingRequestedMatches.map(m => m.id))}
+              onClick={() => onScheduleShowings(showingRequestedMatches.map(m => ({
+                id: m.id,
+                propertyStreet: m.propertyStreet,
+                propertyCity: m.propertyCity,
+                applicantName: m.applicantName,
+              })))}
             >
               Schedule Showings ({showingRequestedMatches.length})
             </Button>
@@ -129,11 +143,11 @@ const PropertyMatchList = ({
           label: (
             <span>
               {tab.label}
-              {matches && (
+              {allMatches && (
                 <span style={{ marginLeft: 4, color: '#999' }}>
                   ({tab.key === 'all'
-                    ? matches.length
-                    : matches.filter(m => m.status === tab.key).length})
+                    ? allMatches.length
+                    : allMatches.filter(m => m.status === tab.key).length})
                 </span>
               )}
             </span>
@@ -175,7 +189,17 @@ const PropertyMatchList = ({
             selected={selectedIds.has(match.id)}
             onSelect={handleSelect}
             onRequestShowing={handleSingleRequestShowing}
-            onScheduleShowing={onScheduleShowings ? (id) => onScheduleShowings([id]) : undefined}
+            onScheduleShowing={onScheduleShowings ? (id) => {
+              const match = allMatches?.find(m => m.id === id);
+              if (match) {
+                onScheduleShowings([{
+                  id: match.id,
+                  propertyStreet: match.propertyStreet,
+                  propertyCity: match.propertyCity,
+                  applicantName: match.applicantName,
+                }]);
+              }
+            } : undefined}
             showApplicant={showApplicant}
             showProperty={showProperty}
           />

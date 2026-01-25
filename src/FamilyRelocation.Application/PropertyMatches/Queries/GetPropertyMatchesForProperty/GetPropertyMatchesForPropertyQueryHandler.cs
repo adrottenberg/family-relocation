@@ -37,6 +37,17 @@ public class GetPropertyMatchesForPropertyQueryHandler : IRequestHandler<GetProp
             .Take(100) // Limit for safety
             .ToListAsync(cancellationToken);
 
-        return matches.Select(m => m.ToListDto()).ToList();
+        // Get scheduled showings for these matches (only Scheduled status, not completed/cancelled)
+        var matchIds = matches.Select(m => m.Id).ToList();
+        var scheduledShowings = await _context.Set<Showing>()
+            .Where(s => matchIds.Contains(s.PropertyMatchId) && s.Status == ShowingStatus.Scheduled)
+            .Select(s => new { s.PropertyMatchId, s.ScheduledDate, s.ScheduledTime })
+            .ToDictionaryAsync(s => s.PropertyMatchId, cancellationToken);
+
+        return matches.Select(m =>
+        {
+            scheduledShowings.TryGetValue(m.Id, out var showing);
+            return m.ToListDto(showing?.ScheduledDate, showing?.ScheduledTime);
+        }).ToList();
     }
 }

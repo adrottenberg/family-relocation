@@ -42,7 +42,7 @@ public static class PropertyMatchMapper
     /// Maps a PropertyMatch entity to a PropertyMatchListDto for list views.
     /// Requires Property and HousingSearch with Applicant to be loaded.
     /// </summary>
-    public static PropertyMatchListDto ToListDto(this PropertyMatch match)
+    public static PropertyMatchListDto ToListDto(this PropertyMatch match, DateOnly? scheduledShowingDate = null, TimeOnly? scheduledShowingTime = null)
     {
         return new PropertyMatchListDto
         {
@@ -60,7 +60,9 @@ public static class PropertyMatchMapper
             PropertyBathrooms = match.Property.Bathrooms,
             PropertyPhotoUrl = match.Property.PrimaryPhoto?.Url,
             ApplicantId = match.HousingSearch.ApplicantId,
-            ApplicantName = match.HousingSearch.Applicant.FamilyName
+            ApplicantName = match.HousingSearch.Applicant.FamilyName,
+            ScheduledShowingDate = scheduledShowingDate?.ToDateTime(scheduledShowingTime ?? TimeOnly.MinValue),
+            ScheduledShowingTime = scheduledShowingTime
         };
     }
 }

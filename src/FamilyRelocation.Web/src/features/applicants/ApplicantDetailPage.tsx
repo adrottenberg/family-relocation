@@ -33,15 +33,16 @@ import {
   HistoryOutlined,
   EyeOutlined,
   DownloadOutlined,
+  FormOutlined,
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { applicantsApi, documentsApi, getStageRequirements, housingSearchesApi, remindersApi, activitiesApi } from '../../api';
+import { applicantsApi, documentsApi, getStageRequirements, housingSearchesApi, remindersApi, activitiesApi, propertyMatchesApi } from '../../api';
 import type { ApplicantDto, ReminderListDto, AuditLogDto } from '../../api/types';
 import { colors, statusTagStyles, stageTagStyles } from '../../theme/antd-theme';
 import { useAuthStore } from '../../store/authStore';
 import BoardReviewSection from './BoardReviewSection';
 import SetBoardDecisionModal from './SetBoardDecisionModal';
-import EditApplicantDrawer from './EditApplicantDrawer';
+import EditApplicantModal from './EditApplicantModal';
 import DocumentUploadModal from './DocumentUploadModal';
 import EditPreferencesModal from './EditPreferencesModal';
 import {
@@ -57,7 +58,7 @@ import ContractFailedModal from '../pipeline/modals/ContractFailedModal';
 import ClosingConfirmModal from '../pipeline/modals/ClosingConfirmModal';
 import { CreateReminderModal } from '../reminders';
 import { LogActivityModal } from '../activities';
-import { PropertyMatchList, CreatePropertyMatchModal } from '../propertyMatches';
+import { PropertyMatchList, CreatePropertyMatchModal, type MatchScheduleData } from '../propertyMatches';
 import { ScheduleShowingModal } from '../showings';
 import './ApplicantDetailPage.css';
 
@@ -69,17 +70,14 @@ const ApplicantDetailPage = () => {
   const queryClient = useQueryClient();
   const canApproveBoardDecisions = useAuthStore((state) => state.canApproveBoardDecisions);
   const [boardDecisionModalOpen, setBoardDecisionModalOpen] = useState(false);
-  const [editDrawerOpen, setEditDrawerOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
   const [documentUploadModalOpen, setDocumentUploadModalOpen] = useState(false);
   const [reminderModalOpen, setReminderModalOpen] = useState(false);
   const [activityModalOpen, setActivityModalOpen] = useState(false);
   const [createMatchModalOpen, setCreateMatchModalOpen] = useState(false);
   const [editPreferencesModalOpen, setEditPreferencesModalOpen] = useState(false);
-  const [scheduleShowingModalData, setScheduleShowingModalData] = useState<{
-    propertyMatchId: string;
-    propertyInfo?: { street: string; city: string };
-    applicantInfo?: { name: string };
-  } | null>(null);
+  // Queue of showings to schedule - each modal close advances to the next
+  const [showingsToSchedule, setShowingsToSchedule] = useState<MatchScheduleData[]>([]);
 
   // Stage transition modal state
   const [activeTransitionModal, setActiveTransitionModal] = useState<TransitionType | null>(null);
@@ -94,6 +92,14 @@ const ApplicantDetailPage = () => {
     queryKey: ['applicant-audit', id],
     queryFn: () => applicantsApi.getAuditLogs(id!, { page: 1, pageSize: 50 }),
     enabled: !!id,
+  });
+
+  // Fetch property matches for print
+  const housingSearchId = applicant?.housingSearch?.id;
+  const { data: propertyMatches } = useQuery({
+    queryKey: ['propertyMatches', 'housingSearch', housingSearchId],
+    queryFn: () => propertyMatchesApi.getForHousingSearch(housingSearchId!),
+    enabled: !!housingSearchId,
   });
 
   // Direct stage change mutation (for transitions that don't need a modal)
@@ -286,6 +292,36 @@ const ApplicantDetailPage = () => {
       `
       : '';
 
+    const statusLabels: Record<string, string> = {
+      MatchIdentified: 'Match Identified',
+      ShowingRequested: 'Showing Requested',
+      ApplicantInterested: 'Interested',
+      OfferMade: 'Offer Made',
+      ApplicantRejected: 'Rejected',
+    };
+
+    const propertyMatchesHtml = propertyMatches && propertyMatches.length > 0
+      ? `
+        <h3>Property Matches (${propertyMatches.length})</h3>
+        <table>
+          <thead>
+            <tr><th>Property</th><th>Price</th><th>Beds/Baths</th><th>Score</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            ${propertyMatches.map(m => `
+              <tr>
+                <td>${m.propertyStreet}, ${m.propertyCity}</td>
+                <td>$${m.propertyPrice.toLocaleString()}</td>
+                <td>${m.propertyBedrooms} bed / ${m.propertyBathrooms} bath</td>
+                <td>${m.matchScore}%</td>
+                <td>${statusLabels[m.status] || m.status}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `
+      : '';
+
     const html = `
       <!DOCTYPE html>
       <html>
@@ -310,7 +346,7 @@ const ApplicantDetailPage = () => {
         </style>
       </head>
       <body>
-        <h1>${husband.lastName} Family</h1>
+        <h1>${husband.firstName} ${husband.lastName}</h1>
         <div class="status-row">
           <span class="status-item status-${boardDecision.toLowerCase()}">${boardDecision}</span>
           <span class="status-item" style="background:#e6f7ff;color:#1890ff;">${formatStageName(stage)}</span>
@@ -359,6 +395,7 @@ const ApplicantDetailPage = () => {
 
         ${childrenHtml}
         ${preferencesHtml}
+        ${propertyMatchesHtml}
 
         <p class="print-date">Printed on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</p>
       </body>
@@ -396,15 +433,11 @@ const ApplicantDetailPage = () => {
       children: (
         <PropertyMatchesTab
           housingSearchId={hs.id}
-          applicantName={`${applicant.husband.lastName} Family`}
+          applicantName={`${applicant.husband.firstName} ${applicant.husband.lastName}`}
           onCreateMatch={() => setCreateMatchModalOpen(true)}
-          onScheduleShowing={(matchIds) => {
-            // For now, schedule for first match (could extend to batch)
-            const matchId = matchIds[0];
-            setScheduleShowingModalData({
-              propertyMatchId: matchId,
-              applicantInfo: { name: `${applicant.husband.lastName} Family` },
-            });
+          onScheduleShowing={(matches) => {
+            // Queue all matches for sequential scheduling
+            setShowingsToSchedule(matches);
           }}
         />
       ),
@@ -467,7 +500,7 @@ const ApplicantDetailPage = () => {
             </div>
           </div>
           <div className="header-actions">
-            <Button icon={<PhoneOutlined />} onClick={() => setActivityModalOpen(true)}>
+            <Button icon={<FormOutlined />} onClick={() => setActivityModalOpen(true)}>
               Log Activity
             </Button>
             <Button icon={<BellOutlined />} onClick={() => setReminderModalOpen(true)}>
@@ -476,7 +509,7 @@ const ApplicantDetailPage = () => {
             <Button icon={<PrinterOutlined />} onClick={handlePrint}>
               Print
             </Button>
-            <Button icon={<EditOutlined />} onClick={() => setEditDrawerOpen(true)}>
+            <Button icon={<EditOutlined />} onClick={() => setEditModalOpen(true)}>
               Edit
             </Button>
           </div>
@@ -495,10 +528,10 @@ const ApplicantDetailPage = () => {
         applicant={applicant}
       />
 
-      {/* Edit Applicant Drawer */}
-      <EditApplicantDrawer
-        open={editDrawerOpen}
-        onClose={() => setEditDrawerOpen(false)}
+      {/* Edit Applicant Modal */}
+      <EditApplicantModal
+        open={editModalOpen}
+        onClose={() => setEditModalOpen(false)}
         applicant={applicant}
       />
 
@@ -544,14 +577,24 @@ const ApplicantDetailPage = () => {
         />
       )}
 
-      {/* Schedule Showing Modal */}
-      {scheduleShowingModalData && (
+      {/* Schedule Showing Modal - processes queue of showings sequentially */}
+      {showingsToSchedule.length > 0 && (
         <ScheduleShowingModal
           open={true}
-          onClose={() => setScheduleShowingModalData(null)}
-          propertyMatchId={scheduleShowingModalData.propertyMatchId}
-          propertyInfo={scheduleShowingModalData.propertyInfo}
-          applicantInfo={scheduleShowingModalData.applicantInfo}
+          onClose={() => {
+            // Advance to next showing in queue, or clear if done
+            setShowingsToSchedule((prev) => prev.slice(1));
+          }}
+          propertyMatchId={showingsToSchedule[0].id}
+          propertyInfo={{
+            street: showingsToSchedule[0].propertyStreet,
+            city: showingsToSchedule[0].propertyCity,
+          }}
+          applicantInfo={{ name: showingsToSchedule[0].applicantName }}
+          queueInfo={showingsToSchedule.length > 1 ? {
+            current: 1,
+            total: showingsToSchedule.length,
+          } : undefined}
         />
       )}
 
@@ -843,7 +886,7 @@ interface PropertyMatchesTabProps {
   housingSearchId: string;
   applicantName: string;
   onCreateMatch: () => void;
-  onScheduleShowing: (matchIds: string[]) => void;
+  onScheduleShowing: (matches: MatchScheduleData[]) => void;
 }
 
 const PropertyMatchesTab = ({ housingSearchId, onCreateMatch, onScheduleShowing }: PropertyMatchesTabProps) => {
@@ -1121,7 +1164,7 @@ const ActivityTab = ({ applicantId, onLogActivity }: ActivityTabProps) => {
     return (
       <div className="tab-content">
         <div style={{ marginBottom: 16 }}>
-          <Button type="primary" icon={<PhoneOutlined />} onClick={onLogActivity}>
+          <Button type="primary" icon={<FormOutlined />} onClick={onLogActivity}>
             Log Activity
           </Button>
         </div>
@@ -1185,7 +1228,7 @@ const ActivityTab = ({ applicantId, onLogActivity }: ActivityTabProps) => {
   return (
     <div className="tab-content">
       <div style={{ marginBottom: 16 }}>
-        <Button type="primary" icon={<PhoneOutlined />} onClick={onLogActivity}>
+        <Button type="primary" icon={<FormOutlined />} onClick={onLogActivity}>
           Log Activity
         </Button>
       </div>
