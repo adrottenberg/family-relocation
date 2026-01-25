@@ -67,6 +67,7 @@ export interface ApplicantDto {
   isSelfSubmitted: boolean;
   boardReview?: BoardReviewDto;
   housingSearch?: HousingSearchDto; // Active housing search (if approved)
+  allHousingSearches?: HousingSearchDto[]; // All housing searches (active first, then inactive by date)
   createdDate: string;
 }
 
@@ -127,6 +128,8 @@ export interface HousingSearchDto {
   currentContract?: ContractDto;
   failedContractCount: number;
   notes?: string;
+  isActive: boolean;
+  createdDate: string;
 }
 
 // Document types
@@ -209,8 +212,10 @@ export interface AuditLogDto {
   oldValues?: Record<string, unknown>;
   newValues?: Record<string, unknown>;
   userId?: string;
-  userName?: string;
+  userEmail?: string;
   timestamp: string;
+  resolvedNames?: Record<string, string>;
+  entityDescription?: string;
 }
 
 // Create Applicant Request - matches backend CreateApplicantCommand
@@ -325,6 +330,17 @@ export interface PropertyMatchDto {
   applicant: MatchApplicantDto;
 }
 
+export interface MatchShowingDto {
+  id: string;
+  scheduledDate: string;
+  scheduledTime: string;
+  status: string;
+  brokerUserId?: string;
+  brokerUserName?: string;
+  notes?: string;
+  completedAt?: string;
+}
+
 export interface PropertyMatchListDto {
   id: string;
   housingSearchId: string;
@@ -341,7 +357,9 @@ export interface PropertyMatchListDto {
   propertyPhotoUrl?: string;
   applicantId: string;
   applicantName: string;
-  // Showing info - populated if a showing is scheduled for this match
+  // All showings for this match
+  showings: MatchShowingDto[];
+  // Convenience properties - first scheduled showing (computed on backend)
   scheduledShowingDate?: string;
   scheduledShowingTime?: string;
 }

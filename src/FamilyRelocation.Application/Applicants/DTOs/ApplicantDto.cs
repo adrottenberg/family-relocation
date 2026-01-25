@@ -76,9 +76,14 @@ public record ApplicantDto
     public BoardReviewDto? BoardReview { get; init; }
 
     /// <summary>
-    /// Housing search details (null if not yet approved).
+    /// Active housing search details (null if not yet approved or no active search).
     /// </summary>
     public HousingSearchDto? HousingSearch { get; init; }
+
+    /// <summary>
+    /// All housing searches for this applicant (active first, then inactive by created date descending).
+    /// </summary>
+    public List<HousingSearchDto>? AllHousingSearches { get; init; }
 
     /// <summary>
     /// Housing preferences (effective preferences).

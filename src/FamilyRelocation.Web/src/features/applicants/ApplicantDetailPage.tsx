@@ -14,6 +14,7 @@ import {
   Table,
   Dropdown,
   message,
+  Tooltip,
 } from 'antd';
 import type { MenuProps } from 'antd';
 import {
@@ -32,6 +33,9 @@ import {
   EyeOutlined,
   DownloadOutlined,
   FormOutlined,
+  MobileOutlined,
+  HomeOutlined,
+  StarFilled,
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { applicantsApi, documentsApi, getStageRequirements, housingSearchesApi, remindersApi, activitiesApi, propertyMatchesApi } from '../../api';
@@ -74,7 +78,6 @@ const ApplicantDetailPage = () => {
   const [reminderModalOpen, setReminderModalOpen] = useState(false);
   const [activityModalOpen, setActivityModalOpen] = useState(false);
   const [createMatchModalOpen, setCreateMatchModalOpen] = useState(false);
-  const [editPreferencesModalOpen, setEditPreferencesModalOpen] = useState(false);
   // Queue of showings to schedule - each modal close advances to the next
   const [showingsToSchedule, setShowingsToSchedule] = useState<MatchScheduleData[]>([]);
   // Drag-and-drop scheduler modal
@@ -423,11 +426,6 @@ const ApplicantDetailPage = () => {
         />
       ),
     },
-    {
-      key: 'housing',
-      label: 'Housing Search',
-      children: <HousingSearchTab applicant={applicant} onEditPreferences={() => setEditPreferencesModalOpen(true)} />,
-    },
     ...(hs ? [{
       key: 'matches',
       label: 'Suggested Listings',
@@ -597,16 +595,6 @@ const ApplicantDetailPage = () => {
         />
       )}
 
-      {/* Edit Preferences Modal */}
-      {hs && (
-        <EditPreferencesModal
-          open={editPreferencesModalOpen}
-          onClose={() => setEditPreferencesModalOpen(false)}
-          housingSearchId={hs.id}
-          applicantId={applicant.id}
-          preferences={hs.preferences}
-        />
-      )}
 
       {/* Showing Scheduler Modal (Drag-and-Drop) */}
       {hs && (
@@ -675,6 +663,8 @@ interface OverviewTabProps {
 
 const OverviewTab = ({ applicant, onRecordBoardDecision, onUploadDocuments, canApprove }: OverviewTabProps) => {
   const { husband, wife, address } = applicant;
+  const hs = applicant.housingSearch;
+  const [editPreferencesOpen, setEditPreferencesOpen] = useState(false);
 
   // Determine if board review section should be shown
   // Hide once they're past AwaitingAgreements (i.e., in Searching, UnderContract, Closed, etc.)
@@ -687,10 +677,42 @@ const OverviewTab = ({ applicant, onRecordBoardDecision, onUploadDocuments, canA
     housingSearchStage === 'AwaitingAgreements' ||
     !housingSearchStage;
 
-  // Format all phone numbers for display
+  // Get phone icon based on type
+  const getPhoneIcon = (type: string) => {
+    switch (type.toLowerCase()) {
+      case 'mobile':
+      case 'cell':
+        return <MobileOutlined />;
+      case 'home':
+        return <HomeOutlined />;
+      case 'work':
+      case 'office':
+        return <PhoneOutlined />;
+      default:
+        return <PhoneOutlined />;
+    }
+  };
+
+  // Format phone numbers - one per line with icons
   const formatPhones = (phoneNumbers?: { number: string; type: string; isPrimary: boolean }[]) => {
     if (!phoneNumbers || phoneNumbers.length === 0) return '-';
-    return phoneNumbers.map(p => `${p.number} (${p.type}${p.isPrimary ? ', Primary' : ''})`).join(', ');
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {phoneNumbers.map((p, idx) => (
+          <span key={idx} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Tooltip title={p.type}>
+              <span style={{ color: '#666' }}>{getPhoneIcon(p.type)}</span>
+            </Tooltip>
+            <a href={`tel:${p.number}`}>{p.number}</a>
+            {p.isPrimary && (
+              <Tooltip title="Primary">
+                <StarFilled style={{ color: '#faad14', fontSize: 12 }} />
+              </Tooltip>
+            )}
+          </span>
+        ))}
+      </div>
+    );
   };
 
   return (
@@ -762,152 +784,153 @@ const OverviewTab = ({ applicant, onRecordBoardDecision, onUploadDocuments, canA
         </Card>
       </div>
 
-      {/* Family Details - Address & Community combined */}
-      <Card title="Family Details" size="small" className="info-card" style={{ marginTop: 16 }}>
-        <Descriptions column={{ xs: 1, sm: 2, md: 3 }} size="small">
-          <Descriptions.Item label="Address" span={2}>
-            {address ? (
-              <>
-                {address.street}{address.street2 ? `, ${address.street2}` : ''}, {address.city}, {address.state} {address.zipCode}
-              </>
-            ) : (
-              '-'
-            )}
-          </Descriptions.Item>
-          <Descriptions.Item label="Current Kehila">
-            {applicant.currentKehila || '-'}
-          </Descriptions.Item>
-          <Descriptions.Item label="Shabbos Shul" span={2}>
-            {applicant.shabbosShul || '-'}
-          </Descriptions.Item>
-        </Descriptions>
-      </Card>
-
-      {/* Children */}
-      <Card title={`Children (${applicant.children?.length || 0})`} size="small" className="info-card" style={{ marginTop: 16 }}>
-        {applicant.children && applicant.children.length > 0 ? (
-          <Table
-            dataSource={applicant.children}
-            columns={[
-              { title: 'Name', dataIndex: 'name', key: 'name', render: (v: string) => v || '-' },
-              { title: 'Age', dataIndex: 'age', key: 'age', width: 80 },
-              { title: 'Gender', dataIndex: 'gender', key: 'gender', width: 100 },
-              { title: 'School', dataIndex: 'school', key: 'school', render: (v: string) => v || '-' },
-            ]}
-            rowKey={(record, index) => record.name || `child-${index}`}
-            pagination={false}
-            size="small"
-          />
-        ) : (
-          <Empty description="No children listed" image={Empty.PRESENTED_IMAGE_SIMPLE} />
-        )}
-      </Card>
-    </div>
-  );
-};
-
-// Housing Search Tab
-interface HousingSearchTabProps {
-  applicant: ApplicantDto;
-  onEditPreferences: () => void;
-}
-
-const HousingSearchTab = ({ applicant, onEditPreferences }: HousingSearchTabProps) => {
-  const hs = applicant.housingSearch;
-
-  if (!hs) {
-    return <Empty description="No housing search data" />;
-  }
-
-  const prefs = hs.preferences;
-
-  return (
-    <div className="tab-content">
-      <div className="info-grid">
-        {/* Status */}
-        <Card title="Status" size="small" className="info-card">
-          <Descriptions column={1} size="small">
-            <Descriptions.Item label="Stage">
-              {hs.stage}
+      {/* Two-column layout for Family Details and Children */}
+      <div className="family-info-grid" style={{ marginTop: 16 }}>
+        {/* Family Details - Address & Community */}
+        <Card title="Family Details" size="small" className="info-card">
+          <Descriptions column={1} size="small" labelStyle={{ width: 120 }}>
+            <Descriptions.Item label="Address">
+              {address ? (
+                <>
+                  {address.street}{address.street2 ? `, ${address.street2}` : ''}<br />
+                  {address.city}, {address.state} {address.zipCode}
+                </>
+              ) : (
+                '-'
+              )}
             </Descriptions.Item>
-            <Descriptions.Item label="Stage Changed">
-              {new Date(hs.stageChangedDate).toLocaleDateString()}
+            <Descriptions.Item label="Current Kehila">
+              {applicant.currentKehila || '-'}
             </Descriptions.Item>
-            <Descriptions.Item label="Failed Contracts">
-              {hs.failedContractCount}
+            <Descriptions.Item label="Shabbos Shul">
+              {applicant.shabbosShul || '-'}
             </Descriptions.Item>
           </Descriptions>
         </Card>
 
-        {/* Preferences */}
-        <Card
-          title="Preferences"
-          size="small"
-          className="info-card"
-          extra={
-            <Button
-              type="text"
-              icon={<EditOutlined />}
+        {/* Children */}
+        <Card title={`Children (${applicant.children?.length || 0})`} size="small" className="info-card">
+          {applicant.children && applicant.children.length > 0 ? (
+            <Table
+              dataSource={applicant.children}
+              columns={[
+                { title: 'Name', dataIndex: 'name', key: 'name', render: (v: string) => v || '-' },
+                { title: 'Age', dataIndex: 'age', key: 'age', width: 60 },
+                { title: 'Gender', dataIndex: 'gender', key: 'gender', width: 80 },
+                { title: 'School', dataIndex: 'school', key: 'school', render: (v: string) => v || '-' },
+              ]}
+              rowKey={(record, index) => record.name || `child-${index}`}
+              pagination={false}
               size="small"
-              onClick={onEditPreferences}
             />
-          }
-        >
-          {prefs ? (
-            <Descriptions column={1} size="small">
-              <Descriptions.Item label="Budget">
-                {prefs.budgetAmount
-                  ? `$${prefs.budgetAmount.toLocaleString()}`
-                  : '-'}
-              </Descriptions.Item>
-              <Descriptions.Item label="Bedrooms">
-                {prefs.minBedrooms ? `${prefs.minBedrooms}+` : '-'}
-              </Descriptions.Item>
-              <Descriptions.Item label="Bathrooms">
-                {prefs.minBathrooms ? `${prefs.minBathrooms}+` : '-'}
-              </Descriptions.Item>
-              <Descriptions.Item label="Move Timeline">
-                {prefs.moveTimeline || '-'}
-              </Descriptions.Item>
-            </Descriptions>
           ) : (
-            <Text type="secondary">No preferences set. Click edit to add.</Text>
+            <Empty description="No children listed" image={Empty.PRESENTED_IMAGE_SIMPLE} />
           )}
         </Card>
-
-        {/* Required Features */}
-        {prefs?.requiredFeatures && prefs.requiredFeatures.length > 0 && (
-          <Card title="Required Features" size="small" className="info-card">
-            <Space wrap>
-              {prefs.requiredFeatures.map((feature) => (
-                <Tag key={feature}>{feature}</Tag>
-              ))}
-            </Space>
-          </Card>
-        )}
-
-        {/* Current Contract */}
-        {hs.currentContract && (
-          <Card title="Current Contract" size="small" className="info-card">
-            <Descriptions column={1} size="small">
-              <Descriptions.Item label="Contract Price">
-                ${hs.currentContract.price.toLocaleString()}
-              </Descriptions.Item>
-              <Descriptions.Item label="Contract Date">
-                {new Date(hs.currentContract.contractDate).toLocaleDateString()}
-              </Descriptions.Item>
-              {hs.currentContract.expectedClosingDate && (
-                <Descriptions.Item label="Expected Closing">
-                  {new Date(hs.currentContract.expectedClosingDate).toLocaleDateString()}
-                </Descriptions.Item>
-              )}
-            </Descriptions>
-          </Card>
-        )}
       </div>
+
+      {/* Housing Searches - show all, active first */}
+      {applicant.allHousingSearches && applicant.allHousingSearches.length > 0 && (
+        <>
+          {applicant.allHousingSearches.map((search, index) => (
+            <Card
+              key={search.id}
+              title={index === 0 && search.isActive ? 'Housing Search' : `Housing Search (${new Date(search.createdDate).toLocaleDateString()})`}
+              size="small"
+              className="info-card"
+              style={{
+                marginTop: 16,
+                opacity: search.isActive ? 1 : 0.7,
+                borderColor: search.isActive ? undefined : '#d9d9d9',
+              }}
+              extra={
+                <Space>
+                  <Tag color={search.isActive ? 'green' : 'default'}>{search.isActive ? 'Active' : 'Inactive'}</Tag>
+                  {search.isActive && (
+                    <Button size="small" icon={<EditOutlined />} onClick={() => setEditPreferencesOpen(true)}>
+                      Edit Preferences
+                    </Button>
+                  )}
+                </Space>
+              }
+            >
+              <div className="family-info-grid">
+                {/* Status */}
+                <Descriptions column={1} size="small" labelStyle={{ width: 140 }}>
+                  <Descriptions.Item label="Stage">
+                    <Tag>{search.stage}</Tag>
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Stage Changed">
+                    {new Date(search.stageChangedDate).toLocaleDateString()}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Failed Contracts">
+                    {search.failedContractCount}
+                  </Descriptions.Item>
+                  {search.currentContract && (
+                    <>
+                      <Descriptions.Item label="Contract Price">
+                        ${search.currentContract.price.toLocaleString()}
+                      </Descriptions.Item>
+                      <Descriptions.Item label="Contract Date">
+                        {new Date(search.currentContract.contractDate).toLocaleDateString()}
+                      </Descriptions.Item>
+                      {search.currentContract.expectedClosingDate && (
+                        <Descriptions.Item label="Expected Closing">
+                          {new Date(search.currentContract.expectedClosingDate).toLocaleDateString()}
+                        </Descriptions.Item>
+                      )}
+                    </>
+                  )}
+                </Descriptions>
+
+                {/* Preferences - only show for active search */}
+                {search.isActive && search.preferences && (
+                  <Descriptions column={1} size="small" labelStyle={{ width: 140 }}>
+                    <Descriptions.Item label="Budget">
+                      {search.preferences.budgetAmount
+                        ? `$${search.preferences.budgetAmount.toLocaleString()}`
+                        : '-'}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Bedrooms">
+                      {search.preferences.minBedrooms ? `${search.preferences.minBedrooms}+` : '-'}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Bathrooms">
+                      {search.preferences.minBathrooms ? `${search.preferences.minBathrooms}+` : '-'}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Move Timeline">
+                      {search.preferences.moveTimeline || '-'}
+                    </Descriptions.Item>
+                    {search.preferences.requiredFeatures && search.preferences.requiredFeatures.length > 0 && (
+                      <Descriptions.Item label="Required Features">
+                        <Space wrap size={[4, 4]}>
+                          {search.preferences.requiredFeatures.map((feature) => (
+                            <Tag key={feature} style={{ margin: 0 }}>{feature}</Tag>
+                          ))}
+                        </Space>
+                      </Descriptions.Item>
+                    )}
+                  </Descriptions>
+                )}
+              </div>
+            </Card>
+          ))}
+        </>
+      )}
+
+      {/* Edit Preferences Modal - uses the active housing search */}
+      {hs && (
+        <EditPreferencesModal
+          open={editPreferencesOpen}
+          onClose={() => setEditPreferencesOpen(false)}
+          housingSearchId={hs.id}
+          applicantId={applicant.id}
+          preferences={hs.preferences}
+        />
+      )}
     </div>
   );
 };
+
 
 // Suggested Listings Tab
 interface PropertyMatchesTabProps {
