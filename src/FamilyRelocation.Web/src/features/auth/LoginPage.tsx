@@ -517,6 +517,7 @@ const LoginPage = () => {
                 size="large"
                 placeholder="you@example.com"
                 prefix={<MailOutlined className="input-icon" />}
+                onPressEnter={() => loginForm.submit()}
               />
             </Form.Item>
 
@@ -532,6 +533,7 @@ const LoginPage = () => {
                 iconRender={(visible) =>
                   visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />
                 }
+                onPressEnter={() => loginForm.submit()}
               />
             </Form.Item>
 
