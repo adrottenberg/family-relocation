@@ -29,7 +29,7 @@ const statusColors: Record<string, string> = {
 
 const PropertyMatchCard = ({
   match,
-  onScheduleShowing,
+  onScheduleShowing: _onScheduleShowing,
   onEnterContract,
   onRemove,
   showApplicant = true,
