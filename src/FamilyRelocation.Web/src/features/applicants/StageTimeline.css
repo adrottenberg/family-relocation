@@ -1,13 +1,9 @@
 .stage-timeline {
-  padding: 16px 24px;
-  background: #fafafa;
-  border-radius: 8px;
-  margin-bottom: 16px;
+  padding: 8px 0;
 }
 
 .stage-timeline-submitted {
-  background: #fffbe6;
-  border: 1px solid #ffe58f;
+  /* Note: Now rendered inside a Card, so styling is handled by the Card */
 }
 
 .submitted-message {

@@ -414,14 +414,21 @@ const ApplicantDetailPage = () => {
       </Card>
 
       {/* Stage Timeline */}
-      <StageTimeline
-        applicantId={applicant.id}
-        housingSearchId={hs?.id}
-        boardDecision={boardDecision}
-        currentStage={stage}
-        onTransitionModalOpen={(type) => setActiveTransitionModal(type)}
-        onBoardDecisionClick={() => setBoardDecisionModalOpen(true)}
-      />
+      <Card
+        title="Application Progress"
+        size="small"
+        className="progress-card"
+        style={{ marginBottom: 16 }}
+      >
+        <StageTimeline
+          applicantId={applicant.id}
+          housingSearchId={hs?.id}
+          boardDecision={boardDecision}
+          currentStage={stage}
+          onTransitionModalOpen={(type) => setActiveTransitionModal(type)}
+          onBoardDecisionClick={() => setBoardDecisionModalOpen(true)}
+        />
+      </Card>
 
       {/* Urgent Reminders Banner - only shows when there are overdue or due today reminders */}
       {urgentReminders.length > 0 && (
@@ -1224,6 +1231,19 @@ const statusLabels: Record<string, string> = {
   Closed: 'Closed',
 };
 
+// Well-known IDs from the backend (WellKnownIds.cs)
+// These are special GUIDs with friendly display names
+const wellKnownIds: Record<string, string> = {
+  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa': 'Self-Submitted',
+  'AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA': 'Self-Submitted',
+  '00000000-0000-0000-0000-000000000001': 'System',
+  '00000000-0000-0000-0000-000000000000': 'System',
+  'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb01': 'Broker Agreement',
+  'BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBB01': 'Broker Agreement',
+  'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02': 'Community Takanos',
+  'BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBB02': 'Community Takanos',
+};
+
 // Format timestamp in friendly format with full date and time
 const formatTimestamp = (timestamp: string): string => {
   const date = new Date(timestamp);
@@ -1254,6 +1274,17 @@ const isGuid = (value: string): boolean => {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 };
 
+// Check if a field represents a user ID
+const isUserIdField = (field: string): boolean => {
+  const lowerField = field.toLowerCase();
+  return lowerField.endsWith('byid') ||
+    lowerField === 'createdby' ||
+    lowerField === 'modifiedby' ||
+    lowerField === 'assignedtouserid' ||
+    lowerField === 'brokeruserid' ||
+    lowerField === 'userid';
+};
+
 // Format a value for display, with optional resolved names lookup
 const formatValue = (field: string, value: string, resolvedNames?: Record<string, string>): string => {
   // Handle null/undefined values
@@ -1261,7 +1292,13 @@ const formatValue = (field: string, value: string, resolvedNames?: Record<string
     return '';
   }
 
-  // Check if this GUID has a resolved name
+  // Check well-known IDs first (case-insensitive)
+  const wellKnownName = wellKnownIds[value] || wellKnownIds[value.toLowerCase()];
+  if (wellKnownName) {
+    return wellKnownName;
+  }
+
+  // Check if this GUID has a resolved name from backend
   if (isGuid(value) && resolvedNames?.[value]) {
     return resolvedNames[value];
   }
@@ -1277,7 +1314,7 @@ const formatValue = (field: string, value: string, resolvedNames?: Record<string
   const isDateTimeField = field.toLowerCase().endsWith('at') ||
     field.toLowerCase().includes('modified') ||
     field.toLowerCase().includes('created');
-  if (isDateTimeField && !field.toLowerCase().includes('time')) {
+  if (isDateTimeField && !field.toLowerCase().includes('time') && !isUserIdField(field)) {
     const date = new Date(value);
     if (!isNaN(date.getTime())) {
       return date.toLocaleString('en-US', {
@@ -1321,6 +1358,10 @@ const formatValue = (field: string, value: string, resolvedNames?: Record<string
     // Handle empty/zero GUID (system/no user)
     if (value.startsWith('00000000-0000-0000') || value === '00000000-0000-0000-0000-000000000000') {
       return 'System';
+    }
+    // For user ID fields, show a friendly label instead of truncated GUID
+    if (isUserIdField(field)) {
+      return 'User';
     }
     // Show truncated version for other unresolved GUIDs
     return value.substring(0, 8) + '...';
@@ -1382,6 +1423,9 @@ const AuditHistoryTab = ({ auditLogs, isLoading }: AuditHistoryTabProps) => {
       // Skip the primary Id field
       if (key === 'Id') continue;
 
+      // Skip IsDeleted if value is false/No
+      if (key === 'IsDeleted' && (newVal === false || newVal === 'false' || newVal === 'False')) continue;
+
       const oldVal = oldValues?.[key];
 
       // Normalize empty values: treat null, undefined, "" as equivalent
@@ -1393,6 +1437,13 @@ const AuditHistoryTab = ({ auditLogs, isLoading }: AuditHistoryTabProps) => {
       if (normalizedOld === normalizedNew) continue;
 
       const newValStr = String(newVal ?? '');
+
+      // Skip user ID fields if we can't resolve them to actual names (but keep well-known IDs)
+      const isWellKnown = wellKnownIds[newValStr] || wellKnownIds[newValStr.toLowerCase()];
+      if (isUserIdField(key) && isGuid(newValStr) && !resolvedNames?.[newValStr] && !isWellKnown) {
+        continue;
+      }
+
       // For metadata fields (Created/Modified dates and users), only show new value
       const isMetadata = metadataFields.has(key);
       const oldValStr = !isMetadata && oldVal !== undefined && oldVal !== null && oldVal !== ''
