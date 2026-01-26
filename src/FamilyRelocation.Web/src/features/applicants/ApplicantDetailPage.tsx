@@ -36,6 +36,7 @@ import {
 } from '@ant-design/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { applicantsApi, documentsApi, activitiesApi, propertyMatchesApi, remindersApi } from '../../api';
+import { useAuthStore } from '../../store/authStore';
 import type { ApplicantDto, AuditLogDto, ReminderListDto } from '../../api/types';
 import { colors, statusTagStyles, stageTagStyles } from '../../theme/antd-theme';
 import SetBoardDecisionModal from './SetBoardDecisionModal';
@@ -61,6 +62,7 @@ const ApplicantDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const canApproveBoardDecisions = useAuthStore((state) => state.canApproveBoardDecisions);
   const [boardDecisionModalOpen, setBoardDecisionModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [documentUploadModalOpen, setDocumentUploadModalOpen] = useState(false);
@@ -456,6 +458,7 @@ const ApplicantDetailPage = () => {
           currentStage={stage}
           onTransitionModalOpen={(type) => setActiveTransitionModal(type)}
           onBoardDecisionClick={() => setBoardDecisionModalOpen(true)}
+          canApproveBoardDecisions={canApproveBoardDecisions()}
         />
       </Card>
 

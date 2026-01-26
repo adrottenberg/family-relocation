@@ -70,7 +70,7 @@ public class ShowingsController : ControllerBase
     /// Schedules a new showing.
     /// </summary>
     [HttpPost]
-    [Authorize(Roles = "Coordinator,Admin,Broker")]
+    [Authorize(Roles = "Coordinator,Admin,BoardMember,Broker")]
     [ProducesResponseType(typeof(ShowingDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -99,7 +99,7 @@ public class ShowingsController : ControllerBase
     /// Reschedules a showing to a new date/time.
     /// </summary>
     [HttpPut("{id:guid}/reschedule")]
-    [Authorize(Roles = "Coordinator,Admin,Broker")]
+    [Authorize(Roles = "Coordinator,Admin,BoardMember,Broker")]
     [ProducesResponseType(typeof(ShowingDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -128,7 +128,7 @@ public class ShowingsController : ControllerBase
     /// Updates showing status (complete, cancel, no-show).
     /// </summary>
     [HttpPut("{id:guid}/status")]
-    [Authorize(Roles = "Coordinator,Admin,Broker")]
+    [Authorize(Roles = "Coordinator,Admin,BoardMember,Broker")]
     [ProducesResponseType(typeof(ShowingDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

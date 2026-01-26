@@ -31,6 +31,7 @@ interface StageTimelineProps {
   currentStage: string;
   onTransitionModalOpen: (type: TransitionType) => void;
   onBoardDecisionClick: () => void;
+  canApproveBoardDecisions?: boolean;
 }
 
 // Stage configuration for the visual timeline
@@ -60,6 +61,7 @@ const StageTimeline = ({
   currentStage,
   onTransitionModalOpen,
   onBoardDecisionClick,
+  canApproveBoardDecisions = false,
 }: StageTimelineProps) => {
   const queryClient = useQueryClient();
   const [pauseModalOpen, setPauseModalOpen] = useState(false);
@@ -149,7 +151,7 @@ const StageTimeline = ({
         <div className="submitted-message">
           <ExclamationCircleOutlined style={{ fontSize: 20, marginRight: 12, color: '#faad14' }} />
           <span>Awaiting board approval to begin housing search</span>
-          {boardDecision === 'Pending' && (
+          {boardDecision === 'Pending' && canApproveBoardDecisions && (
             <Button
               type="primary"
               onClick={onBoardDecisionClick}

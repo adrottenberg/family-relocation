@@ -11,7 +11,7 @@ namespace FamilyRelocation.API.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/audit-logs")]
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = "Coordinator,Admin,BoardMember,Broker")]
 public class AuditLogsController : ControllerBase
 {
     private readonly IMediator _mediator;

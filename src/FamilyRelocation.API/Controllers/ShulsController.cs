@@ -52,7 +52,7 @@ public class ShulsController : ControllerBase
     /// Creates a new shul.
     /// </summary>
     [HttpPost]
-    [Authorize(Roles = "Coordinator,Admin")]
+    [Authorize(Roles = "Coordinator,Admin,BoardMember,Broker")]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Create([FromBody] CreateShulCommand command)
@@ -65,7 +65,7 @@ public class ShulsController : ControllerBase
     /// Updates an existing shul.
     /// </summary>
     [HttpPut("{id:guid}")]
-    [Authorize(Roles = "Coordinator,Admin")]
+    [Authorize(Roles = "Coordinator,Admin,BoardMember,Broker")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -91,7 +91,7 @@ public class ShulsController : ControllerBase
     /// Deletes (deactivates) a shul.
     /// </summary>
     [HttpDelete("{id:guid}")]
-    [Authorize(Roles = "Coordinator,Admin")]
+    [Authorize(Roles = "Coordinator,Admin,BoardMember,Broker")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(Guid id)

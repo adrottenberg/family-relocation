@@ -70,7 +70,7 @@ public class DocumentsController : ControllerBase
     /// Use GET /api/document-types to get available document types.
     /// </remarks>
     [HttpPost("upload")]
-    [Authorize(Roles = "Coordinator,Admin")]
+    [Authorize(Roles = "Coordinator,Admin,BoardMember,Broker")]
     [RequestSizeLimit(MaxFileSize)]
     [Consumes("multipart/form-data")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -178,7 +178,7 @@ public class DocumentsController : ControllerBase
     /// Note: This removes the database record. The file in S3 may need separate cleanup.
     /// </remarks>
     [HttpDelete("{id:guid}")]
-    [Authorize(Roles = "Coordinator,Admin")]
+    [Authorize(Roles = "Coordinator,Admin,BoardMember,Broker")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(Guid id)

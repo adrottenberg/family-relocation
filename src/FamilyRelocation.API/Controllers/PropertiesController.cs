@@ -70,7 +70,7 @@ public class PropertiesController : ControllerBase
     /// Creates a new property listing.
     /// </summary>
     [HttpPost]
-    [Authorize(Roles = "Coordinator,Admin,Broker")]
+    [Authorize(Roles = "Coordinator,Admin,BoardMember,Broker")]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Create([FromBody] CreatePropertyCommand command)
@@ -83,7 +83,7 @@ public class PropertiesController : ControllerBase
     /// Updates an existing property.
     /// </summary>
     [HttpPut("{id:guid}")]
-    [Authorize(Roles = "Coordinator,Admin,Broker")]
+    [Authorize(Roles = "Coordinator,Admin,BoardMember,Broker")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -112,7 +112,7 @@ public class PropertiesController : ControllerBase
     /// Valid statuses: Active, UnderContract, Sold, OffMarket
     /// </remarks>
     [HttpPut("{id:guid}/status")]
-    [Authorize(Roles = "Coordinator,Admin,Broker")]
+    [Authorize(Roles = "Coordinator,Admin,BoardMember,Broker")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -137,7 +137,7 @@ public class PropertiesController : ControllerBase
     /// Soft deletes a property.
     /// </summary>
     [HttpDelete("{id:guid}")]
-    [Authorize(Roles = "Coordinator,Admin,Broker")]
+    [Authorize(Roles = "Coordinator,Admin,BoardMember,Broker")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(Guid id)
@@ -159,7 +159,7 @@ public class PropertiesController : ControllerBase
     /// Maximum 50 photos per property. Accepted formats: JPEG, PNG.
     /// </remarks>
     [HttpPost("{id:guid}/photos")]
-    [Authorize(Roles = "Coordinator,Admin,Broker")]
+    [Authorize(Roles = "Coordinator,Admin,BoardMember,Broker")]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -209,7 +209,7 @@ public class PropertiesController : ControllerBase
     /// Deletes a photo from a property.
     /// </summary>
     [HttpDelete("{id:guid}/photos/{photoId:guid}")]
-    [Authorize(Roles = "Coordinator,Admin,Broker")]
+    [Authorize(Roles = "Coordinator,Admin,BoardMember,Broker")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DeletePhoto(Guid id, Guid photoId)
@@ -229,7 +229,7 @@ public class PropertiesController : ControllerBase
     /// Sets a photo as the primary photo for a property.
     /// </summary>
     [HttpPut("{id:guid}/photos/{photoId:guid}/primary")]
-    [Authorize(Roles = "Coordinator,Admin,Broker")]
+    [Authorize(Roles = "Coordinator,Admin,BoardMember,Broker")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> SetPrimaryPhoto(Guid id, Guid photoId)

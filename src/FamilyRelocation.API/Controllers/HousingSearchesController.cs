@@ -42,7 +42,7 @@ public class HousingSearchesController : ControllerBase
     /// Use GET /api/stage-requirements/{fromStage}/{toStage} to check required documents for transitions.
     /// </remarks>
     [HttpPut("{id:guid}/stage")]
-    [Authorize(Roles = "Coordinator,Admin")]
+    [Authorize(Roles = "Coordinator,Admin,BoardMember,Broker")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -76,7 +76,7 @@ public class HousingSearchesController : ControllerBase
     /// Initial preferences are copied from the applicant when the housing search is created.
     /// </remarks>
     [HttpPut("{id:guid}/preferences")]
-    [Authorize(Roles = "Coordinator,Admin")]
+    [Authorize(Roles = "Coordinator,Admin,BoardMember,Broker")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
