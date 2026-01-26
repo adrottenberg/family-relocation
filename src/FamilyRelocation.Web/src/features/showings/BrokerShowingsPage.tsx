@@ -44,7 +44,7 @@ const BrokerShowingsPage = () => {
 
   // Filter users who could be brokers (all active users for now)
   const brokers = useMemo(() => {
-    return usersData?.users.filter((u: UserDto) => u.status === 'CONFIRMED') || [];
+    return usersData?.users?.filter((u: UserDto) => u.status === 'CONFIRMED') || [];
   }, [usersData]);
 
   const brokerOptions = [
