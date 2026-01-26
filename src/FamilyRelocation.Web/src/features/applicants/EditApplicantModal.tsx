@@ -1,13 +1,14 @@
-import { Drawer, Form, Input, Select, Button, Space, Collapse, message, InputNumber, Checkbox } from 'antd';
+import { Modal, Form, Input, Select, Button, Space, Collapse, message, InputNumber, Checkbox } from 'antd';
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { applicantsApi, shulsApi } from '../../api';
 import type { ApplicantDto, PhoneNumberDto, ChildDto } from '../../api/types';
 import { useEffect } from 'react';
+import AddressAutocomplete from '../../components/AddressAutocomplete';
 
 const { Panel } = Collapse;
 
-interface EditApplicantDrawerProps {
+interface EditApplicantModalProps {
   open: boolean;
   onClose: () => void;
   applicant: ApplicantDto;
@@ -64,7 +65,7 @@ const US_STATES = [
   'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY',
 ].map(s => ({ value: s, label: s }));
 
-const EditApplicantDrawer = ({ open, onClose, applicant }: EditApplicantDrawerProps) => {
+const EditApplicantModal = ({ open, onClose, applicant }: EditApplicantModalProps) => {
   const [form] = Form.useForm<FormValues>();
   const queryClient = useQueryClient();
 
@@ -178,14 +179,18 @@ const EditApplicantDrawer = ({ open, onClose, applicant }: EditApplicantDrawerPr
     onClose();
   };
 
+  // Build display name: "Husband FirstName LastName" or "Husband FirstName & Wife FirstName LastName"
+  const displayName = applicant.wife?.firstName
+    ? `${applicant.husband.firstName} & ${applicant.wife.firstName} ${applicant.husband.lastName}`
+    : `${applicant.husband.firstName} ${applicant.husband.lastName}`;
+
   return (
-    <Drawer
-      title={`Edit: ${applicant.husband.lastName} Family`}
-      placement="right"
-      width={600}
+    <Modal
+      title={`Edit: ${displayName}`}
+      width={650}
       open={open}
-      onClose={handleCancel}
-      extra={
+      onCancel={handleCancel}
+      footer={
         <Space>
           <Button onClick={handleCancel}>Cancel</Button>
           <Button type="primary" onClick={handleSubmit} loading={mutation.isPending}>
@@ -193,6 +198,7 @@ const EditApplicantDrawer = ({ open, onClose, applicant }: EditApplicantDrawerPr
           </Button>
         </Space>
       }
+      styles={{ body: { maxHeight: '70vh', overflowY: 'auto' } }}
     >
       <Form form={form} layout="vertical">
         <Collapse defaultActiveKey={['husband', 'wife']} ghost>
@@ -338,6 +344,17 @@ const EditApplicantDrawer = ({ open, onClose, applicant }: EditApplicantDrawerPr
 
           {/* Address Section */}
           <Panel header="Current Address" key="address">
+            <Form.Item label="Search Address">
+              <AddressAutocomplete
+                onAddressSelect={(address) => {
+                  form.setFieldValue(['address', 'street'], address.street);
+                  form.setFieldValue(['address', 'city'], address.city);
+                  form.setFieldValue(['address', 'state'], address.state);
+                  form.setFieldValue(['address', 'zipCode'], address.zipCode);
+                }}
+              />
+            </Form.Item>
+
             <Form.Item
               name={['address', 'street']}
               label="Street Address"
@@ -462,8 +479,8 @@ const EditApplicantDrawer = ({ open, onClose, applicant }: EditApplicantDrawerPr
           </Panel>
         </Collapse>
       </Form>
-    </Drawer>
+    </Modal>
   );
 };
 
-export default EditApplicantDrawer;
+export default EditApplicantModal;

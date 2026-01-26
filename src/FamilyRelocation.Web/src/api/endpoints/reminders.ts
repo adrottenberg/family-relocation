@@ -14,16 +14,15 @@ export interface GetRemindersParams {
   entityType?: string;
   entityId?: string;
   assignedToUserId?: string;
-  dueDateFrom?: string;
-  dueDateTo?: string;
+  dueDateTimeFrom?: string; // UTC ISO datetime
+  dueDateTimeTo?: string; // UTC ISO datetime
   overdueOnly?: boolean;
   dueTodayOnly?: boolean;
 }
 
 export interface CreateReminderRequest {
   title: string;
-  dueDate: string;
-  dueTime?: string;
+  dueDateTime: string; // UTC ISO datetime
   priority?: string;
   entityType: string;
   entityId: string;
@@ -34,8 +33,7 @@ export interface CreateReminderRequest {
 
 export interface UpdateReminderRequest {
   title?: string;
-  dueDate?: string;
-  dueTime?: string;
+  dueDateTime?: string; // UTC ISO datetime
   priority?: string;
   notes?: string;
   assignedToUserId?: string;

@@ -294,7 +294,7 @@ const AgreementsRequiredModal = ({
       width={520}
     >
       <div style={{ marginBottom: 16, padding: 12, background: '#f5f5f5', borderRadius: 6 }}>
-        <strong>{familyName} Family</strong> needs the following documents before transitioning from{' '}
+        <strong>{familyName}</strong> needs the following documents before transitioning from{' '}
         <Tag>{fromStage}</Tag> to <Tag>{toStage}</Tag>.
       </div>
 

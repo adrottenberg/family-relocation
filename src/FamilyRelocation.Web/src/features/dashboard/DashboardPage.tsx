@@ -14,6 +14,7 @@ import { useNavigate } from 'react-router-dom';
 import { dashboardApi, activitiesApi, showingsApi, DashboardStatsDto, ActivityDto, ShowingListDto } from '../../api';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
+import { formatDate, formatTime, isToday } from '../../utils/datetime';
 
 dayjs.extend(relativeTime);
 
@@ -210,17 +211,17 @@ const DashboardPage = () => {
                   }
                   description={
                     <Space direction="vertical" size={0}>
-                      <Text>{showing.applicantName} Family</Text>
+                      <Text>{showing.applicantName}</Text>
                       <Space>
                         <Tag
-                          color={dayjs(showing.scheduledDate).isSame(dayjs(), 'day') ? 'red' : 'blue'}
+                          color={isToday(showing.scheduledDateTime) ? 'red' : 'blue'}
                         >
-                          {dayjs(showing.scheduledDate).isSame(dayjs(), 'day')
+                          {isToday(showing.scheduledDateTime)
                             ? 'Today'
-                            : dayjs(showing.scheduledDate).format('ddd, MMM D')}
+                            : formatDate(showing.scheduledDateTime, 'ddd, MMM D')}
                         </Tag>
                         <Text type="secondary">
-                          <ClockCircleOutlined /> {formatShowingTime(showing.scheduledTime)}
+                          <ClockCircleOutlined /> {formatTime(showing.scheduledDateTime)}
                         </Text>
                       </Space>
                     </Space>
@@ -278,17 +279,6 @@ const getEntityColor = (entityType: string): string => {
     default:
       return 'default';
   }
-};
-
-const formatShowingTime = (timeStr: string): string => {
-  const [hours, minutes] = timeStr.split(':');
-  const date = new Date();
-  date.setHours(parseInt(hours), parseInt(minutes));
-  return date.toLocaleTimeString('en-US', {
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-  });
 };
 
 export default DashboardPage;

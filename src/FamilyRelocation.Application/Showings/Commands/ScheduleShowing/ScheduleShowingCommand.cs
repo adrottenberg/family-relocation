@@ -8,7 +8,6 @@ namespace FamilyRelocation.Application.Showings.Commands.ScheduleShowing;
 /// </summary>
 public record ScheduleShowingCommand(
     Guid PropertyMatchId,
-    DateOnly ScheduledDate,
-    TimeOnly ScheduledTime,
+    DateTime ScheduledDateTime,
     string? Notes,
     Guid? BrokerUserId) : IRequest<ShowingDto>;

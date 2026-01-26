@@ -18,9 +18,9 @@ public class GetUpcomingShowingsQueryHandler : IRequestHandler<GetUpcomingShowin
 
     public async Task<List<ShowingListDto>> Handle(GetUpcomingShowingsQuery request, CancellationToken cancellationToken)
     {
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var now = DateTime.UtcNow;
         var days = request.Days ?? 14; // Default to 2 weeks
-        var endDate = today.AddDays(days);
+        var endDate = now.AddDays(days);
 
         var showings = await _context.Set<Showing>()
             .Include(s => s.PropertyMatch)
@@ -30,9 +30,8 @@ public class GetUpcomingShowingsQueryHandler : IRequestHandler<GetUpcomingShowin
                 .ThenInclude(m => m.HousingSearch)
                     .ThenInclude(h => h.Applicant)
             .Where(s => s.Status == ShowingStatus.Scheduled)
-            .Where(s => s.ScheduledDate >= today && s.ScheduledDate <= endDate)
-            .OrderBy(s => s.ScheduledDate)
-            .ThenBy(s => s.ScheduledTime)
+            .Where(s => s.ScheduledDateTime >= now && s.ScheduledDateTime <= endDate)
+            .OrderBy(s => s.ScheduledDateTime)
             .Take(100)
             .ToListAsync(cancellationToken);
 

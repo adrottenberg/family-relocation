@@ -12,6 +12,7 @@ import {
 } from 'antd';
 import dayjs from 'dayjs';
 import { remindersApi, CreateReminderRequest, ReminderPriority } from '../../api';
+import { toUtcString } from '../../utils/datetime';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -50,10 +51,21 @@ const CreateReminderModal = ({
       const values = await form.validateFields();
       setLoading(true);
 
+      // Combine date and time into a single datetime
+      // If no time is provided, default to 2 PM (14:00)
+      let combinedDateTime = values.dueDate;
+      if (values.dueTime) {
+        combinedDateTime = values.dueDate
+          .hour(values.dueTime.hour())
+          .minute(values.dueTime.minute())
+          .second(0);
+      } else {
+        combinedDateTime = values.dueDate.hour(14).minute(0).second(0);
+      }
+
       const request: CreateReminderRequest = {
         title: values.title,
-        dueDate: values.dueDate.format('YYYY-MM-DD'),
-        dueTime: values.dueTime ? values.dueTime.format('HH:mm:ss') : undefined,
+        dueDateTime: toUtcString(combinedDateTime),
         priority: values.priority || 'Normal',
         entityType: values.entityType,
         entityId: values.entityId,

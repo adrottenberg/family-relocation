@@ -16,6 +16,7 @@ public class PropertyMatch : Entity<Guid>
     public string? MatchDetails { get; private set; }
     public string? Notes { get; private set; }
     public bool IsAutoMatched { get; private set; }
+    public decimal? OfferAmount { get; private set; }
 
     // Navigation properties
     public virtual HousingSearch HousingSearch { get; private set; } = null!;
@@ -107,8 +108,12 @@ public class PropertyMatch : Entity<Guid>
     /// <summary>
     /// Marks that an offer has been made on this property.
     /// </summary>
-    public void MarkOfferMade(Guid modifiedBy, string? notes = null)
+    public void MarkOfferMade(decimal offerAmount, Guid modifiedBy, string? notes = null)
     {
+        if (offerAmount <= 0)
+            throw new ArgumentException("Offer amount must be greater than zero", nameof(offerAmount));
+
+        OfferAmount = offerAmount;
         UpdateStatus(PropertyMatchStatus.OfferMade, modifiedBy, notes);
     }
 

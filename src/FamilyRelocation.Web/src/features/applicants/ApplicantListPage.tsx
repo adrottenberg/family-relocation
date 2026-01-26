@@ -48,10 +48,13 @@ const ApplicantListPage = () => {
   const getStageTagStyle = (stageName: string) => {
     const stageMap: Record<string, keyof typeof stageTagStyles> = {
       'Submitted': 'submitted',
-      'AwaitingAgreements': 'submitted', // Reuse submitted style for AwaitingAgreements
-      'Searching': 'houseHunting', // Reuse houseHunting style for Searching
+      'AwaitingAgreements': 'submitted',
+      'Searching': 'houseHunting',
       'UnderContract': 'underContract',
       'Closed': 'closed',
+      'Rejected': 'rejected',
+      'Paused': 'paused',
+      'MovedIn': 'closed',
     };
     const key = stageMap[stageName];
     return key ? stageTagStyles[key] : { backgroundColor: colors.neutral[100], color: colors.neutral[600] };
@@ -59,36 +62,25 @@ const ApplicantListPage = () => {
 
   const formatStageName = (stage: string) => {
     const names: Record<string, string> = {
+      'Submitted': 'Submitted',
       'AwaitingAgreements': 'Awaiting Agreements',
       'Searching': 'Searching',
       'UnderContract': 'Under Contract',
       'Closed': 'Closed',
       'Paused': 'Paused',
       'MovedIn': 'Moved In',
+      'Rejected': 'Rejected',
     };
     return names[stage] || stage;
   };
 
   const columns: ColumnsType<ApplicantListItemDto> = [
     {
-      title: 'FAMILY NAME',
+      title: 'NAME',
       key: 'familyName',
-      render: (_, record) => {
-        const nameParts = record.husbandFullName.split(' ');
-        const lastName = nameParts.pop() || record.husbandFullName;
-        const firstName = nameParts.join(' ') || '';
-        return (
-          <div>
-            <Text strong>{lastName}</Text>
-            <div>
-              <Text type="secondary" style={{ fontSize: 13 }}>
-                {firstName}
-                {record.wifeMaidenName && ` & ${record.wifeMaidenName}`}
-              </Text>
-            </div>
-          </div>
-        );
-      },
+      render: (_, record) => (
+        <Text strong>{record.husbandFullName}</Text>
+      ),
     },
     {
       title: 'CONTACT',
@@ -117,7 +109,7 @@ const ApplicantListPage = () => {
       key: 'stage',
       width: 140,
       render: (_, record) => {
-        const stageName = record.stage || 'N/A';
+        const stageName = record.stage || 'Submitted';
         const style = getStageTagStyle(stageName);
         return <Tag style={style}>{formatStageName(stageName)}</Tag>;
       },
@@ -196,14 +188,17 @@ const ApplicantListPage = () => {
             placeholder="Stage"
             value={stage}
             onChange={setStage}
-            style={{ width: 160 }}
+            style={{ width: 180 }}
             allowClear
           >
+            <Option value="Submitted">Submitted</Option>
+            <Option value="AwaitingAgreements">Awaiting Agreements</Option>
             <Option value="Searching">Searching</Option>
             <Option value="UnderContract">Under Contract</Option>
             <Option value="Closed">Closed</Option>
             <Option value="MovedIn">Moved In</Option>
             <Option value="Paused">Paused</Option>
+            <Option value="Rejected">Rejected</Option>
           </Select>
           {hasFilters && (
             <Button

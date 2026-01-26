@@ -321,11 +321,8 @@ namespace FamilyRelocation.Infrastructure.Migrations
                     b.Property<Guid>("CreatedBy")
                         .HasColumnType("uuid");
 
-                    b.Property<DateTime>("DueDate")
+                    b.Property<DateTime>("DueDateTime")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<TimeOnly?>("DueTime")
-                        .HasColumnType("time without time zone");
 
                     b.Property<Guid>("EntityId")
                         .HasColumnType("uuid");
@@ -375,7 +372,7 @@ namespace FamilyRelocation.Infrastructure.Migrations
 
                     b.HasIndex("AssignedToUserId");
 
-                    b.HasIndex("DueDate");
+                    b.HasIndex("DueDateTime");
 
                     b.HasIndex("Priority");
 
@@ -383,7 +380,7 @@ namespace FamilyRelocation.Infrastructure.Migrations
 
                     b.HasIndex("EntityType", "EntityId");
 
-                    b.HasIndex("Status", "DueDate");
+                    b.HasIndex("Status", "DueDateTime");
 
                     b.ToTable("FollowUpReminders", (string)null);
                 });
@@ -549,6 +546,10 @@ namespace FamilyRelocation.Infrastructure.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
 
+                    b.Property<decimal?>("OfferAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
                     b.Property<Guid>("PropertyId")
                         .HasColumnType("uuid");
 
@@ -676,11 +677,8 @@ namespace FamilyRelocation.Infrastructure.Migrations
                     b.Property<Guid>("PropertyMatchId")
                         .HasColumnType("uuid");
 
-                    b.Property<DateOnly>("ScheduledDate")
-                        .HasColumnType("date");
-
-                    b.Property<TimeOnly>("ScheduledTime")
-                        .HasColumnType("time without time zone");
+                    b.Property<DateTime>("ScheduledDateTime")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer");
@@ -691,11 +689,11 @@ namespace FamilyRelocation.Infrastructure.Migrations
 
                     b.HasIndex("PropertyMatchId");
 
-                    b.HasIndex("ScheduledDate");
+                    b.HasIndex("ScheduledDateTime");
 
                     b.HasIndex("Status");
 
-                    b.HasIndex("ScheduledDate", "Status");
+                    b.HasIndex("ScheduledDateTime", "Status");
 
                     b.ToTable("Showings", (string)null);
                 });
@@ -822,6 +820,36 @@ namespace FamilyRelocation.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("UserRoles", (string)null);
+                });
+
+            modelBuilder.Entity("FamilyRelocation.Domain.Entities.UserSettings", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("TimeZoneId")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasDefaultValue("America/New_York");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("UserSettings", (string)null);
                 });
 
             modelBuilder.Entity("FamilyRelocation.Domain.Entities.Applicant", b =>

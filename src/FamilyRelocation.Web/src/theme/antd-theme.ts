@@ -481,6 +481,16 @@ export const stageTagStyles = {
     color: '#065f46',
     border: 'none',
   },
+  rejected: {
+    backgroundColor: '#fef2f2',
+    color: '#991b1b',
+    border: 'none',
+  },
+  paused: {
+    backgroundColor: '#f5f5f5',
+    color: '#525252',
+    border: 'none',
+  },
 };
 
 // =============================================================================

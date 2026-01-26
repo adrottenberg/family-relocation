@@ -30,7 +30,7 @@ const TransitionBlockedModal = ({
         title="Transition Not Allowed"
         subTitle={
           <>
-            <strong>{familyName} Family</strong>
+            <strong>{familyName}</strong>
             <br />
             {message}
           </>

@@ -12,53 +12,47 @@ import {
   Empty,
   Timeline,
   Table,
-  Dropdown,
   message,
+  Tooltip,
+  Alert,
 } from 'antd';
-import type { MenuProps } from 'antd';
 import {
   ArrowLeftOutlined,
   EditOutlined,
   PhoneOutlined,
   MailOutlined,
-  HomeOutlined,
-  UserOutlined,
   PrinterOutlined,
-  SwapOutlined,
-  BellOutlined,
-  CheckOutlined,
-  ClockCircleOutlined,
   MessageOutlined,
   FileTextOutlined,
   HistoryOutlined,
   EyeOutlined,
   DownloadOutlined,
+  FormOutlined,
+  MobileOutlined,
+  HomeOutlined,
+  StarFilled,
+  BellOutlined,
+  ExclamationCircleOutlined,
 } from '@ant-design/icons';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { applicantsApi, documentsApi, getStageRequirements, housingSearchesApi, remindersApi, activitiesApi } from '../../api';
-import type { ApplicantDto, ReminderListDto, AuditLogDto } from '../../api/types';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { applicantsApi, documentsApi, activitiesApi, propertyMatchesApi, remindersApi } from '../../api';
+import type { ApplicantDto, AuditLogDto, ReminderListDto } from '../../api/types';
 import { colors, statusTagStyles, stageTagStyles } from '../../theme/antd-theme';
-import { useAuthStore } from '../../store/authStore';
-import BoardReviewSection from './BoardReviewSection';
 import SetBoardDecisionModal from './SetBoardDecisionModal';
-import EditApplicantDrawer from './EditApplicantDrawer';
+import EditApplicantModal from './EditApplicantModal';
 import DocumentUploadModal from './DocumentUploadModal';
 import EditPreferencesModal from './EditPreferencesModal';
-import {
-  validateTransition,
-  formatStage,
-  getPipelineStage,
-  type PipelineStage,
-  type TransitionType,
-} from '../pipeline/transitionRules';
+import StageTimeline from './StageTimeline';
+import { getPipelineStage, type TransitionType } from '../pipeline/transitionRules';
 import AgreementsRequiredModal from '../pipeline/modals/AgreementsRequiredModal';
 import ContractInfoModal from '../pipeline/modals/ContractInfoModal';
 import ContractFailedModal from '../pipeline/modals/ContractFailedModal';
 import ClosingConfirmModal from '../pipeline/modals/ClosingConfirmModal';
-import { CreateReminderModal } from '../reminders';
 import { LogActivityModal } from '../activities';
-import { PropertyMatchList, CreatePropertyMatchModal } from '../propertyMatches';
+import { ReminderDetailModal, SnoozeModal } from '../reminders';
+import { PropertyMatchList, CreatePropertyMatchModal, type MatchScheduleData } from '../propertyMatches';
 import { ScheduleShowingModal } from '../showings';
+import { ShowingSchedulerModal } from '../showings/scheduler';
 import './ApplicantDetailPage.css';
 
 const { Title, Text } = Typography;
@@ -67,22 +61,24 @@ const ApplicantDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const canApproveBoardDecisions = useAuthStore((state) => state.canApproveBoardDecisions);
   const [boardDecisionModalOpen, setBoardDecisionModalOpen] = useState(false);
-  const [editDrawerOpen, setEditDrawerOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
   const [documentUploadModalOpen, setDocumentUploadModalOpen] = useState(false);
-  const [reminderModalOpen, setReminderModalOpen] = useState(false);
   const [activityModalOpen, setActivityModalOpen] = useState(false);
   const [createMatchModalOpen, setCreateMatchModalOpen] = useState(false);
-  const [editPreferencesModalOpen, setEditPreferencesModalOpen] = useState(false);
-  const [scheduleShowingModalData, setScheduleShowingModalData] = useState<{
-    propertyMatchId: string;
-    propertyInfo?: { street: string; city: string };
-    applicantInfo?: { name: string };
-  } | null>(null);
+  // Queue of showings to schedule - each modal close advances to the next
+  const [showingsToSchedule, setShowingsToSchedule] = useState<MatchScheduleData[]>([]);
+  // Drag-and-drop scheduler modal
+  const [schedulerModalOpen, setSchedulerModalOpen] = useState(false);
+  // Reminder modals
+  const [reminderDetailId, setReminderDetailId] = useState<string | null>(null);
+  const [snoozeReminderId, setSnoozeReminderId] = useState<string | null>(null);
 
   // Stage transition modal state
   const [activeTransitionModal, setActiveTransitionModal] = useState<TransitionType | null>(null);
+  // Preselected property for contract modal (when entering contract from property match)
+  const [preselectedPropertyId, setPreselectedPropertyId] = useState<string | undefined>(undefined);
+  const [preselectedOfferAmount, setPreselectedOfferAmount] = useState<number | undefined>(undefined);
 
   const { data: applicant, isLoading, error } = useQuery({
     queryKey: ['applicant', id],
@@ -96,18 +92,25 @@ const ApplicantDetailPage = () => {
     enabled: !!id,
   });
 
-  // Direct stage change mutation (for transitions that don't need a modal)
-  const directStageMutation = useMutation({
-    mutationFn: (newStage: string) =>
-      housingSearchesApi.changeStage(applicant?.housingSearch?.id || '', { newStage }),
-    onSuccess: () => {
-      message.success('Stage updated successfully');
-      queryClient.invalidateQueries({ queryKey: ['applicant', id] });
-      queryClient.invalidateQueries({ queryKey: ['pipeline'] });
-    },
-    onError: () => {
-      message.error('Failed to update stage');
-    },
+  // Fetch property matches for print
+  const housingSearchId = applicant?.housingSearch?.id;
+  const { data: propertyMatches } = useQuery({
+    queryKey: ['propertyMatches', 'housingSearch', housingSearchId],
+    queryFn: () => propertyMatchesApi.getForHousingSearch(housingSearchId!),
+    enabled: !!housingSearchId,
+  });
+
+  // Fetch urgent reminders for this applicant (overdue + due today)
+  const { data: applicantReminders } = useQuery({
+    queryKey: ['applicantReminders', id],
+    queryFn: () => remindersApi.getByEntity('Applicant', id!, 'Open'),
+    enabled: !!id,
+  });
+
+  // Filter to only urgent reminders (overdue or due today) using backend-computed flags
+  // This avoids timezone issues from client-side date comparison
+  const urgentReminders = (applicantReminders || []).filter((r: ReminderListDto) => {
+    return r.isOverdue || r.isDueToday;
   });
 
   if (isLoading) {
@@ -160,88 +163,12 @@ const ApplicantDetailPage = () => {
 
   const hs = applicant.housingSearch;
   const boardDecision = applicant.boardReview?.decision || 'Pending';
-  const stage = hs?.stage || 'N/A';
-
-  // Get the current pipeline stage
+  const stage = hs?.stage || 'Submitted';
   const currentPipelineStage = getPipelineStage(boardDecision, stage);
-
-  // Build the stage change dropdown menu
-  const getStageChangeMenuItems = (): MenuProps['items'] => {
-    if (!currentPipelineStage || currentPipelineStage === 'Closed') {
-      return [];
-    }
-
-    const allStages: PipelineStage[] = ['Submitted', 'AwaitingAgreements', 'Searching', 'UnderContract', 'Closed'];
-    const items: MenuProps['items'] = [];
-
-    for (const targetStage of allStages) {
-      if (targetStage === currentPipelineStage) continue;
-
-      const transition = validateTransition(currentPipelineStage, targetStage, {
-        boardDecision,
-      });
-
-      if (transition.type !== 'blocked') {
-        items.push({
-          key: targetStage,
-          label: formatStage(targetStage),
-          onClick: () => handleStageChange(targetStage),
-        });
-      }
-    }
-
-    return items;
-  };
-
-  const handleStageChange = async (toStage: PipelineStage) => {
-    if (!currentPipelineStage) return;
-
-    const transition = validateTransition(currentPipelineStage, toStage, {
-      boardDecision,
-    });
-
-    switch (transition.type) {
-      case 'needsBoardApproval':
-        setBoardDecisionModalOpen(true);
-        break;
-      case 'needsAgreements':
-        // Check if all required documents are already uploaded
-        try {
-          const requirements = await getStageRequirements(currentPipelineStage, toStage, applicant.id);
-          const allRequiredUploaded = requirements.requirements.every(
-            (req) => !req.isRequired || req.isUploaded
-          );
-          if (allRequiredUploaded) {
-            // All docs uploaded - transition directly
-            directStageMutation.mutate(toStage);
-          } else {
-            // Show modal for missing documents
-            setActiveTransitionModal('needsAgreements');
-          }
-        } catch {
-          // On error, show modal anyway
-          setActiveTransitionModal('needsAgreements');
-        }
-        break;
-      case 'needsContractInfo':
-        setActiveTransitionModal('needsContractInfo');
-        break;
-      case 'needsClosingInfo':
-        setActiveTransitionModal('needsClosingInfo');
-        break;
-      case 'contractFailed':
-        setActiveTransitionModal('contractFailed');
-        break;
-      default:
-        break;
-    }
-  };
 
   const closeTransitionModal = () => {
     setActiveTransitionModal(null);
   };
-
-  const stageChangeMenuItems = getStageChangeMenuItems();
 
   const handlePrint = () => {
     const printWindow = window.open('', '_blank');
@@ -260,10 +187,10 @@ const ApplicantDetailPage = () => {
           <tbody>
             ${children.map(c => `
               <tr>
-                <td>${c.name || 'N/A'}</td>
+                <td>${c.name || '-'}</td>
                 <td>${c.age}</td>
                 <td>${c.gender}</td>
-                <td>${c.school || 'N/A'}</td>
+                <td>${c.school || '-'}</td>
               </tr>
             `).join('')}
           </tbody>
@@ -275,13 +202,43 @@ const ApplicantDetailPage = () => {
       ? `
         <h3>Housing Preferences</h3>
         <table>
-          <tr><td><strong>Budget</strong></td><td>${prefs.budgetAmount ? `$${prefs.budgetAmount.toLocaleString()}` : 'N/A'}</td></tr>
-          <tr><td><strong>Min Bedrooms</strong></td><td>${prefs.minBedrooms || 'N/A'}</td></tr>
-          <tr><td><strong>Min Bathrooms</strong></td><td>${prefs.minBathrooms || 'N/A'}</td></tr>
-          <tr><td><strong>Move Timeline</strong></td><td>${prefs.moveTimeline || 'N/A'}</td></tr>
+          <tr><td><strong>Budget</strong></td><td>${prefs.budgetAmount ? `$${prefs.budgetAmount.toLocaleString()}` : '-'}</td></tr>
+          <tr><td><strong>Min Bedrooms</strong></td><td>${prefs.minBedrooms || '-'}</td></tr>
+          <tr><td><strong>Min Bathrooms</strong></td><td>${prefs.minBathrooms || '-'}</td></tr>
+          <tr><td><strong>Move Timeline</strong></td><td>${prefs.moveTimeline || '-'}</td></tr>
           ${prefs.requiredFeatures && prefs.requiredFeatures.length > 0
             ? `<tr><td><strong>Required Features</strong></td><td>${prefs.requiredFeatures.join(', ')}</td></tr>`
             : ''}
+        </table>
+      `
+      : '';
+
+    const statusLabels: Record<string, string> = {
+      MatchIdentified: 'Match Identified',
+      ShowingRequested: 'Showing Requested',
+      ApplicantInterested: 'Interested',
+      OfferMade: 'Offer Made',
+      ApplicantRejected: 'Rejected',
+    };
+
+    const propertyMatchesHtml = propertyMatches && propertyMatches.length > 0
+      ? `
+        <h3>Suggested Listings (${propertyMatches.length})</h3>
+        <table>
+          <thead>
+            <tr><th>Property</th><th>Price</th><th>Beds/Baths</th><th>Score</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            ${propertyMatches.map(m => `
+              <tr>
+                <td>${m.propertyStreet}, ${m.propertyCity}</td>
+                <td>$${m.propertyPrice.toLocaleString()}</td>
+                <td>${m.propertyBedrooms} bed / ${m.propertyBathrooms} bath</td>
+                <td>${m.matchScore}%</td>
+                <td>${statusLabels[m.status] || m.status}</td>
+              </tr>
+            `).join('')}
+          </tbody>
         </table>
       `
       : '';
@@ -290,7 +247,7 @@ const ApplicantDetailPage = () => {
       <!DOCTYPE html>
       <html>
       <head>
-        <title>${husband.lastName} Family - Application Details</title>
+        <title>${husband.firstName} ${husband.lastName} - Application Details</title>
         <style>
           body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
           h1 { color: #2d7a3a; border-bottom: 2px solid #2d7a3a; padding-bottom: 10px; }
@@ -310,7 +267,7 @@ const ApplicantDetailPage = () => {
         </style>
       </head>
       <body>
-        <h1>${husband.lastName} Family</h1>
+        <h1>${husband.firstName} ${husband.lastName}</h1>
         <div class="status-row">
           <span class="status-item status-${boardDecision.toLowerCase()}">${boardDecision}</span>
           <span class="status-item" style="background:#e6f7ff;color:#1890ff;">${formatStageName(stage)}</span>
@@ -321,11 +278,11 @@ const ApplicantDetailPage = () => {
             <h3>Husband</h3>
             <table>
               <tr><td><strong>Name</strong></td><td>${husband.firstName} ${husband.lastName}</td></tr>
-              <tr><td><strong>Father's Name</strong></td><td>${husband.fatherName || 'N/A'}</td></tr>
-              <tr><td><strong>Email</strong></td><td>${husband.email || 'N/A'}</td></tr>
+              <tr><td><strong>Father's Name</strong></td><td>${husband.fatherName || '-'}</td></tr>
+              <tr><td><strong>Email</strong></td><td>${husband.email || '-'}</td></tr>
               <tr><td><strong>Phone</strong></td><td>${getPrimaryPhone(husband.phoneNumbers)}</td></tr>
-              <tr><td><strong>Occupation</strong></td><td>${husband.occupation || 'N/A'}</td></tr>
-              <tr><td><strong>Employer</strong></td><td>${husband.employerName || 'N/A'}</td></tr>
+              <tr><td><strong>Occupation</strong></td><td>${husband.occupation || '-'}</td></tr>
+              <tr><td><strong>Employer</strong></td><td>${husband.employerName || '-'}</td></tr>
             </table>
           </div>
           ${wife ? `
@@ -333,11 +290,11 @@ const ApplicantDetailPage = () => {
             <h3>Wife</h3>
             <table>
               <tr><td><strong>Name</strong></td><td>${wife.firstName} ${wife.maidenName ? `(${wife.maidenName})` : ''}</td></tr>
-              <tr><td><strong>Father's Name</strong></td><td>${wife.fatherName || 'N/A'}</td></tr>
-              <tr><td><strong>Email</strong></td><td>${wife.email || 'N/A'}</td></tr>
+              <tr><td><strong>Father's Name</strong></td><td>${wife.fatherName || '-'}</td></tr>
+              <tr><td><strong>Email</strong></td><td>${wife.email || '-'}</td></tr>
               <tr><td><strong>Phone</strong></td><td>${getPrimaryPhone(wife.phoneNumbers)}</td></tr>
-              <tr><td><strong>Occupation</strong></td><td>${wife.occupation || 'N/A'}</td></tr>
-              <tr><td><strong>High School</strong></td><td>${wife.highSchool || 'N/A'}</td></tr>
+              <tr><td><strong>Occupation</strong></td><td>${wife.occupation || '-'}</td></tr>
+              <tr><td><strong>High School</strong></td><td>${wife.highSchool || '-'}</td></tr>
             </table>
           </div>
           ` : ''}
@@ -353,12 +310,13 @@ const ApplicantDetailPage = () => {
 
         <h3>Community</h3>
         <table>
-          <tr><td><strong>Current Kehila</strong></td><td>${applicant.currentKehila || 'N/A'}</td></tr>
-          <tr><td><strong>Shabbos Shul</strong></td><td>${applicant.shabbosShul || 'N/A'}</td></tr>
+          <tr><td><strong>Current Kehila</strong></td><td>${applicant.currentKehila || '-'}</td></tr>
+          <tr><td><strong>Shabbos Shul</strong></td><td>${applicant.shabbosShul || '-'}</td></tr>
         </table>
 
         ${childrenHtml}
         ${preferencesHtml}
+        ${propertyMatchesHtml}
 
         <p class="print-date">Printed on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</p>
       </body>
@@ -376,35 +334,26 @@ const ApplicantDetailPage = () => {
     {
       key: 'overview',
       label: 'Overview',
-      children: (
-        <OverviewTab
-          applicant={applicant}
-          onRecordBoardDecision={() => setBoardDecisionModalOpen(true)}
-          onUploadDocuments={() => setDocumentUploadModalOpen(true)}
-          canApprove={canApproveBoardDecisions()}
-        />
-      ),
-    },
-    {
-      key: 'housing',
-      label: 'Housing Search',
-      children: <HousingSearchTab applicant={applicant} onEditPreferences={() => setEditPreferencesModalOpen(true)} />,
+      children: <OverviewTab applicant={applicant} />,
     },
     ...(hs ? [{
       key: 'matches',
-      label: 'Property Matches',
+      label: 'Suggested Listings',
       children: (
         <PropertyMatchesTab
           housingSearchId={hs.id}
-          applicantName={`${applicant.husband.lastName} Family`}
+          applicantId={applicant.id}
+          applicantName={`${applicant.husband.firstName} ${applicant.husband.lastName}`}
           onCreateMatch={() => setCreateMatchModalOpen(true)}
-          onScheduleShowing={(matchIds) => {
-            // For now, schedule for first match (could extend to batch)
-            const matchId = matchIds[0];
-            setScheduleShowingModalData({
-              propertyMatchId: matchId,
-              applicantInfo: { name: `${applicant.husband.lastName} Family` },
-            });
+          onScheduleShowing={(matches) => {
+            // Queue all matches for sequential scheduling
+            setShowingsToSchedule(matches);
+          }}
+          onOpenScheduler={() => setSchedulerModalOpen(true)}
+          onEnterContract={(propertyId, offerAmount) => {
+            setPreselectedPropertyId(propertyId);
+            setPreselectedOfferAmount(offerAmount);
+            setActiveTransitionModal('needsContractInfo');
           }}
         />
       ),
@@ -413,11 +362,6 @@ const ApplicantDetailPage = () => {
       key: 'documents',
       label: 'Documents',
       children: <DocumentsTab applicantId={applicant.id} onUploadDocuments={() => setDocumentUploadModalOpen(true)} />,
-    },
-    {
-      key: 'reminders',
-      label: 'Reminders',
-      children: <RemindersTab applicantId={applicant.id} onAddReminder={() => setReminderModalOpen(true)} />,
     },
     {
       key: 'activity',
@@ -447,41 +391,70 @@ const ApplicantDetailPage = () => {
             </div>
             <div className="header-info">
               <Title level={3} style={{ margin: 0 }}>
-                {applicant.husband.lastName} Family
+                {applicant.husband.firstName} {applicant.husband.lastName}
               </Title>
-              <Text type="secondary">
-                {applicant.husband.firstName}
-                {applicant.wife && ` & ${applicant.wife.firstName}`}
-              </Text>
               <div className="header-tags">
                 <Tag style={getStatusTagStyle(boardDecision)}>{boardDecision}</Tag>
                 <Tag style={getStageTagStyle(stage)}>{formatStageName(stage)}</Tag>
-                {stageChangeMenuItems && stageChangeMenuItems.length > 0 && (
-                  <Dropdown menu={{ items: stageChangeMenuItems }} trigger={['click']}>
-                    <Button size="small" icon={<SwapOutlined />}>
-                      Change Stage
-                    </Button>
-                  </Dropdown>
-                )}
               </div>
             </div>
           </div>
           <div className="header-actions">
-            <Button icon={<PhoneOutlined />} onClick={() => setActivityModalOpen(true)}>
+            <Button icon={<FormOutlined />} onClick={() => setActivityModalOpen(true)}>
               Log Activity
-            </Button>
-            <Button icon={<BellOutlined />} onClick={() => setReminderModalOpen(true)}>
-              Add Reminder
             </Button>
             <Button icon={<PrinterOutlined />} onClick={handlePrint}>
               Print
             </Button>
-            <Button icon={<EditOutlined />} onClick={() => setEditDrawerOpen(true)}>
+            <Button icon={<EditOutlined />} onClick={() => setEditModalOpen(true)}>
               Edit
             </Button>
           </div>
         </div>
       </Card>
+
+      {/* Stage Timeline */}
+      <StageTimeline
+        applicantId={applicant.id}
+        housingSearchId={hs?.id}
+        boardDecision={boardDecision}
+        currentStage={stage}
+        onTransitionModalOpen={(type) => setActiveTransitionModal(type)}
+        onBoardDecisionClick={() => setBoardDecisionModalOpen(true)}
+      />
+
+      {/* Urgent Reminders Banner - only shows when there are overdue or due today reminders */}
+      {urgentReminders.length > 0 && (
+        <Alert
+          type="warning"
+          icon={<BellOutlined />}
+          showIcon
+          style={{ marginBottom: 16 }}
+          message={
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+              <span>
+                <strong>{urgentReminders.length} reminder{urgentReminders.length > 1 ? 's' : ''}</strong> need attention
+              </span>
+              <Space size="small" wrap>
+                {urgentReminders.slice(0, 3).map((reminder: ReminderListDto) => (
+                  <Tag
+                    key={reminder.id}
+                    color={reminder.isOverdue ? 'red' : 'orange'}
+                    style={{ cursor: 'pointer', margin: 0 }}
+                    onClick={() => setReminderDetailId(reminder.id)}
+                  >
+                    {reminder.isOverdue && <ExclamationCircleOutlined style={{ marginRight: 4 }} />}
+                    {reminder.title}
+                  </Tag>
+                ))}
+                {urgentReminders.length > 3 && (
+                  <Tag color="default" style={{ margin: 0 }}>+{urgentReminders.length - 3} more</Tag>
+                )}
+              </Space>
+            </div>
+          }
+        />
+      )}
 
       {/* Tabs */}
       <Card className="tabs-card">
@@ -495,10 +468,10 @@ const ApplicantDetailPage = () => {
         applicant={applicant}
       />
 
-      {/* Edit Applicant Drawer */}
-      <EditApplicantDrawer
-        open={editDrawerOpen}
-        onClose={() => setEditDrawerOpen(false)}
+      {/* Edit Applicant Modal */}
+      <EditApplicantModal
+        open={editModalOpen}
+        onClose={() => setEditModalOpen(false)}
         applicant={applicant}
       />
 
@@ -509,19 +482,6 @@ const ApplicantDetailPage = () => {
         applicant={applicant}
       />
 
-      {/* Create Reminder Modal */}
-      <CreateReminderModal
-        open={reminderModalOpen}
-        onClose={() => setReminderModalOpen(false)}
-        onSuccess={() => {
-          setReminderModalOpen(false);
-          queryClient.invalidateQueries({ queryKey: ['applicantReminders', applicant.id] });
-        }}
-        entityType="Applicant"
-        entityId={applicant.id}
-        entityDisplayName={`${applicant.husband.lastName} Family`}
-      />
-
       {/* Log Activity Modal */}
       <LogActivityModal
         open={activityModalOpen}
@@ -529,13 +489,16 @@ const ApplicantDetailPage = () => {
         onSuccess={() => {
           setActivityModalOpen(false);
           queryClient.invalidateQueries({ queryKey: ['applicant-audit', applicant.id] });
+          // Also invalidate reminders in case a follow-up was created
+          queryClient.invalidateQueries({ queryKey: ['applicantReminders', applicant.id] });
+          queryClient.invalidateQueries({ queryKey: ['reminderCounts'] });
         }}
         entityType="Applicant"
         entityId={applicant.id}
-        entityName={`${applicant.husband.lastName} Family`}
+        entityName={`${applicant.husband.firstName} ${applicant.husband.lastName}`}
       />
 
-      {/* Create Property Match Modal */}
+      {/* Create Suggested Listing Modal */}
       {hs && (
         <CreatePropertyMatchModal
           open={createMatchModalOpen}
@@ -544,25 +507,36 @@ const ApplicantDetailPage = () => {
         />
       )}
 
-      {/* Schedule Showing Modal */}
-      {scheduleShowingModalData && (
+      {/* Schedule Showing Modal - processes queue of showings sequentially */}
+      {showingsToSchedule.length > 0 && (
         <ScheduleShowingModal
           open={true}
-          onClose={() => setScheduleShowingModalData(null)}
-          propertyMatchId={scheduleShowingModalData.propertyMatchId}
-          propertyInfo={scheduleShowingModalData.propertyInfo}
-          applicantInfo={scheduleShowingModalData.applicantInfo}
+          onClose={() => {
+            // Advance to next showing in queue, or clear if done
+            setShowingsToSchedule((prev) => prev.slice(1));
+          }}
+          propertyMatchId={showingsToSchedule[0].id}
+          propertyInfo={{
+            street: showingsToSchedule[0].propertyStreet,
+            city: showingsToSchedule[0].propertyCity,
+          }}
+          applicantInfo={{ name: showingsToSchedule[0].applicantName }}
+          queueInfo={showingsToSchedule.length > 1 ? {
+            current: 1,
+            total: showingsToSchedule.length,
+          } : undefined}
         />
       )}
 
-      {/* Edit Preferences Modal */}
+
+      {/* Showing Scheduler Modal (Drag-and-Drop) */}
       {hs && (
-        <EditPreferencesModal
-          open={editPreferencesModalOpen}
-          onClose={() => setEditPreferencesModalOpen(false)}
-          housingSearchId={hs.id}
+        <ShowingSchedulerModal
+          open={schedulerModalOpen}
+          onClose={() => setSchedulerModalOpen(false)}
+          mode="applicant"
           applicantId={applicant.id}
-          preferences={hs.preferences}
+          housingSearchId={hs.id}
         />
       )}
 
@@ -581,9 +555,15 @@ const ApplicantDetailPage = () => {
 
           <ContractInfoModal
             open={activeTransitionModal === 'needsContractInfo'}
-            onClose={closeTransitionModal}
+            onClose={() => {
+              closeTransitionModal();
+              setPreselectedPropertyId(undefined);
+              setPreselectedOfferAmount(undefined);
+            }}
             housingSearchId={hs.id}
             familyName={applicant.husband.lastName}
+            preselectedPropertyId={preselectedPropertyId}
+            offerAmount={preselectedOfferAmount}
           />
 
           <ContractFailedModal
@@ -601,112 +581,192 @@ const ApplicantDetailPage = () => {
           />
         </>
       )}
+
+      {/* Reminder Detail Modal */}
+      <ReminderDetailModal
+        open={!!reminderDetailId}
+        reminderId={reminderDetailId}
+        onClose={() => setReminderDetailId(null)}
+        onComplete={(remId) => {
+          remindersApi.complete(remId).then(() => {
+            message.success('Reminder completed');
+            queryClient.invalidateQueries({ queryKey: ['applicantReminders', applicant.id] });
+            queryClient.invalidateQueries({ queryKey: ['reminderCounts'] });
+            setReminderDetailId(null);
+          }).catch(() => message.error('Failed to complete reminder'));
+        }}
+        onSnooze={(remId) => {
+          setReminderDetailId(null);
+          setSnoozeReminderId(remId);
+        }}
+        onDismiss={(remId) => {
+          remindersApi.dismiss(remId).then(() => {
+            message.success('Reminder dismissed');
+            queryClient.invalidateQueries({ queryKey: ['applicantReminders', applicant.id] });
+            queryClient.invalidateQueries({ queryKey: ['reminderCounts'] });
+            setReminderDetailId(null);
+          }).catch(() => message.error('Failed to dismiss reminder'));
+        }}
+        onReopen={(remId) => {
+          remindersApi.reopen(remId).then(() => {
+            message.success('Reminder reopened');
+            queryClient.invalidateQueries({ queryKey: ['applicantReminders', applicant.id] });
+            queryClient.invalidateQueries({ queryKey: ['reminderCounts'] });
+            setReminderDetailId(null);
+          }).catch(() => message.error('Failed to reopen reminder'));
+        }}
+      />
+
+      {/* Snooze Modal */}
+      <SnoozeModal
+        open={!!snoozeReminderId}
+        onClose={() => setSnoozeReminderId(null)}
+        onSnooze={async (snoozeUntil) => {
+          if (snoozeReminderId) {
+            await remindersApi.snooze(snoozeReminderId, { snoozeUntil });
+            message.success('Reminder snoozed');
+            queryClient.invalidateQueries({ queryKey: ['applicantReminders', applicant.id] });
+            queryClient.invalidateQueries({ queryKey: ['reminderCounts'] });
+            setSnoozeReminderId(null);
+          }
+        }}
+      />
     </div>
   );
 };
 
 // Helper to get primary phone
 const getPrimaryPhone = (phoneNumbers?: { number: string; isPrimary: boolean }[]) => {
-  if (!phoneNumbers || phoneNumbers.length === 0) return 'N/A';
+  if (!phoneNumbers || phoneNumbers.length === 0) return '-';
   const primary = phoneNumbers.find(p => p.isPrimary);
-  return primary?.number || phoneNumbers[0]?.number || 'N/A';
+  return primary?.number || phoneNumbers[0]?.number || '-';
 };
 
 // Overview Tab
 interface OverviewTabProps {
   applicant: ApplicantDto;
-  onRecordBoardDecision: () => void;
-  onUploadDocuments: () => void;
-  canApprove: boolean;
 }
 
-const OverviewTab = ({ applicant, onRecordBoardDecision, onUploadDocuments, canApprove }: OverviewTabProps) => {
+const OverviewTab = ({ applicant }: OverviewTabProps) => {
   const { husband, wife, address } = applicant;
+  const hs = applicant.housingSearch;
+  const [editPreferencesOpen, setEditPreferencesOpen] = useState(false);
 
-  // Determine if board review section should be shown
-  // Hide once they're past AwaitingAgreements (i.e., in Searching, UnderContract, Closed, etc.)
-  const boardDecision = applicant.boardReview?.decision || 'Pending';
-  const housingSearchStage = applicant.housingSearch?.stage;
-  const showBoardReview =
-    boardDecision === 'Pending' ||
-    boardDecision === 'Deferred' ||
-    boardDecision === 'Rejected' ||
-    housingSearchStage === 'AwaitingAgreements' ||
-    !housingSearchStage;
+  // Get phone icon based on type
+  const getPhoneIcon = (type: string) => {
+    switch (type.toLowerCase()) {
+      case 'mobile':
+      case 'cell':
+        return <MobileOutlined />;
+      case 'home':
+        return <HomeOutlined />;
+      case 'work':
+      case 'office':
+        return <PhoneOutlined />;
+      default:
+        return <PhoneOutlined />;
+    }
+  };
+
+  // Format phone numbers - one per line with icons
+  const formatPhones = (phoneNumbers?: { number: string; type: string; isPrimary: boolean }[]) => {
+    if (!phoneNumbers || phoneNumbers.length === 0) return '-';
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {phoneNumbers.map((p, idx) => (
+          <span key={idx} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Tooltip title={p.type}>
+              <span style={{ color: '#666' }}>{getPhoneIcon(p.type)}</span>
+            </Tooltip>
+            <a href={`tel:${p.number}`}>{p.number}</a>
+            {p.isPrimary && (
+              <Tooltip title="Primary">
+                <StarFilled style={{ color: '#faad14', fontSize: 12 }} />
+              </Tooltip>
+            )}
+          </span>
+        ))}
+      </div>
+    );
+  };
 
   return (
     <div className="tab-content">
-      <div className="info-grid">
-        {/* Board Review - Show only for pending/awaiting stages */}
-        {showBoardReview && (
-          <BoardReviewSection
-            applicant={applicant}
-            onRecordDecision={onRecordBoardDecision}
-            onUploadDocuments={onUploadDocuments}
-            canApprove={canApprove}
-          />
-        )}
-
+      {/* Two-column layout for Husband and Wife */}
+      <div className="family-info-grid">
         {/* Husband Info */}
         <Card title="Husband" size="small" className="info-card">
-          <Descriptions column={1} size="small">
-            <Descriptions.Item label={<><UserOutlined /> Name</>}>
+          <Descriptions column={1} size="small" labelStyle={{ width: 120 }}>
+            <Descriptions.Item label="Name">
               {husband.firstName} {husband.lastName}
             </Descriptions.Item>
-            <Descriptions.Item label={<><MailOutlined /> Email</>}>
-              {husband.email || 'N/A'}
+            <Descriptions.Item label="Father's Name">
+              {husband.fatherName || '-'}
             </Descriptions.Item>
-            <Descriptions.Item label={<><PhoneOutlined /> Phone</>}>
-              {getPrimaryPhone(husband.phoneNumbers)}
+            <Descriptions.Item label="Email">
+              {husband.email ? <a href={`mailto:${husband.email}`}>{husband.email}</a> : '-'}
+            </Descriptions.Item>
+            <Descriptions.Item label="Phone">
+              {formatPhones(husband.phoneNumbers)}
             </Descriptions.Item>
             <Descriptions.Item label="Occupation">
-              {husband.occupation || 'N/A'}
+              {husband.occupation || '-'}
+            </Descriptions.Item>
+            <Descriptions.Item label="Employer">
+              {husband.employerName || '-'}
             </Descriptions.Item>
           </Descriptions>
         </Card>
 
         {/* Wife Info */}
-        {wife && (
-          <Card title="Wife" size="small" className="info-card">
-            <Descriptions column={1} size="small">
-              <Descriptions.Item label={<><UserOutlined /> Name</>}>
+        <Card title="Wife" size="small" className="info-card">
+          {wife ? (
+            <Descriptions column={1} size="small" labelStyle={{ width: 120 }}>
+              <Descriptions.Item label="Name">
                 {wife.firstName} {wife.maidenName ? `(${wife.maidenName})` : ''}
               </Descriptions.Item>
-              <Descriptions.Item label={<><MailOutlined /> Email</>}>
-                {wife.email || 'N/A'}
+              <Descriptions.Item label="Father's Name">
+                {wife.fatherName || '-'}
               </Descriptions.Item>
-              <Descriptions.Item label={<><PhoneOutlined /> Phone</>}>
-                {getPrimaryPhone(wife.phoneNumbers)}
+              <Descriptions.Item label="Email">
+                {wife.email ? <a href={`mailto:${wife.email}`}>{wife.email}</a> : '-'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Phone">
+                {formatPhones(wife.phoneNumbers)}
               </Descriptions.Item>
               <Descriptions.Item label="Occupation">
-                {wife.occupation || 'N/A'}
+                {wife.occupation || '-'}
+              </Descriptions.Item>
+              <Descriptions.Item label="High School">
+                {wife.highSchool || '-'}
               </Descriptions.Item>
             </Descriptions>
-          </Card>
-        )}
+          ) : (
+            <Text type="secondary">No wife information</Text>
+          )}
+        </Card>
+      </div>
 
-        {/* Address */}
-        {address && (
-          <Card title="Current Address" size="small" className="info-card">
-            <Descriptions column={1} size="small">
-              <Descriptions.Item label={<><HomeOutlined /> Street</>}>
-                {address.street}
-              </Descriptions.Item>
-              <Descriptions.Item label="City">
-                {address.city}, {address.state} {address.zipCode}
-              </Descriptions.Item>
-            </Descriptions>
-          </Card>
-        )}
-
-        {/* Community */}
-        <Card title="Community" size="small" className="info-card">
-          <Descriptions column={1} size="small">
+      {/* Two-column layout for Family Details and Children */}
+      <div className="family-info-grid" style={{ marginTop: 16 }}>
+        {/* Family Details - Address & Community */}
+        <Card title="Family Details" size="small" className="info-card">
+          <Descriptions column={1} size="small" labelStyle={{ width: 120 }}>
+            <Descriptions.Item label="Address">
+              {address ? (
+                <>
+                  {address.street}{address.street2 ? `, ${address.street2}` : ''}<br />
+                  {address.city}, {address.state} {address.zipCode}
+                </>
+              ) : (
+                '-'
+              )}
+            </Descriptions.Item>
             <Descriptions.Item label="Current Kehila">
-              {applicant.currentKehila || 'N/A'}
+              {applicant.currentKehila || '-'}
             </Descriptions.Item>
             <Descriptions.Item label="Shabbos Shul">
-              {applicant.shabbosShul || 'N/A'}
+              {applicant.shabbosShul || '-'}
             </Descriptions.Item>
           </Descriptions>
         </Card>
@@ -717,12 +777,12 @@ const OverviewTab = ({ applicant, onRecordBoardDecision, onUploadDocuments, canA
             <Table
               dataSource={applicant.children}
               columns={[
-                { title: 'Name', dataIndex: 'name', key: 'name' },
+                { title: 'Name', dataIndex: 'name', key: 'name', render: (v: string) => v || '-' },
                 { title: 'Age', dataIndex: 'age', key: 'age', width: 60 },
                 { title: 'Gender', dataIndex: 'gender', key: 'gender', width: 80 },
                 { title: 'School', dataIndex: 'school', key: 'school', render: (v: string) => v || '-' },
               ]}
-              rowKey="name"
+              rowKey={(record, index) => record.name || `child-${index}`}
               pagination={false}
               size="small"
             />
@@ -731,128 +791,130 @@ const OverviewTab = ({ applicant, onRecordBoardDecision, onUploadDocuments, canA
           )}
         </Card>
       </div>
-    </div>
-  );
-};
 
-// Housing Search Tab
-interface HousingSearchTabProps {
-  applicant: ApplicantDto;
-  onEditPreferences: () => void;
-}
-
-const HousingSearchTab = ({ applicant, onEditPreferences }: HousingSearchTabProps) => {
-  const hs = applicant.housingSearch;
-
-  if (!hs) {
-    return <Empty description="No housing search data" />;
-  }
-
-  const prefs = hs.preferences;
-
-  return (
-    <div className="tab-content">
-      <div className="info-grid">
-        {/* Status */}
-        <Card title="Status" size="small" className="info-card">
-          <Descriptions column={1} size="small">
-            <Descriptions.Item label="Stage">
-              {hs.stage}
-            </Descriptions.Item>
-            <Descriptions.Item label="Stage Changed">
-              {new Date(hs.stageChangedDate).toLocaleDateString()}
-            </Descriptions.Item>
-            <Descriptions.Item label="Failed Contracts">
-              {hs.failedContractCount}
-            </Descriptions.Item>
-          </Descriptions>
-        </Card>
-
-        {/* Preferences */}
-        <Card
-          title="Preferences"
-          size="small"
-          className="info-card"
-          extra={
-            <Button
-              type="text"
-              icon={<EditOutlined />}
+      {/* Housing Searches - show all, active first */}
+      {applicant.allHousingSearches && applicant.allHousingSearches.length > 0 && (
+        <>
+          {applicant.allHousingSearches.map((search, index) => (
+            <Card
+              key={search.id}
+              title={index === 0 && search.isActive ? 'Housing Search' : `Housing Search (${new Date(search.createdDate).toLocaleDateString()})`}
               size="small"
-              onClick={onEditPreferences}
-            />
-          }
-        >
-          {prefs ? (
-            <Descriptions column={1} size="small">
-              <Descriptions.Item label="Budget">
-                {prefs.budgetAmount
-                  ? `$${prefs.budgetAmount.toLocaleString()}`
-                  : 'N/A'}
-              </Descriptions.Item>
-              <Descriptions.Item label="Bedrooms">
-                {prefs.minBedrooms ? `${prefs.minBedrooms}+` : 'N/A'}
-              </Descriptions.Item>
-              <Descriptions.Item label="Bathrooms">
-                {prefs.minBathrooms ? `${prefs.minBathrooms}+` : 'N/A'}
-              </Descriptions.Item>
-              <Descriptions.Item label="Move Timeline">
-                {prefs.moveTimeline || 'N/A'}
-              </Descriptions.Item>
-            </Descriptions>
-          ) : (
-            <Text type="secondary">No preferences set. Click edit to add.</Text>
-          )}
-        </Card>
+              className="info-card"
+              style={{
+                marginTop: 16,
+                opacity: search.isActive ? 1 : 0.7,
+                borderColor: search.isActive ? undefined : '#d9d9d9',
+              }}
+              extra={
+                <Space>
+                  <Tag color={search.isActive ? 'green' : 'default'}>{search.isActive ? 'Active' : 'Inactive'}</Tag>
+                  {search.isActive && (
+                    <Button size="small" icon={<EditOutlined />} onClick={() => setEditPreferencesOpen(true)}>
+                      Edit Preferences
+                    </Button>
+                  )}
+                </Space>
+              }
+            >
+              <div className="family-info-grid">
+                {/* Status */}
+                <Descriptions column={1} size="small" labelStyle={{ width: 140 }}>
+                  <Descriptions.Item label="Stage">
+                    <Tag>{search.stage}</Tag>
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Stage Changed">
+                    {new Date(search.stageChangedDate).toLocaleDateString()}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Failed Contracts">
+                    {search.failedContractCount}
+                  </Descriptions.Item>
+                  {search.currentContract && (
+                    <>
+                      <Descriptions.Item label="Contract Price">
+                        ${search.currentContract.price.toLocaleString()}
+                      </Descriptions.Item>
+                      <Descriptions.Item label="Contract Date">
+                        {new Date(search.currentContract.contractDate).toLocaleDateString()}
+                      </Descriptions.Item>
+                      {search.currentContract.expectedClosingDate && (
+                        <Descriptions.Item label="Expected Closing">
+                          {new Date(search.currentContract.expectedClosingDate).toLocaleDateString()}
+                        </Descriptions.Item>
+                      )}
+                    </>
+                  )}
+                </Descriptions>
 
-        {/* Required Features */}
-        {prefs?.requiredFeatures && prefs.requiredFeatures.length > 0 && (
-          <Card title="Required Features" size="small" className="info-card">
-            <Space wrap>
-              {prefs.requiredFeatures.map((feature) => (
-                <Tag key={feature}>{feature}</Tag>
-              ))}
-            </Space>
-          </Card>
-        )}
+                {/* Preferences - only show for active search */}
+                {search.isActive && search.preferences && (
+                  <Descriptions column={1} size="small" labelStyle={{ width: 140 }}>
+                    <Descriptions.Item label="Budget">
+                      {search.preferences.budgetAmount
+                        ? `$${search.preferences.budgetAmount.toLocaleString()}`
+                        : '-'}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Bedrooms">
+                      {search.preferences.minBedrooms ? `${search.preferences.minBedrooms}+` : '-'}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Bathrooms">
+                      {search.preferences.minBathrooms ? `${search.preferences.minBathrooms}+` : '-'}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Move Timeline">
+                      {search.preferences.moveTimeline || '-'}
+                    </Descriptions.Item>
+                    {search.preferences.requiredFeatures && search.preferences.requiredFeatures.length > 0 && (
+                      <Descriptions.Item label="Required Features">
+                        <Space wrap size={[4, 4]}>
+                          {search.preferences.requiredFeatures.map((feature) => (
+                            <Tag key={feature} style={{ margin: 0 }}>{feature}</Tag>
+                          ))}
+                        </Space>
+                      </Descriptions.Item>
+                    )}
+                  </Descriptions>
+                )}
+              </div>
+            </Card>
+          ))}
+        </>
+      )}
 
-        {/* Current Contract */}
-        {hs.currentContract && (
-          <Card title="Current Contract" size="small" className="info-card">
-            <Descriptions column={1} size="small">
-              <Descriptions.Item label="Contract Price">
-                ${hs.currentContract.price.toLocaleString()}
-              </Descriptions.Item>
-              <Descriptions.Item label="Contract Date">
-                {new Date(hs.currentContract.contractDate).toLocaleDateString()}
-              </Descriptions.Item>
-              {hs.currentContract.expectedClosingDate && (
-                <Descriptions.Item label="Expected Closing">
-                  {new Date(hs.currentContract.expectedClosingDate).toLocaleDateString()}
-                </Descriptions.Item>
-              )}
-            </Descriptions>
-          </Card>
-        )}
-      </div>
+      {/* Edit Preferences Modal - uses the active housing search */}
+      {hs && (
+        <EditPreferencesModal
+          open={editPreferencesOpen}
+          onClose={() => setEditPreferencesOpen(false)}
+          housingSearchId={hs.id}
+          applicantId={applicant.id}
+          preferences={hs.preferences}
+        />
+      )}
     </div>
   );
 };
 
-// Property Matches Tab
+
+// Suggested Listings Tab
 interface PropertyMatchesTabProps {
   housingSearchId: string;
+  applicantId: string;
   applicantName: string;
   onCreateMatch: () => void;
-  onScheduleShowing: (matchIds: string[]) => void;
+  onScheduleShowing: (matches: MatchScheduleData[]) => void;
+  onOpenScheduler: () => void;
+  onEnterContract: (propertyId: string, offerAmount?: number) => void;
 }
 
-const PropertyMatchesTab = ({ housingSearchId, onCreateMatch, onScheduleShowing }: PropertyMatchesTabProps) => {
+const PropertyMatchesTab = ({ housingSearchId, onCreateMatch, onScheduleShowing, onOpenScheduler, onEnterContract }: PropertyMatchesTabProps) => {
   return (
     <div className="tab-content">
       <PropertyMatchList
         housingSearchId={housingSearchId}
         onCreateMatch={onCreateMatch}
         onScheduleShowings={onScheduleShowing}
+        onOpenScheduler={onOpenScheduler}
+        onEnterContract={onEnterContract}
         showApplicant={false}
         showProperty={true}
       />
@@ -962,140 +1024,6 @@ const DocumentsTab = ({ applicantId, onUploadDocuments }: DocumentsTabProps) => 
   );
 };
 
-// Reminders Tab
-interface RemindersTabProps {
-  applicantId: string;
-  onAddReminder: () => void;
-}
-
-const RemindersTab = ({ applicantId, onAddReminder }: RemindersTabProps) => {
-  const queryClient = useQueryClient();
-
-  const { data: reminders, isLoading } = useQuery({
-    queryKey: ['applicantReminders', applicantId],
-    queryFn: () => remindersApi.getByEntity('Applicant', applicantId, 'Open'),
-  });
-
-  const completeMutation = useMutation({
-    mutationFn: (reminderId: string) => remindersApi.complete(reminderId),
-    onSuccess: () => {
-      message.success('Reminder completed');
-      queryClient.invalidateQueries({ queryKey: ['applicantReminders', applicantId] });
-    },
-    onError: () => {
-      message.error('Failed to complete reminder');
-    },
-  });
-
-  const getPriorityColor = (priority: string) => {
-    const colors: Record<string, string> = {
-      Urgent: 'red',
-      High: 'orange',
-      Normal: 'blue',
-      Low: 'default',
-    };
-    return colors[priority] || 'default';
-  };
-
-  const isOverdue = (dueDate: string) => {
-    return new Date(dueDate) < new Date();
-  };
-
-  const isDueToday = (dueDate: string) => {
-    const today = new Date();
-    const due = new Date(dueDate);
-    return (
-      due.getFullYear() === today.getFullYear() &&
-      due.getMonth() === today.getMonth() &&
-      due.getDate() === today.getDate()
-    );
-  };
-
-  const columns = [
-    {
-      title: 'Title',
-      dataIndex: 'title',
-      key: 'title',
-      render: (text: string, record: ReminderListDto) => (
-        <Space>
-          <Text strong>{text}</Text>
-          {isOverdue(record.dueDate) && <Tag color="red">Overdue</Tag>}
-          {!isOverdue(record.dueDate) && isDueToday(record.dueDate) && (
-            <Tag color="orange">Due Today</Tag>
-          )}
-        </Space>
-      ),
-    },
-    {
-      title: 'Due Date',
-      dataIndex: 'dueDate',
-      key: 'dueDate',
-      width: 120,
-      render: (date: string) => new Date(date).toLocaleDateString(),
-    },
-    {
-      title: 'Priority',
-      dataIndex: 'priority',
-      key: 'priority',
-      width: 100,
-      render: (priority: string) => <Tag color={getPriorityColor(priority)}>{priority}</Tag>,
-    },
-    {
-      title: 'Actions',
-      key: 'actions',
-      width: 100,
-      render: (_: unknown, record: ReminderListDto) => (
-        <Button
-          type="link"
-          size="small"
-          icon={<CheckOutlined />}
-          onClick={() => completeMutation.mutate(record.id)}
-          loading={completeMutation.isPending}
-        >
-          Complete
-        </Button>
-      ),
-    },
-  ];
-
-  if (isLoading) {
-    return (
-      <div style={{ textAlign: 'center', padding: 40 }}>
-        <Spin />
-      </div>
-    );
-  }
-
-  return (
-    <div className="tab-content">
-      <div style={{ marginBottom: 16 }}>
-        <Button type="primary" icon={<BellOutlined />} onClick={onAddReminder}>
-          Add Reminder
-        </Button>
-      </div>
-      {reminders && reminders.length > 0 ? (
-        <Table
-          dataSource={reminders}
-          columns={columns}
-          rowKey="id"
-          pagination={false}
-          size="middle"
-          rowClassName={(record) => {
-            if (isOverdue(record.dueDate)) return 'reminder-overdue';
-            if (isDueToday(record.dueDate)) return 'reminder-due-today';
-            return '';
-          }}
-        />
-      ) : (
-        <Empty
-          description="No outstanding reminders"
-          image={<ClockCircleOutlined style={{ fontSize: 48, color: '#d9d9d9' }} />}
-        />
-      )}
-    </div>
-  );
-};
-
 // Activity Tab
 // Activity Tab with support for different activity types
 interface ActivityTabProps {
@@ -1121,7 +1049,7 @@ const ActivityTab = ({ applicantId, onLogActivity }: ActivityTabProps) => {
     return (
       <div className="tab-content">
         <div style={{ marginBottom: 16 }}>
-          <Button type="primary" icon={<PhoneOutlined />} onClick={onLogActivity}>
+          <Button type="primary" icon={<FormOutlined />} onClick={onLogActivity}>
             Log Activity
           </Button>
         </div>
@@ -1185,7 +1113,7 @@ const ActivityTab = ({ applicantId, onLogActivity }: ActivityTabProps) => {
   return (
     <div className="tab-content">
       <div style={{ marginBottom: 16 }}>
-        <Button type="primary" icon={<PhoneOutlined />} onClick={onLogActivity}>
+        <Button type="primary" icon={<FormOutlined />} onClick={onLogActivity}>
           Log Activity
         </Button>
       </div>
@@ -1228,6 +1156,179 @@ interface AuditHistoryTabProps {
   isLoading: boolean;
 }
 
+// Friendly names for entity types
+const entityTypeLabels: Record<string, string> = {
+  Applicant: 'Applicant',
+  HousingSearch: 'Housing Search',
+  PropertyMatch: 'Property Match',
+  Showing: 'Showing',
+};
+
+// Friendly names for common field names
+const fieldLabels: Record<string, string> = {
+  Status: 'Status',
+  Stage: 'Stage',
+  ScheduledDate: 'Scheduled Date',
+  ScheduledTime: 'Scheduled Time',
+  MatchScore: 'Match Score',
+  IsAutoMatched: 'Auto Matched',
+  Notes: 'Notes',
+  BoardDecision: 'Board Decision',
+  MinBedrooms: 'Min Bedrooms',
+  MaxBudget: 'Max Budget',
+  MinBudget: 'Min Budget',
+  PreferredCities: 'Preferred Cities',
+  MustHaveFeatures: 'Must Have Features',
+  NiceToHaveFeatures: 'Nice to Have Features',
+  BrokerUserId: 'Broker',
+  CompletedAt: 'Completed At',
+  PropertyMatchId: 'Property Match',
+  HousingSearchId: 'Housing Search',
+  PropertyId: 'Property',
+  ApplicantId: 'Applicant',
+  ShowingId: 'Showing',
+  CreatedAt: 'Created',
+  CreatedById: 'Created By',
+  CreatedDate: 'Created',
+  LastModifiedAt: 'Modified',
+  LastModifiedById: 'Modified By',
+  LastModifiedDate: 'Modified',
+  ModifiedAt: 'Modified',
+  ModifiedById: 'Modified By',
+  ModifiedDate: 'Modified',
+};
+
+// Fields that should only show new value (no old → new comparison)
+const metadataFields = new Set([
+  'CreatedAt', 'CreatedById', 'LastModifiedAt', 'LastModifiedById',
+  'ModifiedAt', 'ModifiedById', 'CreatedBy', 'ModifiedBy',
+  'CreatedDate', 'ModifiedDate', 'LastModifiedDate',
+]);
+
+// Status value labels
+const statusLabels: Record<string, string> = {
+  MatchIdentified: 'Match Identified',
+  ShowingRequested: 'Showing Requested',
+  ApplicantInterested: 'Interested',
+  ApplicantRejected: 'Rejected',
+  OfferMade: 'Offer Made',
+  Scheduled: 'Scheduled',
+  Completed: 'Completed',
+  Cancelled: 'Cancelled',
+  NoShow: 'No Show',
+  Submitted: 'Submitted',
+  AwaitingAgreements: 'Awaiting Agreements',
+  BoardReview: 'Board Review',
+  HouseHunting: 'House Hunting',
+  UnderContract: 'Under Contract',
+  Closed: 'Closed',
+};
+
+// Format timestamp in friendly format with full date and time
+const formatTimestamp = (timestamp: string): string => {
+  const date = new Date(timestamp);
+  const now = new Date();
+  const isToday = date.toDateString() === now.toDateString();
+  const isYesterday = new Date(now.getTime() - 86400000).toDateString() === date.toDateString();
+
+  const timeStr = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+
+  if (isToday) {
+    return `Today at ${timeStr}`;
+  }
+  if (isYesterday) {
+    return `Yesterday at ${timeStr}`;
+  }
+
+  const dateStr = date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
+  });
+
+  return `${dateStr} at ${timeStr}`;
+};
+
+// Check if a value looks like a GUID
+const isGuid = (value: string): boolean => {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+};
+
+// Format a value for display, with optional resolved names lookup
+const formatValue = (field: string, value: string, resolvedNames?: Record<string, string>): string => {
+  // Handle null/undefined values
+  if (value === 'null' || value === 'undefined' || value === '') {
+    return '';
+  }
+
+  // Check if this GUID has a resolved name
+  if (isGuid(value) && resolvedNames?.[value]) {
+    return resolvedNames[value];
+  }
+
+  // Check for status labels
+  if (statusLabels[value]) return statusLabels[value];
+
+  // Format booleans
+  if (value === 'true' || value === 'True') return 'Yes';
+  if (value === 'false' || value === 'False') return 'No';
+
+  // Format datetimes (fields ending in 'At' OR Modified/Created dates - these have time component)
+  const isDateTimeField = field.toLowerCase().endsWith('at') ||
+    field.toLowerCase().includes('modified') ||
+    field.toLowerCase().includes('created');
+  if (isDateTimeField && !field.toLowerCase().includes('time')) {
+    const date = new Date(value);
+    if (!isNaN(date.getTime())) {
+      return date.toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+      });
+    }
+  }
+
+  // Format dates (without time) - for fields like ScheduledDate
+  if (field.toLowerCase().includes('date') && !field.toLowerCase().includes('time') && !isDateTimeField) {
+    const date = new Date(value);
+    if (!isNaN(date.getTime()) && value.includes('-')) {
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+  }
+
+  // Format times
+  if (field.toLowerCase().includes('time') && value.includes(':')) {
+    const [hours, minutes] = value.split(':');
+    const hour = parseInt(hours, 10);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const hour12 = hour % 12 || 12;
+    return `${hour12}:${minutes} ${ampm}`;
+  }
+
+  // Format currency
+  if (field.toLowerCase().includes('budget') || field.toLowerCase().includes('price')) {
+    const num = parseFloat(value);
+    if (!isNaN(num)) {
+      return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(num);
+    }
+  }
+
+  // If it's still a GUID without a resolved name
+  if (isGuid(value)) {
+    // Handle empty/zero GUID (system/no user)
+    if (value.startsWith('00000000-0000-0000') || value === '00000000-0000-0000-0000-000000000000') {
+      return 'System';
+    }
+    // Show truncated version for other unresolved GUIDs
+    return value.substring(0, 8) + '...';
+  }
+
+  return value;
+};
+
 const AuditHistoryTab = ({ auditLogs, isLoading }: AuditHistoryTabProps) => {
   if (isLoading) {
     return (
@@ -1260,20 +1361,60 @@ const AuditHistoryTab = ({ auditLogs, isLoading }: AuditHistoryTabProps) => {
     }
   };
 
-  const formatChanges = (oldValues?: Record<string, unknown>, newValues?: Record<string, unknown>) => {
+  const getActionLabel = (action: string) => {
+    switch (action.toLowerCase()) {
+      case 'added': return 'Created';
+      case 'modified': return 'Updated';
+      case 'deleted': return 'Deleted';
+      default: return action;
+    }
+  };
+
+  const formatChanges = (
+    oldValues?: Record<string, unknown>,
+    newValues?: Record<string, unknown>,
+    resolvedNames?: Record<string, string>
+  ) => {
     if (!newValues) return null;
-    const changes: { field: string; oldValue?: string; newValue: string }[] = [];
+    const changes: { field: string; fieldLabel: string; oldValue?: string; newValue: string; isMetadata: boolean }[] = [];
 
     for (const [key, newVal] of Object.entries(newValues)) {
+      // Skip the primary Id field
+      if (key === 'Id') continue;
+
       const oldVal = oldValues?.[key];
-      if (oldVal !== newVal) {
-        changes.push({
-          field: key,
-          oldValue: oldVal !== undefined ? String(oldVal) : undefined,
-          newValue: String(newVal),
-        });
-      }
+
+      // Normalize empty values: treat null, undefined, "" as equivalent
+      const normalizeEmpty = (v: unknown) => (v === null || v === undefined || v === '' ? null : v);
+      const normalizedOld = normalizeEmpty(oldVal);
+      const normalizedNew = normalizeEmpty(newVal);
+
+      // Skip if no actual change (after normalizing empties)
+      if (normalizedOld === normalizedNew) continue;
+
+      const newValStr = String(newVal ?? '');
+      // For metadata fields (Created/Modified dates and users), only show new value
+      const isMetadata = metadataFields.has(key);
+      const oldValStr = !isMetadata && oldVal !== undefined && oldVal !== null && oldVal !== ''
+        ? String(oldVal)
+        : undefined;
+
+      changes.push({
+        field: key,
+        fieldLabel: fieldLabels[key] || key.replace(/([A-Z])/g, ' $1').trim(),
+        oldValue: oldValStr ? formatValue(key, oldValStr, resolvedNames) : undefined,
+        newValue: formatValue(key, newValStr, resolvedNames),
+        isMetadata,
+      });
     }
+
+    // Sort: metadata fields (Modified/Created) first, then others
+    changes.sort((a, b) => {
+      if (a.isMetadata && !b.isMetadata) return -1;
+      if (!a.isMetadata && b.isMetadata) return 1;
+      return 0;
+    });
+
     return changes;
   };
 
@@ -1281,7 +1422,14 @@ const AuditHistoryTab = ({ auditLogs, isLoading }: AuditHistoryTabProps) => {
     <div className="tab-content">
       <Timeline
         items={auditLogs.map((log) => {
-          const changes = formatChanges(log.oldValues, log.newValues);
+          const changes = formatChanges(log.oldValues, log.newValues, log.resolvedNames);
+          const entityLabel = entityTypeLabels[log.entityType] || log.entityType;
+          const actionLabel = getActionLabel(log.action);
+          // Use entityDescription if available, otherwise just the entity type
+          const entityInfo = log.entityDescription
+            ? `${entityLabel} - ${log.entityDescription}`
+            : entityLabel;
+
           return {
             dot: <HistoryOutlined style={{ color: '#8c8c8c' }} />,
             color: getActionColor(log.action),
@@ -1289,33 +1437,35 @@ const AuditHistoryTab = ({ auditLogs, isLoading }: AuditHistoryTabProps) => {
               <div className="timeline-item">
                 <div className="timeline-header">
                   <Space>
-                    <Tag color={getActionColor(log.action)}>{log.action}</Tag>
-                    <Text strong>{log.entityType}</Text>
+                    <Tag color={getActionColor(log.action)}>{actionLabel}</Tag>
+                    <Text strong>{entityInfo}</Text>
                   </Space>
                   <Text type="secondary" style={{ fontSize: 12 }}>
-                    {new Date(log.timestamp).toLocaleString()}
+                    {formatTimestamp(log.timestamp)}
                   </Text>
                 </div>
                 {changes && changes.length > 0 && (
                   <div style={{ marginTop: 8, fontSize: 13 }}>
                     {changes.map((change, idx) => (
-                      <div key={idx} style={{ color: '#666' }}>
-                        <Text code>{change.field}</Text>:{' '}
+                      <div key={idx} style={{ color: '#666', marginBottom: 2 }}>
+                        <Text style={{ color: change.isMetadata ? '#595959' : '#8c8c8c', fontWeight: change.isMetadata ? 600 : 400 }}>
+                          {change.fieldLabel}:
+                        </Text>{' '}
                         {change.oldValue && <Text delete type="secondary">{change.oldValue}</Text>}
                         {change.oldValue && ' → '}
-                        <Text>{change.newValue}</Text>
+                        <Text strong={change.isMetadata}>{change.newValue}</Text>
                       </div>
                     ))}
                   </div>
                 )}
-                {!changes?.length && (
-                  <Text style={{ display: 'block', marginTop: 4 }}>
-                    {log.action} {log.entityType}
+                {(!changes || changes.length === 0) && (
+                  <Text type="secondary" style={{ display: 'block', marginTop: 4, fontSize: 13 }}>
+                    {actionLabel} {entityLabel.toLowerCase()}
                   </Text>
                 )}
-                {log.userName && (
-                  <Text type="secondary" style={{ fontSize: 13, display: 'block', marginTop: 4 }}>
-                    by {log.userName}
+                {log.userEmail && (
+                  <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 4 }}>
+                    by {log.userEmail}
                   </Text>
                 )}
               </div>

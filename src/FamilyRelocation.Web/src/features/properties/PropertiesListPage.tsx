@@ -153,7 +153,7 @@ const PropertiesListPage = () => {
       title: 'Actions',
       key: 'actions',
       render: (_: unknown, record: PropertyListDto) => (
-        <Button type="link" size="small" onClick={() => navigate(`/properties/${record.id}`)}>
+        <Button type="link" size="small" onClick={() => navigate(`/listings/${record.id}`)}>
           View
         </Button>
       ),
@@ -230,7 +230,7 @@ const PropertiesListPage = () => {
         pagination={pagination}
         onChange={handleTableChange}
         onRow={(record) => ({
-          onClick: () => navigate(`/properties/${record.id}`),
+          onClick: () => navigate(`/listings/${record.id}`),
           style: { cursor: 'pointer' },
         })}
       />

@@ -74,6 +74,13 @@
   border-radius: 4px;
 }
 
+/* Header Actions */
+.header-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 /* Tabs Card */
 .tabs-card .ant-card-body {
   padding: 0 24px 24px;
@@ -88,7 +95,7 @@
   min-height: 300px;
 }
 
-/* Info Grid */
+/* Info Grid - legacy */
 .info-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -99,6 +106,33 @@
   .info-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* Family Info Grid - two columns for husband/wife */
+.family-info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 900px) {
+  .family-info-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.family-info-grid .ant-card {
+  height: 100%;
+}
+
+.family-info-grid .ant-descriptions-item-label {
+  color: var(--neutral-500);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.family-info-grid .ant-descriptions-item-content {
+  font-size: 14px;
 }
 
 .info-card {

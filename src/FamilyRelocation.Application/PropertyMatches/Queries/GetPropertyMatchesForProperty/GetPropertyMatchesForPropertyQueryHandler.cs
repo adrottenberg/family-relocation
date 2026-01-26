@@ -37,6 +37,43 @@ public class GetPropertyMatchesForPropertyQueryHandler : IRequestHandler<GetProp
             .Take(100) // Limit for safety
             .ToListAsync(cancellationToken);
 
-        return matches.Select(m => m.ToListDto()).ToList();
+        // Get all showings for these matches (all statuses)
+        var matchIds = matches.Select(m => m.Id).ToList();
+        var showingsList = await _context.Set<Showing>()
+            .Where(s => matchIds.Contains(s.PropertyMatchId))
+            .Select(s => new
+            {
+                s.Id,
+                s.PropertyMatchId,
+                s.ScheduledDateTime,
+                s.Status,
+                s.BrokerUserId,
+                s.Notes,
+                s.CompletedAt
+            })
+            .ToListAsync(cancellationToken);
+
+        // Group showings by PropertyMatchId
+        var showingsByMatch = showingsList
+            .GroupBy(s => s.PropertyMatchId)
+            .ToDictionary(
+                g => g.Key,
+                g => g.OrderByDescending(s => s.ScheduledDateTime)
+                      .Select(s => new MatchShowingDto
+                      {
+                          Id = s.Id,
+                          ScheduledDateTime = s.ScheduledDateTime,
+                          Status = s.Status.ToString(),
+                          BrokerUserId = s.BrokerUserId,
+                          Notes = s.Notes,
+                          CompletedAt = s.CompletedAt
+                      })
+                      .ToList());
+
+        return matches.Select(m =>
+        {
+            showingsByMatch.TryGetValue(m.Id, out var showings);
+            return m.ToListDto(showings);
+        }).ToList();
     }
 }

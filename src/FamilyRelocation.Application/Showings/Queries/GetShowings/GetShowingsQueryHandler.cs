@@ -28,14 +28,14 @@ public class GetShowingsQueryHandler : IRequestHandler<GetShowingsQuery, List<Sh
             .AsQueryable();
 
         // Apply filters
-        if (request.FromDate.HasValue)
+        if (request.FromDateTime.HasValue)
         {
-            query = query.Where(s => s.ScheduledDate >= request.FromDate.Value);
+            query = query.Where(s => s.ScheduledDateTime >= request.FromDateTime.Value);
         }
 
-        if (request.ToDate.HasValue)
+        if (request.ToDateTime.HasValue)
         {
-            query = query.Where(s => s.ScheduledDate <= request.ToDate.Value);
+            query = query.Where(s => s.ScheduledDateTime <= request.ToDateTime.Value);
         }
 
         if (!string.IsNullOrEmpty(request.Status) && Enum.TryParse<ShowingStatus>(request.Status, true, out var status))
@@ -54,8 +54,7 @@ public class GetShowingsQueryHandler : IRequestHandler<GetShowingsQuery, List<Sh
         }
 
         var showings = await query
-            .OrderBy(s => s.ScheduledDate)
-            .ThenBy(s => s.ScheduledTime)
+            .OrderBy(s => s.ScheduledDateTime)
             .Take(200) // Limit for safety
             .ToListAsync(cancellationToken);
 

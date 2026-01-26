@@ -13,12 +13,12 @@ public class FollowUpReminderTests
     public void Create_WithValidData_ShouldCreateReminder()
     {
         // Arrange
-        var dueDate = DateTime.UtcNow.Date.AddDays(1);
+        var dueDateTime = DateTime.UtcNow.AddDays(1);
 
         // Act
         var reminder = FollowUpReminder.Create(
             title: "Follow up with applicant",
-            dueDate: dueDate,
+            dueDateTime: dueDateTime,
             entityType: "Applicant",
             entityId: _entityId,
             createdBy: _userId,
@@ -28,8 +28,7 @@ public class FollowUpReminderTests
         reminder.Id.Should().NotBeEmpty();
         reminder.Title.Should().Be("Follow up with applicant");
         reminder.Notes.Should().Be("Need to confirm documents");
-        reminder.DueDate.Should().Be(dueDate);
-        reminder.DueTime.Should().BeNull();
+        reminder.DueDateTime.Should().BeCloseTo(dueDateTime, TimeSpan.FromSeconds(1));
         reminder.Priority.Should().Be(ReminderPriority.Normal);
         reminder.EntityType.Should().Be("Applicant");
         reminder.EntityId.Should().Be(_entityId);
@@ -42,35 +41,15 @@ public class FollowUpReminderTests
     }
 
     [Fact]
-    public void Create_WithDueTime_ShouldSetDueTime()
-    {
-        // Arrange
-        var dueDate = DateTime.UtcNow.Date.AddDays(1);
-        var dueTime = new TimeOnly(14, 30);
-
-        // Act
-        var reminder = FollowUpReminder.Create(
-            title: "Call at 2:30 PM",
-            dueDate: dueDate,
-            entityType: "Applicant",
-            entityId: _entityId,
-            createdBy: _userId,
-            dueTime: dueTime);
-
-        // Assert
-        reminder.DueTime.Should().Be(dueTime);
-    }
-
-    [Fact]
     public void Create_WithPriority_ShouldSetPriority()
     {
         // Arrange
-        var dueDate = DateTime.UtcNow.Date.AddDays(1);
+        var dueDateTime = DateTime.UtcNow.AddDays(1);
 
         // Act
         var reminder = FollowUpReminder.Create(
             title: "Urgent follow-up",
-            dueDate: dueDate,
+            dueDateTime: dueDateTime,
             entityType: "Applicant",
             entityId: _entityId,
             createdBy: _userId,
@@ -84,13 +63,13 @@ public class FollowUpReminderTests
     public void Create_WithAssignedUser_ShouldSetAssignedUser()
     {
         // Arrange
-        var dueDate = DateTime.UtcNow.Date.AddDays(1);
+        var dueDateTime = DateTime.UtcNow.AddDays(1);
         var assignedUserId = Guid.NewGuid();
 
         // Act
         var reminder = FollowUpReminder.Create(
             title: "Assigned task",
-            dueDate: dueDate,
+            dueDateTime: dueDateTime,
             entityType: "Applicant",
             entityId: _entityId,
             createdBy: _userId,
@@ -104,12 +83,12 @@ public class FollowUpReminderTests
     public void Create_WithEmailNotification_ShouldSetFlag()
     {
         // Arrange
-        var dueDate = DateTime.UtcNow.Date.AddDays(1);
+        var dueDateTime = DateTime.UtcNow.AddDays(1);
 
         // Act
         var reminder = FollowUpReminder.Create(
             title: "Send email reminder",
-            dueDate: dueDate,
+            dueDateTime: dueDateTime,
             entityType: "Applicant",
             entityId: _entityId,
             createdBy: _userId,
@@ -123,12 +102,12 @@ public class FollowUpReminderTests
     public void Create_WithEmptyTitle_ShouldThrow()
     {
         // Arrange
-        var dueDate = DateTime.UtcNow.Date.AddDays(1);
+        var dueDateTime = DateTime.UtcNow.AddDays(1);
 
         // Act
         var act = () => FollowUpReminder.Create(
             title: "",
-            dueDate: dueDate,
+            dueDateTime: dueDateTime,
             entityType: "Applicant",
             entityId: _entityId,
             createdBy: _userId);
@@ -142,13 +121,13 @@ public class FollowUpReminderTests
     public void Create_WithTitleExceeding200Characters_ShouldThrow()
     {
         // Arrange
-        var dueDate = DateTime.UtcNow.Date.AddDays(1);
+        var dueDateTime = DateTime.UtcNow.AddDays(1);
         var longTitle = new string('a', 201);
 
         // Act
         var act = () => FollowUpReminder.Create(
             title: longTitle,
-            dueDate: dueDate,
+            dueDateTime: dueDateTime,
             entityType: "Applicant",
             entityId: _entityId,
             createdBy: _userId);
@@ -162,12 +141,12 @@ public class FollowUpReminderTests
     public void Create_WithEmptyEntityType_ShouldThrow()
     {
         // Arrange
-        var dueDate = DateTime.UtcNow.Date.AddDays(1);
+        var dueDateTime = DateTime.UtcNow.AddDays(1);
 
         // Act
         var act = () => FollowUpReminder.Create(
             title: "Test",
-            dueDate: dueDate,
+            dueDateTime: dueDateTime,
             entityType: "",
             entityId: _entityId,
             createdBy: _userId);
@@ -178,40 +157,40 @@ public class FollowUpReminderTests
     }
 
     [Fact]
-    public void Create_WithPastDueDate_ShouldThrow()
+    public void Create_WithPastDueDateTime_ShouldThrow()
     {
         // Arrange
-        var pastDate = DateTime.UtcNow.Date.AddDays(-1);
+        var pastDateTime = DateTime.UtcNow.AddDays(-1);
 
         // Act
         var act = () => FollowUpReminder.Create(
             title: "Test",
-            dueDate: pastDate,
+            dueDateTime: pastDateTime,
             entityType: "Applicant",
             entityId: _entityId,
             createdBy: _userId);
 
         // Assert
         act.Should().Throw<ArgumentException>()
-            .WithParameterName("dueDate");
+            .WithParameterName("dueDateTime");
     }
 
     [Fact]
-    public void Create_WithTodaysDate_ShouldSucceed()
+    public void Create_WithNowDateTime_ShouldSucceed()
     {
-        // Arrange
-        var today = DateTime.UtcNow.Date;
+        // Arrange - allow slight flexibility for clock drift
+        var now = DateTime.UtcNow;
 
         // Act
         var reminder = FollowUpReminder.Create(
-            title: "Today's task",
-            dueDate: today,
+            title: "Now task",
+            dueDateTime: now,
             entityType: "Applicant",
             entityId: _entityId,
             createdBy: _userId);
 
         // Assert
-        reminder.DueDate.Should().Be(today);
+        reminder.DueDateTime.Should().BeCloseTo(now, TimeSpan.FromSeconds(1));
     }
 
     [Fact]
@@ -251,14 +230,14 @@ public class FollowUpReminderTests
     {
         // Arrange
         var reminder = CreateTestReminder();
-        var snoozeUntil = DateTime.UtcNow.Date.AddDays(3);
+        var snoozeUntil = DateTime.UtcNow.AddDays(3);
 
         // Act
         reminder.Snooze(snoozeUntil, _userId);
 
         // Assert
         reminder.Status.Should().Be(ReminderStatus.Snoozed);
-        reminder.SnoozedUntil.Should().Be(snoozeUntil.Date);
+        reminder.SnoozedUntil.Should().BeCloseTo(snoozeUntil, TimeSpan.FromSeconds(1));
         reminder.SnoozeCount.Should().Be(1);
     }
 
@@ -269,9 +248,9 @@ public class FollowUpReminderTests
         var reminder = CreateTestReminder();
 
         // Act
-        reminder.Snooze(DateTime.UtcNow.Date.AddDays(1), _userId);
-        reminder.Snooze(DateTime.UtcNow.Date.AddDays(2), _userId);
-        reminder.Snooze(DateTime.UtcNow.Date.AddDays(3), _userId);
+        reminder.Snooze(DateTime.UtcNow.AddDays(1), _userId);
+        reminder.Snooze(DateTime.UtcNow.AddDays(2), _userId);
+        reminder.Snooze(DateTime.UtcNow.AddDays(3), _userId);
 
         // Assert
         reminder.SnoozeCount.Should().Be(3);
@@ -285,7 +264,7 @@ public class FollowUpReminderTests
         reminder.Complete(_userId);
 
         // Act
-        var act = () => reminder.Snooze(DateTime.UtcNow.Date.AddDays(1), _userId);
+        var act = () => reminder.Snooze(DateTime.UtcNow.AddDays(1), _userId);
 
         // Assert
         act.Should().Throw<InvalidOperationException>()
@@ -293,14 +272,14 @@ public class FollowUpReminderTests
     }
 
     [Fact]
-    public void Snooze_WithPastDate_ShouldThrow()
+    public void Snooze_WithPastDateTime_ShouldThrow()
     {
         // Arrange
         var reminder = CreateTestReminder();
-        var pastDate = DateTime.UtcNow.Date.AddDays(-1);
+        var pastDateTime = DateTime.UtcNow.AddDays(-1);
 
         // Act
-        var act = () => reminder.Snooze(pastDate, _userId);
+        var act = () => reminder.Snooze(pastDateTime, _userId);
 
         // Assert
         act.Should().Throw<ArgumentException>()
@@ -388,7 +367,7 @@ public class FollowUpReminderTests
     {
         // Arrange
         var reminder = CreateTestReminder();
-        reminder.Snooze(DateTime.UtcNow.Date.AddDays(1), _userId);
+        reminder.Snooze(DateTime.UtcNow.AddDays(1), _userId);
 
         // Act
         var act = () => reminder.Reopen();
@@ -403,15 +382,13 @@ public class FollowUpReminderTests
     {
         // Arrange
         var reminder = CreateTestReminder();
-        var newDueDate = DateTime.UtcNow.Date.AddDays(5);
-        var newTime = new TimeOnly(10, 0);
+        var newDueDateTime = DateTime.UtcNow.AddDays(5);
         var newAssignee = Guid.NewGuid();
 
         // Act
         reminder.Update(
             title: "Updated title",
-            dueDate: newDueDate,
-            dueTime: newTime,
+            dueDateTime: newDueDateTime,
             priority: ReminderPriority.High,
             notes: "Updated notes",
             assignedToUserId: newAssignee,
@@ -419,8 +396,7 @@ public class FollowUpReminderTests
 
         // Assert
         reminder.Title.Should().Be("Updated title");
-        reminder.DueDate.Should().Be(newDueDate);
-        reminder.DueTime.Should().Be(newTime);
+        reminder.DueDateTime.Should().BeCloseTo(newDueDateTime, TimeSpan.FromSeconds(1));
         reminder.Priority.Should().Be(ReminderPriority.High);
         reminder.Notes.Should().Be("Updated notes");
         reminder.AssignedToUserId.Should().Be(newAssignee);
@@ -442,18 +418,18 @@ public class FollowUpReminderTests
     }
 
     [Fact]
-    public void Update_WithPastDueDate_ShouldThrow()
+    public void Update_WithPastDueDateTime_ShouldThrow()
     {
         // Arrange
         var reminder = CreateTestReminder();
-        var pastDate = DateTime.UtcNow.Date.AddDays(-1);
+        var pastDateTime = DateTime.UtcNow.AddDays(-1);
 
         // Act
-        var act = () => reminder.Update(dueDate: pastDate);
+        var act = () => reminder.Update(dueDateTime: pastDateTime);
 
         // Assert
         act.Should().Throw<ArgumentException>()
-            .WithParameterName("dueDate");
+            .WithParameterName("dueDateTime");
     }
 
     [Fact]
@@ -462,105 +438,42 @@ public class FollowUpReminderTests
         // Arrange
         var reminder = CreateTestReminder();
         var originalTitle = reminder.Title;
-        var originalDueDate = reminder.DueDate;
+        var originalDueDateTime = reminder.DueDateTime;
 
         // Act
         reminder.Update(notes: "Only updating notes");
 
         // Assert
         reminder.Title.Should().Be(originalTitle);
-        reminder.DueDate.Should().Be(originalDueDate);
+        reminder.DueDateTime.Should().Be(originalDueDateTime);
         reminder.Notes.Should().Be("Only updating notes");
     }
 
     [Fact]
-    public void IsOverdue_WhenPastDueDate_ShouldReturnTrue()
-    {
-        // Arrange - need to create a reminder that appears to be overdue
-        // Since Create prevents past dates, we'll check that today's reminder is not overdue
-        var reminder = FollowUpReminder.Create(
-            title: "Today's task",
-            dueDate: DateTime.UtcNow.Date,
-            entityType: "Applicant",
-            entityId: _entityId,
-            createdBy: _userId);
-
-        // Act & Assert - today's date at minimum should not be overdue
-        // (The actual IsOverdue logic checks against current time)
-        reminder.Status.Should().Be(ReminderStatus.Open);
-    }
-
-    [Fact]
-    public void IsOverdue_WhenCompleted_ShouldReturnFalse()
+    public void EffectiveDueDateTime_WhenNotSnoozed_ShouldReturnDueDateTime()
     {
         // Arrange
+        var dueDateTime = DateTime.UtcNow.AddDays(1);
         var reminder = FollowUpReminder.Create(
             title: "Test",
-            dueDate: DateTime.UtcNow.Date,
-            entityType: "Applicant",
-            entityId: _entityId,
-            createdBy: _userId);
-        reminder.Complete(_userId);
-
-        // Assert - completed reminders are never overdue
-        reminder.IsOverdue.Should().BeFalse();
-    }
-
-    [Fact]
-    public void IsDueToday_WhenDueToday_ShouldReturnTrue()
-    {
-        // Arrange
-        var reminder = FollowUpReminder.Create(
-            title: "Due today",
-            dueDate: DateTime.UtcNow.Date,
+            dueDateTime: dueDateTime,
             entityType: "Applicant",
             entityId: _entityId,
             createdBy: _userId);
 
         // Assert
-        reminder.IsDueToday.Should().BeTrue();
+        reminder.EffectiveDueDateTime.Should().BeCloseTo(dueDateTime, TimeSpan.FromSeconds(1));
     }
 
     [Fact]
-    public void IsDueToday_WhenDueTomorrow_ShouldReturnFalse()
+    public void EffectiveDueDateTime_WhenSnoozed_ShouldReturnSnoozedUntil()
     {
         // Arrange
-        var reminder = FollowUpReminder.Create(
-            title: "Due tomorrow",
-            dueDate: DateTime.UtcNow.Date.AddDays(1),
-            entityType: "Applicant",
-            entityId: _entityId,
-            createdBy: _userId);
-
-        // Assert
-        reminder.IsDueToday.Should().BeFalse();
-    }
-
-    [Fact]
-    public void EffectiveDueDate_WhenNotSnoozed_ShouldReturnDueDate()
-    {
-        // Arrange
-        var dueDate = DateTime.UtcNow.Date.AddDays(1);
+        var dueDateTime = DateTime.UtcNow.AddDays(1);
+        var snoozeUntil = DateTime.UtcNow.AddDays(3);
         var reminder = FollowUpReminder.Create(
             title: "Test",
-            dueDate: dueDate,
-            entityType: "Applicant",
-            entityId: _entityId,
-            createdBy: _userId);
-
-        // Assert
-        reminder.EffectiveDueDate.Should().Be(dueDate);
-    }
-
-    [Fact]
-    public void EffectiveDueDate_WhenSnoozed_ShouldReturnSnoozedUntil()
-    {
-        // Arrange
-        var dueDate = DateTime.UtcNow.Date.AddDays(1);
-        var snoozeUntil = DateTime.UtcNow.Date.AddDays(3);
-        var reminder = FollowUpReminder.Create(
-            title: "Test",
-            dueDate: dueDate,
+            dueDateTime: dueDateTime,
             entityType: "Applicant",
             entityId: _entityId,
             createdBy: _userId);
@@ -569,14 +482,14 @@ public class FollowUpReminderTests
         reminder.Snooze(snoozeUntil, _userId);
 
         // Assert
-        reminder.EffectiveDueDate.Should().Be(snoozeUntil.Date);
+        reminder.EffectiveDueDateTime.Should().BeCloseTo(snoozeUntil, TimeSpan.FromSeconds(1));
     }
 
     private FollowUpReminder CreateTestReminder()
     {
         return FollowUpReminder.Create(
             title: "Test reminder",
-            dueDate: DateTime.UtcNow.Date.AddDays(1),
+            dueDateTime: DateTime.UtcNow.AddDays(1),
             entityType: "Applicant",
             entityId: _entityId,
             createdBy: _userId,

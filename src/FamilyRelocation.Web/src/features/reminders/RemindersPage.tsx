@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Typography,
   Table,
@@ -32,6 +33,7 @@ import {
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
 import type { MenuProps } from 'antd';
 import dayjs from 'dayjs';
+import { formatDateTime, toUtcString } from '../../utils/datetime';
 import {
   remindersApi,
   ReminderListDto,
@@ -63,6 +65,7 @@ const statusColors: Record<ReminderStatus, string> = {
 };
 
 const RemindersPage = () => {
+  const queryClient = useQueryClient();
   const [reminders, setReminders] = useState<ReminderListDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState<TablePaginationConfig>({
@@ -102,8 +105,8 @@ const RemindersPage = () => {
       };
 
       if (filters.dateRange) {
-        params.dueDateFrom = filters.dateRange[0].format('YYYY-MM-DD');
-        params.dueDateTo = filters.dateRange[1].format('YYYY-MM-DD');
+        params.dueDateTimeFrom = toUtcString(filters.dateRange[0].startOf('day'));
+        params.dueDateTimeTo = toUtcString(filters.dateRange[1].endOf('day'));
       }
 
       const response: PaginatedList<ReminderListDto> = await remindersApi.getAll(params);
@@ -138,6 +141,7 @@ const RemindersPage = () => {
       await remindersApi.complete(id);
       message.success('Reminder completed');
       fetchReminders(pagination.current, pagination.pageSize);
+      queryClient.invalidateQueries({ queryKey: ['reminderCounts'] });
     } catch (error) {
       console.error('Failed to complete reminder:', error);
       message.error('Failed to complete reminder');
@@ -149,6 +153,7 @@ const RemindersPage = () => {
       await remindersApi.dismiss(id);
       message.success('Reminder dismissed');
       fetchReminders(pagination.current, pagination.pageSize);
+      queryClient.invalidateQueries({ queryKey: ['reminderCounts'] });
     } catch (error) {
       console.error('Failed to dismiss reminder:', error);
       message.error('Failed to dismiss reminder');
@@ -160,6 +165,7 @@ const RemindersPage = () => {
       await remindersApi.reopen(id);
       message.success('Reminder reopened');
       fetchReminders(pagination.current, pagination.pageSize);
+      queryClient.invalidateQueries({ queryKey: ['reminderCounts'] });
     } catch (error) {
       console.error('Failed to reopen reminder:', error);
       message.error('Failed to reopen reminder');
@@ -179,6 +185,7 @@ const RemindersPage = () => {
       setSnoozeModalOpen(false);
       setSelectedReminderId(null);
       fetchReminders(pagination.current, pagination.pageSize);
+      queryClient.invalidateQueries({ queryKey: ['reminderCounts'] });
     } catch (error) {
       console.error('Failed to snooze reminder:', error);
       message.error('Failed to snooze reminder');
@@ -223,14 +230,7 @@ const RemindersPage = () => {
     return items;
   };
 
-  const formatDate = (dateStr: string, timeStr?: string) => {
-    const date = dayjs(dateStr);
-    let formatted = date.format('MMM D, YYYY');
-    if (timeStr) {
-      formatted += ` at ${timeStr.substring(0, 5)}`;
-    }
-    return formatted;
-  };
+  // formatDateTime from utils handles timezone conversion
 
   const columns: ColumnsType<ReminderListDto> = [
     {
@@ -244,7 +244,12 @@ const RemindersPage = () => {
               <ExclamationCircleOutlined style={{ color: '#ff4d4f' }} />
             </Tooltip>
           )}
-          <span style={{ fontWeight: record.isOverdue ? 600 : 400 }}>{title}</span>
+          {record.isDueToday && !record.isOverdue && (
+            <Tooltip title="Due Today">
+              <ClockCircleOutlined style={{ color: '#faad14' }} />
+            </Tooltip>
+          )}
+          <span style={{ fontWeight: record.isOverdue || record.isDueToday ? 600 : 400 }}>{title}</span>
           {record.snoozeCount > 0 && (
             <Tag>Snoozed {record.snoozeCount}x</Tag>
           )}
@@ -253,7 +258,7 @@ const RemindersPage = () => {
     },
     {
       title: 'Due Date',
-      key: 'dueDate',
+      key: 'dueDateTime',
       render: (_, record) => {
         const isOverdue = record.isOverdue;
         const isDueToday = record.isDueToday;
@@ -264,7 +269,7 @@ const RemindersPage = () => {
               fontWeight: isOverdue || isDueToday ? 600 : 400,
             }}
           >
-            {formatDate(record.dueDate, record.dueTime)}
+            {formatDateTime(record.dueDateTime)}
             {isDueToday && !isOverdue && <Tag color="warning" style={{ marginLeft: 8 }}>Today</Tag>}
           </Text>
         );

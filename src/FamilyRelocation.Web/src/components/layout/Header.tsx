@@ -1,11 +1,23 @@
-import { Layout, Input, Button, Badge } from 'antd';
-import { SearchOutlined, BellOutlined } from '@ant-design/icons';
-import { useLocation } from 'react-router-dom';
+import { Layout, Button, Badge, Tooltip } from 'antd';
+import { BellOutlined } from '@ant-design/icons';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { remindersApi } from '../../api';
 
 const { Header: AntHeader } = Layout;
 
 const Header = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+
+  // Fetch global reminder counts using due report
+  const { data: dueReport } = useQuery({
+    queryKey: ['reminderCounts'],
+    queryFn: () => remindersApi.getDueReport(),
+    refetchInterval: 60000, // Refresh every minute
+  });
+
+  const urgentCount = (dueReport?.overdueCount || 0) + (dueReport?.dueTodayCount || 0);
 
   // Get page title based on current route
   const getPageTitle = () => {
@@ -13,6 +25,14 @@ const Header = () => {
     if (path.startsWith('/applicants/') && path !== '/applicants') return 'Applicant Details';
     if (path.startsWith('/applicants')) return 'Applicants';
     if (path.startsWith('/pipeline')) return 'Pipeline';
+    if (path.startsWith('/listings/') && path !== '/listings') return 'Listing Details';
+    if (path.startsWith('/listings')) return 'Listings';
+    if (path.startsWith('/showings')) return 'Showings Calendar';
+    if (path.startsWith('/reminders')) return 'Reminders';
+    if (path.startsWith('/shuls')) return 'Shuls';
+    if (path.startsWith('/users')) return 'Users';
+    if (path === '/settings/document-types') return 'Document Types';
+    if (path === '/settings/stage-requirements') return 'Stage Requirements';
     if (path.startsWith('/settings')) return 'Settings';
     return 'Dashboard';
   };
@@ -21,21 +41,18 @@ const Header = () => {
     <AntHeader className="app-header">
       <div className="header-left">
         <h1 className="page-title">{getPageTitle()}</h1>
-        <Input
-          className="header-search"
-          placeholder="Search families..."
-          prefix={<SearchOutlined />}
-          allowClear
-        />
       </div>
       <div className="header-right">
-        <Badge count={0} showZero={false}>
-          <Button
-            type="text"
-            icon={<BellOutlined style={{ fontSize: 18 }} />}
-            className="notification-btn"
-          />
-        </Badge>
+        <Tooltip title={urgentCount > 0 ? `${urgentCount} reminder${urgentCount > 1 ? 's' : ''} need attention` : 'No urgent reminders'}>
+          <Badge count={urgentCount} showZero={false}>
+            <Button
+              type="text"
+              icon={<BellOutlined style={{ fontSize: 18, color: urgentCount > 0 ? '#ff4d4f' : undefined }} />}
+              className="notification-btn"
+              onClick={() => navigate('/reminders')}
+            />
+          </Badge>
+        </Tooltip>
       </div>
     </AntHeader>
   );

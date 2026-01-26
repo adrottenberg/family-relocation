@@ -11,7 +11,7 @@ import {
 } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 import type { ShowingListDto } from '../../api/types';
-import dayjs from 'dayjs';
+import { formatDate, formatTime, isToday, isPast } from '../../utils/datetime';
 
 const { Text } = Typography;
 
@@ -44,10 +44,9 @@ const ShowingCard = ({
   onCancel,
   onNoShow,
 }: ShowingCardProps) => {
-  const showingDate = dayjs(showing.scheduledDate);
-  const showingTime = dayjs(`2000-01-01T${showing.scheduledTime}`);
-  const isPast = showingDate.isBefore(dayjs(), 'day');
-  const isToday = showingDate.isSame(dayjs(), 'day');
+  const showingDateTime = showing.scheduledDateTime;
+  const showingIsToday = isToday(showingDateTime);
+  const showingIsPast = isPast(showingDateTime);
 
   const menuItems: MenuProps['items'] = [];
 
@@ -81,7 +80,7 @@ const ShowingCard = ({
       size="small"
       style={{
         marginBottom: 12,
-        borderLeft: isToday ? '4px solid #1890ff' : isPast ? '4px solid #d9d9d9' : undefined,
+        borderLeft: showingIsToday ? '4px solid #1890ff' : showingIsPast ? '4px solid #d9d9d9' : undefined,
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -92,12 +91,12 @@ const ShowingCard = ({
               <span>
                 <CalendarOutlined style={{ marginRight: 6, color: '#1890ff' }} />
                 <Text strong>
-                  {isToday ? 'Today' : showingDate.format('ddd, MMM D, YYYY')}
+                  {showingIsToday ? 'Today' : formatDate(showingDateTime, 'ddd, MMM D, YYYY')}
                 </Text>
               </span>
               <span>
                 <ClockCircleOutlined style={{ marginRight: 6, color: '#1890ff' }} />
-                <Text>{showingTime.format('h:mm A')}</Text>
+                <Text>{formatTime(showingDateTime)}</Text>
               </span>
             </Space>
           </div>
@@ -105,7 +104,7 @@ const ShowingCard = ({
           {/* Property Info */}
           <div style={{ marginBottom: 4 }}>
             <HomeOutlined style={{ marginRight: 6, color: '#666' }} />
-            <Link to={`/properties/${showing.propertyId}`}>
+            <Link to={`/listings/${showing.propertyId}`}>
               {showing.propertyStreet}, {showing.propertyCity}
             </Link>
           </div>

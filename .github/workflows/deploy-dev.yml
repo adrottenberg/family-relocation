@@ -100,6 +100,7 @@ jobs:
         working-directory: src/FamilyRelocation.Web
         env:
           VITE_API_URL: https://dev.unionvaad.com/api
+          VITE_MAPBOX_TOKEN: ${{ secrets.MAPBOX_TOKEN }}
         run: npm run build
 
       - name: Configure AWS credentials

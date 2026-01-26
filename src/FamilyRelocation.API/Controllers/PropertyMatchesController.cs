@@ -140,7 +140,7 @@ public class PropertyMatchesController : ControllerBase
     {
         try
         {
-            var result = await _mediator.Send(new UpdatePropertyMatchStatusCommand(id, request.Status, request.Notes));
+            var result = await _mediator.Send(new UpdatePropertyMatchStatusCommand(id, request.Status, request.Notes, request.OfferAmount));
             return Ok(result);
         }
         catch (NotFoundException ex)

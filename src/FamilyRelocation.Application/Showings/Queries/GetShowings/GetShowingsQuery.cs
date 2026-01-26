@@ -7,8 +7,8 @@ namespace FamilyRelocation.Application.Showings.Queries.GetShowings;
 /// Query to get showings with optional filters.
 /// </summary>
 public record GetShowingsQuery(
-    DateOnly? FromDate = null,
-    DateOnly? ToDate = null,
+    DateTime? FromDateTime = null,
+    DateTime? ToDateTime = null,
     string? Status = null,
     Guid? BrokerId = null,
     Guid? PropertyMatchId = null) : IRequest<List<ShowingListDto>>;

@@ -17,7 +17,7 @@ const PropertyDetailPage = lazy(() => import('./features/properties/PropertyDeta
 const RemindersPage = lazy(() => import('./features/reminders/RemindersPage'));
 const SettingsPage = lazy(() => import('./features/settings/SettingsPage'));
 const UsersPage = lazy(() => import('./features/users/UsersPage'));
-const ShowingsPage = lazy(() => import('./features/showings/ShowingsPage'));
+const ShowingsCalendarPage = lazy(() => import('./features/showings/ShowingsCalendarPage'));
 const ShulsPage = lazy(() => import('./features/shuls/ShulsPage'));
 
 const LoadingFallback = () => (
@@ -62,11 +62,21 @@ function App() {
           <Route path="applicants" element={<ApplicantListPage />} />
           <Route path="applicants/:id" element={<ApplicantDetailPage />} />
           <Route path="pipeline" element={<PipelinePage />} />
-          <Route path="properties" element={<PropertiesListPage />} />
-          <Route path="properties/:id" element={<PropertyDetailPage />} />
-          <Route path="showings" element={<ShowingsPage />} />
+          {/* Listings (formerly Properties) */}
+          <Route path="listings" element={<PropertiesListPage />} />
+          <Route path="listings/:id" element={<PropertyDetailPage />} />
+          {/* Redirect old properties URLs */}
+          <Route path="properties" element={<Navigate to="/listings" replace />} />
+          <Route path="properties/:id" element={<Navigate to="/listings" replace />} />
+          {/* Showings Calendar */}
+          <Route path="showings" element={<ShowingsCalendarPage />} />
+          {/* Redirect old broker-showings to main showings */}
+          <Route path="broker-showings" element={<Navigate to="/showings" replace />} />
           <Route path="reminders" element={<RemindersPage />} />
-          <Route path="settings" element={<SettingsPage />} />
+          {/* Settings routes */}
+          <Route path="settings" element={<Navigate to="/settings/document-types" replace />} />
+          <Route path="settings/document-types" element={<SettingsPage section="documentTypes" />} />
+          <Route path="settings/stage-requirements" element={<SettingsPage section="stageRequirements" />} />
           <Route path="users" element={<UsersPage />} />
           <Route path="shuls" element={<ShulsPage />} />
         </Route>

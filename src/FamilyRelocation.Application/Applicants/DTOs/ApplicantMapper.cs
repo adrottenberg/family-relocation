@@ -23,6 +23,13 @@ public static class ApplicantMapper
             ? activeHousingSearch.Preferences.ToDto()
             : applicant.Preferences?.ToDto();
 
+        // Get all housing searches, sorted: active first, then by created date descending
+        var allSearches = applicant.HousingSearches
+            .OrderByDescending(hs => hs.IsActive)
+            .ThenByDescending(hs => hs.CreatedDate)
+            .Select(hs => hs.ToDto())
+            .ToList();
+
         return new ApplicantDto
         {
             Id = applicant.Id,
@@ -40,6 +47,7 @@ public static class ApplicantMapper
             CreatedDate = applicant.CreatedDate,
             BoardReview = applicant.BoardReview?.ToDto(),
             HousingSearch = activeHousingSearch?.ToDto(),
+            AllHousingSearches = allSearches.Count > 0 ? allSearches : null,
             Preferences = effectivePreferences
         };
     }
@@ -179,7 +187,9 @@ public static class ApplicantMapper
             Preferences = housingSearch.Preferences?.ToDto(),
             CurrentContract = housingSearch.CurrentContract?.ToContractDto(),
             FailedContractCount = housingSearch.FailedContractCount,
-            Notes = housingSearch.Notes
+            Notes = housingSearch.Notes,
+            IsActive = housingSearch.IsActive,
+            CreatedDate = housingSearch.CreatedDate
         };
     }
 

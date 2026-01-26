@@ -143,13 +143,13 @@ const BoardApprovalRequiredModal = ({
           subTitle={
             canApprove ? (
               <>
-                <strong>{familyName} Family</strong> needs board approval before they can start searching.
+                <strong>{familyName}</strong> needs board approval before they can start searching.
                 <br /><br />
                 You can record the decision now or go to the applicant detail page.
               </>
             ) : (
               <>
-                <strong>{familyName} Family</strong> needs board approval before they can start searching.
+                <strong>{familyName}</strong> needs board approval before they can start searching.
                 <br /><br />
                 Only board members can record decisions. Please contact a board member or admin to approve this applicant.
               </>
@@ -166,7 +166,7 @@ const BoardApprovalRequiredModal = ({
           </div>
 
           <div style={{ marginBottom: 16, padding: 12, background: '#f5f5f5', borderRadius: 6 }}>
-            <strong>Applicant:</strong> {familyName} Family
+            <strong>Applicant:</strong> {familyName}
           </div>
 
           <Form

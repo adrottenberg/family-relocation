@@ -67,18 +67,12 @@ export const applicantsApi = {
     return response.data;
   },
 
-  // Audit logs for an applicant
+  // Audit logs for an applicant (includes housing search, property matches, showings)
   getAuditLogs: async (
     applicantId: string,
     params?: { page?: number; pageSize?: number }
   ): Promise<PaginatedList<AuditLogDto>> => {
-    const response = await apiClient.get('/audit-logs', {
-      params: {
-        entityType: 'Applicant',
-        entityId: applicantId,
-        ...params,
-      },
-    });
+    const response = await apiClient.get(`/audit-logs/applicant/${applicantId}`, { params });
     return response.data;
   },
 };

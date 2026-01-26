@@ -42,8 +42,8 @@ public class RemindersController : ControllerBase
         [FromQuery] ReminderStatus? status = null,
         [FromQuery] ReminderPriority? priority = null,
         [FromQuery] Guid? assignedToUserId = null,
-        [FromQuery] DateTime? dueDateFrom = null,
-        [FromQuery] DateTime? dueDateTo = null,
+        [FromQuery] DateTime? dueDateTimeFrom = null,
+        [FromQuery] DateTime? dueDateTimeTo = null,
         [FromQuery] bool? overdueOnly = null,
         [FromQuery] bool? dueTodayOnly = null,
         [FromQuery] int skip = 0,
@@ -56,8 +56,8 @@ public class RemindersController : ControllerBase
             status,
             priority,
             assignedToUserId,
-            dueDateFrom,
-            dueDateTo,
+            dueDateTimeFrom,
+            dueDateTimeTo,
             overdueOnly,
             dueTodayOnly,
             skip,
@@ -133,11 +133,10 @@ public class RemindersController : ControllerBase
     {
         var command = new CreateReminderCommand(
             request.Title,
-            request.DueDate,
+            request.DueDateTime,
             request.EntityType,
             request.EntityId,
             request.Notes,
-            request.DueTime,
             request.Priority,
             request.AssignedToUserId,
             request.SendEmailNotification);
@@ -162,8 +161,7 @@ public class RemindersController : ControllerBase
             var command = new UpdateReminderCommand(
                 id,
                 request.Title,
-                request.DueDate,
-                request.DueTime,
+                request.DueDateTime,
                 request.Priority,
                 request.Notes,
                 request.AssignedToUserId,
@@ -203,7 +201,7 @@ public class RemindersController : ControllerBase
     }
 
     /// <summary>
-    /// Snoozes a reminder until a specified date.
+    /// Snoozes a reminder until a specified date/time.
     /// </summary>
     [HttpPost("{id:guid}/snooze")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -287,11 +285,10 @@ public class RemindersController : ControllerBase
 /// </summary>
 public record CreateReminderRequest(
     string Title,
-    DateTime DueDate,
+    DateTime DueDateTime,
     string EntityType,
     Guid EntityId,
     string? Notes = null,
-    TimeOnly? DueTime = null,
     ReminderPriority Priority = ReminderPriority.Normal,
     Guid? AssignedToUserId = null,
     bool SendEmailNotification = false);
@@ -301,8 +298,7 @@ public record CreateReminderRequest(
 /// </summary>
 public record UpdateReminderRequest(
     string? Title = null,
-    DateTime? DueDate = null,
-    TimeOnly? DueTime = null,
+    DateTime? DueDateTime = null,
     ReminderPriority? Priority = null,
     string? Notes = null,
     Guid? AssignedToUserId = null,

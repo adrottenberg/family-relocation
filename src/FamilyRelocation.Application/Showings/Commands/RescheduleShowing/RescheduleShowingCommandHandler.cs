@@ -41,10 +41,9 @@ public class RescheduleShowingCommandHandler : IRequestHandler<RescheduleShowing
             throw new NotFoundException(nameof(Showing), request.ShowingId);
         }
 
-        var oldDate = showing.ScheduledDate;
-        var oldTime = showing.ScheduledTime;
+        var oldDateTime = showing.ScheduledDateTime;
 
-        showing.Reschedule(request.NewDate, request.NewTime, userId);
+        showing.Reschedule(request.NewScheduledDateTime, userId);
         await _context.SaveChangesAsync(cancellationToken);
 
         var familyName = showing.PropertyMatch.HousingSearch.Applicant?.Husband?.LastName ?? "Unknown";
@@ -54,7 +53,7 @@ public class RescheduleShowingCommandHandler : IRequestHandler<RescheduleShowing
             "Showing",
             showing.Id,
             "Rescheduled",
-            $"Showing for {familyName} family at {propertyAddress} rescheduled from {oldDate:MMM d} at {oldTime} to {request.NewDate:MMM d, yyyy} at {request.NewTime}",
+            $"Showing for {familyName} family at {propertyAddress} rescheduled from {oldDateTime:MMM d 'at' h:mm tt} to {request.NewScheduledDateTime:MMM d, yyyy 'at' h:mm tt}",
             cancellationToken);
 
         return showing.ToDto();

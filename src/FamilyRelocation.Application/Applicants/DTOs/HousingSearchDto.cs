@@ -39,6 +39,16 @@ public record HousingSearchDto
     /// Notes about the housing search.
     /// </summary>
     public string? Notes { get; init; }
+
+    /// <summary>
+    /// Whether this housing search is currently active.
+    /// </summary>
+    public required bool IsActive { get; init; }
+
+    /// <summary>
+    /// Date when the housing search was created.
+    /// </summary>
+    public required DateTime CreatedDate { get; init; }
 }
 
 /// <summary>

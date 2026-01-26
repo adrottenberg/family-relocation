@@ -33,13 +33,13 @@ public class ShowingsController : ControllerBase
     [HttpGet]
     [ProducesResponseType(typeof(List<ShowingListDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAll(
-        [FromQuery] DateOnly? fromDate,
-        [FromQuery] DateOnly? toDate,
+        [FromQuery] DateTime? fromDateTime,
+        [FromQuery] DateTime? toDateTime,
         [FromQuery] string? status,
         [FromQuery] Guid? brokerId,
         [FromQuery] Guid? propertyMatchId)
     {
-        var result = await _mediator.Send(new GetShowingsQuery(fromDate, toDate, status, brokerId, propertyMatchId));
+        var result = await _mediator.Send(new GetShowingsQuery(fromDateTime, toDateTime, status, brokerId, propertyMatchId));
         return Ok(result);
     }
 
@@ -80,8 +80,7 @@ public class ShowingsController : ControllerBase
         {
             var result = await _mediator.Send(new ScheduleShowingCommand(
                 request.PropertyMatchId,
-                request.ScheduledDate,
-                request.ScheduledTime,
+                request.ScheduledDateTime,
                 request.Notes,
                 request.BrokerUserId));
             return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
@@ -108,7 +107,7 @@ public class ShowingsController : ControllerBase
     {
         try
         {
-            var result = await _mediator.Send(new RescheduleShowingCommand(id, request.NewDate, request.NewTime));
+            var result = await _mediator.Send(new RescheduleShowingCommand(id, request.NewScheduledDateTime));
             return Ok(result);
         }
         catch (NotFoundException ex)

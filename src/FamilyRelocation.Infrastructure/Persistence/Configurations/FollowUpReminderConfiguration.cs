@@ -20,10 +20,8 @@ public class FollowUpReminderConfiguration : IEntityTypeConfiguration<FollowUpRe
         builder.Property(r => r.Notes)
             .HasMaxLength(2000);
 
-        builder.Property(r => r.DueDate)
+        builder.Property(r => r.DueDateTime)
             .IsRequired();
-
-        builder.Property(r => r.DueTime);
 
         builder.Property(r => r.Priority)
             .HasConversion<string>()
@@ -68,15 +66,13 @@ public class FollowUpReminderConfiguration : IEntityTypeConfiguration<FollowUpRe
 
         // Indexes for common queries
         builder.HasIndex(r => r.Status);
-        builder.HasIndex(r => r.DueDate);
+        builder.HasIndex(r => r.DueDateTime);
         builder.HasIndex(r => r.Priority);
         builder.HasIndex(r => r.AssignedToUserId);
         builder.HasIndex(r => new { r.EntityType, r.EntityId });
-        builder.HasIndex(r => new { r.Status, r.DueDate });
+        builder.HasIndex(r => new { r.Status, r.DueDateTime });
 
         // Ignore computed properties
-        builder.Ignore(r => r.IsOverdue);
-        builder.Ignore(r => r.IsDueToday);
-        builder.Ignore(r => r.EffectiveDueDate);
+        builder.Ignore(r => r.EffectiveDueDateTime);
     }
 }

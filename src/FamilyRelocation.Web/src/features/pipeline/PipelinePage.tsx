@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, Input, Select, Typography, Spin, Empty, message } from 'antd';
-import { SearchOutlined, UserOutlined } from '@ant-design/icons';
+import { SearchOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { applicantsApi, housingSearchesApi, getStageRequirements } from '../../api';
 import type { ApplicantListItemDto } from '../../api/types';
@@ -111,17 +111,14 @@ const PipelinePage = () => {
           return pipelineStage === stageName;
         })
         .map((a: ApplicantListItemDto): PipelineItem => {
-          const nameParts = a.husbandFullName.split(' ');
-          const familyName = nameParts.pop() || a.husbandFullName;
-          const husbandFirstName = nameParts.join(' ') || '';
           const createdDate = new Date(a.createdDate);
           const daysInStage = Math.floor((Date.now() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
 
           return {
             applicantId: a.id,
             housingSearchId: a.housingSearchId || '',
-            familyName,
-            husbandFirstName,
+            familyName: a.husbandFullName, // Full name (FirstName LastName)
+            husbandFirstName: '', // No longer needed separately
             wifeFirstName: a.wifeMaidenName,
             childrenCount: 0, // Not available in list view
             boardDecision: a.boardDecision || 'Pending',
@@ -472,12 +469,6 @@ const KanbanCard = ({ item, borderColor, onDragStart, onClick }: KanbanCardProps
         >
           {item.boardDecision}
         </span>
-      </div>
-      <div className="card-subtitle">
-        <UserOutlined style={{ fontSize: 12, color: colors.neutral[400] }} />
-        <Text type="secondary" style={{ fontSize: 13 }}>
-          {item.husbandFirstName}
-        </Text>
       </div>
       <div className="card-details">
         {item.childrenCount > 0 && (

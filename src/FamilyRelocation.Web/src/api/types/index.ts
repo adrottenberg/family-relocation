@@ -67,6 +67,7 @@ export interface ApplicantDto {
   isSelfSubmitted: boolean;
   boardReview?: BoardReviewDto;
   housingSearch?: HousingSearchDto; // Active housing search (if approved)
+  allHousingSearches?: HousingSearchDto[]; // All housing searches (active first, then inactive by date)
   createdDate: string;
 }
 
@@ -127,6 +128,8 @@ export interface HousingSearchDto {
   currentContract?: ContractDto;
   failedContractCount: number;
   notes?: string;
+  isActive: boolean;
+  createdDate: string;
 }
 
 // Document types
@@ -209,8 +212,10 @@ export interface AuditLogDto {
   oldValues?: Record<string, unknown>;
   newValues?: Record<string, unknown>;
   userId?: string;
-  userName?: string;
+  userEmail?: string;
   timestamp: string;
+  resolvedNames?: Record<string, string>;
+  entityDescription?: string;
 }
 
 // Create Applicant Request - matches backend CreateApplicantCommand
@@ -319,10 +324,21 @@ export interface PropertyMatchDto {
   matchDetails?: MatchScoreBreakdownDto;
   notes?: string;
   isAutoMatched: boolean;
+  offerAmount?: number;
   createdAt: string;
   modifiedAt?: string;
   property: PropertyListDto;
   applicant: MatchApplicantDto;
+}
+
+export interface MatchShowingDto {
+  id: string;
+  scheduledDateTime: string; // UTC ISO datetime
+  status: string;
+  brokerUserId?: string;
+  brokerUserName?: string;
+  notes?: string;
+  completedAt?: string;
 }
 
 export interface PropertyMatchListDto {
@@ -333,6 +349,7 @@ export interface PropertyMatchListDto {
   matchScore: number;
   isAutoMatched: boolean;
   createdAt: string;
+  offerAmount?: number;
   propertyStreet: string;
   propertyCity: string;
   propertyPrice: number;
@@ -341,6 +358,10 @@ export interface PropertyMatchListDto {
   propertyPhotoUrl?: string;
   applicantId: string;
   applicantName: string;
+  // All showings for this match
+  showings: MatchShowingDto[];
+  // Convenience property - first scheduled showing datetime (computed on backend)
+  scheduledShowingDateTime?: string; // UTC ISO datetime
 }
 
 export interface MatchScoreBreakdownDto {
@@ -376,8 +397,7 @@ export type ShowingStatus = 'Scheduled' | 'Completed' | 'Cancelled' | 'NoShow';
 export interface ShowingDto {
   id: string;
   propertyMatchId: string;
-  scheduledDate: string;
-  scheduledTime: string;
+  scheduledDateTime: string; // UTC ISO datetime
   status: ShowingStatus;
   notes?: string;
   brokerUserId?: string;
@@ -397,8 +417,7 @@ export interface ShowingDto {
 export interface ShowingListDto {
   id: string;
   propertyMatchId: string;
-  scheduledDate: string;
-  scheduledTime: string;
+  scheduledDateTime: string; // UTC ISO datetime
   status: ShowingStatus;
   brokerUserId?: string;
   propertyId: string;
@@ -417,8 +436,7 @@ export interface ReminderDto {
   id: string;
   title: string;
   notes?: string;
-  dueDate: string;
-  dueTime?: string;
+  dueDateTime: string; // UTC ISO datetime
   priority: ReminderPriority;
   entityType: string;
   entityId: string;
@@ -446,8 +464,7 @@ export interface ReminderDto {
 export interface ReminderListDto {
   id: string;
   title: string;
-  dueDate: string;
-  dueTime?: string;
+  dueDateTime: string; // UTC ISO datetime
   priority: ReminderPriority;
   status: ReminderStatus;
   entityType: string;
@@ -518,4 +535,17 @@ export interface PropertyShulDistanceDto {
   distanceMiles: number;
   walkingTimeMinutes: number;
   calculatedAt: string;
+}
+
+// User Settings types
+export interface UserSettingsDto {
+  id: string;
+  userId: string;
+  timeZoneId: string;
+  createdAt: string;
+  modifiedAt?: string;
+}
+
+export interface UpdateTimezoneRequest {
+  timeZoneId: string;
 }

@@ -25,6 +25,7 @@ public static class PropertyMatchMapper
             MatchDetails = matchingService.DeserializeMatchDetails(match.MatchDetails),
             Notes = match.Notes,
             IsAutoMatched = match.IsAutoMatched,
+            OfferAmount = match.OfferAmount,
             CreatedAt = match.CreatedAt,
             ModifiedAt = match.ModifiedAt,
             Property = match.Property.ToListDto(),
@@ -42,7 +43,7 @@ public static class PropertyMatchMapper
     /// Maps a PropertyMatch entity to a PropertyMatchListDto for list views.
     /// Requires Property and HousingSearch with Applicant to be loaded.
     /// </summary>
-    public static PropertyMatchListDto ToListDto(this PropertyMatch match)
+    public static PropertyMatchListDto ToListDto(this PropertyMatch match, List<MatchShowingDto>? showings = null)
     {
         return new PropertyMatchListDto
         {
@@ -53,6 +54,7 @@ public static class PropertyMatchMapper
             MatchScore = match.MatchScore,
             IsAutoMatched = match.IsAutoMatched,
             CreatedAt = match.CreatedAt,
+            OfferAmount = match.OfferAmount,
             PropertyStreet = match.Property.Address.Street,
             PropertyCity = match.Property.Address.City,
             PropertyPrice = match.Property.Price.Amount,
@@ -60,7 +62,8 @@ public static class PropertyMatchMapper
             PropertyBathrooms = match.Property.Bathrooms,
             PropertyPhotoUrl = match.Property.PrimaryPhoto?.Url,
             ApplicantId = match.HousingSearch.ApplicantId,
-            ApplicantName = match.HousingSearch.Applicant.FamilyName
+            ApplicantName = match.HousingSearch.Applicant.FamilyName,
+            Showings = showings ?? []
         };
     }
 }

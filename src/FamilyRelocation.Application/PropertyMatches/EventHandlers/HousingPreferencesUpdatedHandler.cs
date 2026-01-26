@@ -216,7 +216,7 @@ public class HousingPreferencesUpdatedHandler : INotificationHandler<DomainEvent
         {
             var command = new CreateReminderCommand(
                 Title: $"New match found for {familyName} Family (preferences updated)",
-                DueDate: DateTime.UtcNow.Date.AddDays(1),
+                DueDateTime: DateTime.UtcNow.Date.AddDays(1).AddHours(9), // Due tomorrow 9 AM UTC
                 EntityType: "PropertyMatch",
                 EntityId: match.Id,
                 Notes: $"After updating preferences, property at {property.Address.Street}, {property.Address.City} now scores {match.MatchScore}% match. Review and schedule showing if appropriate.",

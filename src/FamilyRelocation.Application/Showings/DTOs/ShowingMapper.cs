@@ -17,8 +17,7 @@ public static class ShowingMapper
         {
             Id = showing.Id,
             PropertyMatchId = showing.PropertyMatchId,
-            ScheduledDate = showing.ScheduledDate,
-            ScheduledTime = showing.ScheduledTime,
+            ScheduledDateTime = showing.ScheduledDateTime,
             Status = showing.Status.ToString(),
             Notes = showing.Notes,
             BrokerUserId = showing.BrokerUserId,
@@ -46,8 +45,7 @@ public static class ShowingMapper
         {
             Id = showing.Id,
             PropertyMatchId = showing.PropertyMatchId,
-            ScheduledDate = showing.ScheduledDate,
-            ScheduledTime = showing.ScheduledTime,
+            ScheduledDateTime = showing.ScheduledDateTime,
             Status = showing.Status.ToString(),
             BrokerUserId = showing.BrokerUserId,
             PropertyId = showing.PropertyMatch.PropertyId,

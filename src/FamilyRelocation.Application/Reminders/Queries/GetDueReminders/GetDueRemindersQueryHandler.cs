@@ -13,58 +13,84 @@ namespace FamilyRelocation.Application.Reminders.Queries.GetDueReminders;
 public class GetDueRemindersQueryHandler : IRequestHandler<GetDueRemindersQuery, DueRemindersReportDto>
 {
     private readonly IApplicationDbContext _context;
+    private readonly IUserTimezoneService _timezoneService;
 
-    public GetDueRemindersQueryHandler(IApplicationDbContext context)
+    public GetDueRemindersQueryHandler(
+        IApplicationDbContext context,
+        IUserTimezoneService timezoneService)
     {
         _context = context;
+        _timezoneService = timezoneService;
     }
 
     public async Task<DueRemindersReportDto> Handle(GetDueRemindersQuery query, CancellationToken cancellationToken)
     {
-        var today = DateTime.UtcNow.Date;
-        var upcomingEndDate = today.AddDays(query.UpcomingDays);
+        // Get timezone-aware day boundaries
+        var todayStart = await _timezoneService.GetTodayStartUtcAsync();
+        var todayEnd = await _timezoneService.GetTodayEndUtcAsync();
+        var tomorrowStart = todayEnd.AddTicks(1);
+        var upcomingEndDate = todayStart.AddDays(query.UpcomingDays + 1);
+        var now = DateTime.UtcNow;
 
+        // Include both Open and Snoozed reminders
+        // For Snoozed reminders, use SnoozedUntil as the effective due date
         var baseQuery = _context.Set<FollowUpReminder>()
-            .Where(r => r.Status == ReminderStatus.Open);
+            .Where(r => r.Status == ReminderStatus.Open || r.Status == ReminderStatus.Snoozed);
 
         if (query.AssignedToUserId.HasValue)
             baseQuery = baseQuery.Where(r => r.AssignedToUserId == query.AssignedToUserId.Value);
 
-        // Get overdue reminders
+        // Get overdue reminders (Open with DueDateTime < now OR Snoozed with SnoozedUntil < now)
         var overdueReminders = await baseQuery
-            .Where(r => r.DueDate < today)
-            .OrderBy(r => r.DueDate)
+            .Where(r =>
+                (r.Status == ReminderStatus.Open && r.DueDateTime < now) ||
+                (r.Status == ReminderStatus.Snoozed && r.SnoozedUntil.HasValue && r.SnoozedUntil.Value < now))
+            .OrderBy(r => r.Status == ReminderStatus.Snoozed ? r.SnoozedUntil : r.DueDateTime)
             .ThenByDescending(r => r.Priority)
             .Take(20)
             .ToListAsync(cancellationToken);
 
-        // Get due today reminders
+        // Get due today reminders (DueDateTime >= todayStart AND DueDateTime <= todayEnd, but NOT overdue)
+        // A reminder is "due today" only if it's due later today (not yet past due)
         var dueTodayReminders = await baseQuery
-            .Where(r => r.DueDate == today)
+            .Where(r =>
+                (r.Status == ReminderStatus.Open && r.DueDateTime >= now && r.DueDateTime <= todayEnd) ||
+                (r.Status == ReminderStatus.Snoozed && r.SnoozedUntil.HasValue && r.SnoozedUntil.Value >= now && r.SnoozedUntil.Value <= todayEnd))
             .OrderByDescending(r => r.Priority)
-            .ThenBy(r => r.DueTime)
+            .ThenBy(r => r.DueDateTime)
             .Take(20)
             .ToListAsync(cancellationToken);
 
         // Get upcoming reminders (next N days, excluding today)
         var upcomingReminders = await baseQuery
-            .Where(r => r.DueDate > today && r.DueDate <= upcomingEndDate)
-            .OrderBy(r => r.DueDate)
+            .Where(r =>
+                (r.Status == ReminderStatus.Open && r.DueDateTime >= tomorrowStart && r.DueDateTime < upcomingEndDate) ||
+                (r.Status == ReminderStatus.Snoozed && r.SnoozedUntil.HasValue && r.SnoozedUntil.Value >= tomorrowStart && r.SnoozedUntil.Value < upcomingEndDate))
+            .OrderBy(r => r.Status == ReminderStatus.Snoozed ? r.SnoozedUntil : r.DueDateTime)
             .ThenByDescending(r => r.Priority)
             .Take(20)
             .ToListAsync(cancellationToken);
 
-        // Get counts
-        var overdueCount = await baseQuery.CountAsync(r => r.DueDate < today, cancellationToken);
-        var dueTodayCount = await baseQuery.CountAsync(r => r.DueDate == today, cancellationToken);
-        var upcomingCount = await baseQuery.CountAsync(r => r.DueDate > today && r.DueDate <= upcomingEndDate, cancellationToken);
+        // Get counts using same range-based logic
+        var overdueCount = await baseQuery.CountAsync(r =>
+            (r.Status == ReminderStatus.Open && r.DueDateTime < now) ||
+            (r.Status == ReminderStatus.Snoozed && r.SnoozedUntil.HasValue && r.SnoozedUntil.Value < now),
+            cancellationToken);
+        var dueTodayCount = await baseQuery.CountAsync(r =>
+            (r.Status == ReminderStatus.Open && r.DueDateTime >= now && r.DueDateTime <= todayEnd) ||
+            (r.Status == ReminderStatus.Snoozed && r.SnoozedUntil.HasValue && r.SnoozedUntil.Value >= now && r.SnoozedUntil.Value <= todayEnd),
+            cancellationToken);
+        var upcomingCount = await baseQuery.CountAsync(r =>
+            (r.Status == ReminderStatus.Open && r.DueDateTime >= tomorrowStart && r.DueDateTime < upcomingEndDate) ||
+            (r.Status == ReminderStatus.Snoozed && r.SnoozedUntil.HasValue && r.SnoozedUntil.Value >= tomorrowStart && r.SnoozedUntil.Value < upcomingEndDate),
+            cancellationToken);
         var totalOpenCount = await baseQuery.CountAsync(cancellationToken);
 
         return new DueRemindersReportDto
         {
-            Overdue = MapToDto(overdueReminders),
-            DueToday = MapToDto(dueTodayReminders),
-            Upcoming = MapToDto(upcomingReminders),
+            Overdue = MapToDto(overdueReminders, now, todayStart, todayEnd),
+            DueToday = MapToDto(dueTodayReminders, now, todayStart, todayEnd),
+            Upcoming = MapToDto(upcomingReminders, now, todayStart, todayEnd),
             OverdueCount = overdueCount,
             DueTodayCount = dueTodayCount,
             UpcomingCount = upcomingCount,
@@ -72,29 +98,36 @@ public class GetDueRemindersQueryHandler : IRequestHandler<GetDueRemindersQuery,
         };
     }
 
-    private static List<ReminderDto> MapToDto(List<FollowUpReminder> reminders)
+    private static List<ReminderDto> MapToDto(List<FollowUpReminder> reminders, DateTime now, DateTime todayStart, DateTime todayEnd)
     {
-        return reminders.Select(r => new ReminderDto
+        return reminders.Select(r =>
         {
-            Id = r.Id,
-            Title = r.Title,
-            Notes = r.Notes,
-            DueDate = r.DueDate,
-            DueTime = r.DueTime,
-            Priority = r.Priority,
-            EntityType = r.EntityType,
-            EntityId = r.EntityId,
-            AssignedToUserId = r.AssignedToUserId,
-            Status = r.Status,
-            SendEmailNotification = r.SendEmailNotification,
-            SnoozedUntil = r.SnoozedUntil,
-            SnoozeCount = r.SnoozeCount,
-            CreatedAt = r.CreatedAt,
-            CreatedBy = r.CreatedBy,
-            CompletedAt = r.CompletedAt,
-            CompletedBy = r.CompletedBy,
-            IsOverdue = r.IsOverdue,
-            IsDueToday = r.IsDueToday
+            var effectiveDue = r.EffectiveDueDateTime;
+            var isOverdue = effectiveDue < now && r.Status != ReminderStatus.Completed && r.Status != ReminderStatus.Dismissed;
+            // Due today means it's due later today (not yet overdue)
+            var isDueToday = effectiveDue >= now && effectiveDue <= todayEnd && r.Status != ReminderStatus.Completed && r.Status != ReminderStatus.Dismissed;
+
+            return new ReminderDto
+            {
+                Id = r.Id,
+                Title = r.Title,
+                Notes = r.Notes,
+                DueDateTime = r.DueDateTime,
+                Priority = r.Priority,
+                EntityType = r.EntityType,
+                EntityId = r.EntityId,
+                AssignedToUserId = r.AssignedToUserId,
+                Status = r.Status,
+                SendEmailNotification = r.SendEmailNotification,
+                SnoozedUntil = r.SnoozedUntil,
+                SnoozeCount = r.SnoozeCount,
+                CreatedAt = r.CreatedAt,
+                CreatedBy = r.CreatedBy,
+                CompletedAt = r.CompletedAt,
+                CompletedBy = r.CompletedBy,
+                IsOverdue = isOverdue,
+                IsDueToday = isDueToday
+            };
         }).ToList();
     }
 }

@@ -10,6 +10,7 @@ export interface CreatePropertyMatchRequest {
 export interface UpdatePropertyMatchStatusRequest {
   status: string;
   notes?: string;
+  offerAmount?: number;
 }
 
 export const propertyMatchesApi = {

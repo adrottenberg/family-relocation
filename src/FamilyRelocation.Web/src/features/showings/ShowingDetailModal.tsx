@@ -1,4 +1,4 @@
-import { Modal, Descriptions, Tag, Button, Space, Divider, message } from 'antd';
+import { Modal, Descriptions, Tag, Button, Space, Divider, message, InputNumber, Typography } from 'antd';
 import {
   CalendarOutlined,
   ClockCircleOutlined,
@@ -6,12 +6,17 @@ import {
   UserOutlined,
   CheckOutlined,
   CloseOutlined,
+  HeartOutlined,
+  DollarOutlined,
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { showingsApi } from '../../api';
-import type { ShowingStatus } from '../../api/types';
+import { showingsApi, propertyMatchesApi } from '../../api';
+import type { ShowingStatus, PropertyMatchStatus } from '../../api/types';
 import { useState } from 'react';
 import RescheduleShowingModal from './RescheduleShowingModal';
+import { formatDate, formatTime } from '../../utils/datetime';
+
+const { Text } = Typography;
 
 interface ShowingDetailModalProps {
   open: boolean;
@@ -26,14 +31,39 @@ const statusColors: Record<ShowingStatus, string> = {
   NoShow: 'orange',
 };
 
+const matchStatusColors: Record<string, string> = {
+  MatchIdentified: 'blue',
+  ShowingRequested: 'orange',
+  ApplicantInterested: 'green',
+  OfferMade: 'purple',
+  ApplicantRejected: 'default',
+};
+
+const matchStatusLabels: Record<string, string> = {
+  MatchIdentified: 'Match Identified',
+  ShowingRequested: 'Showing Requested',
+  ApplicantInterested: 'Interested',
+  OfferMade: 'Offer Made',
+  ApplicantRejected: 'Not Interested',
+};
+
 const ShowingDetailModal = ({ open, onClose, showingId }: ShowingDetailModalProps) => {
   const queryClient = useQueryClient();
   const [rescheduleModalOpen, setRescheduleModalOpen] = useState(false);
+  const [offerModalOpen, setOfferModalOpen] = useState(false);
+  const [offerAmount, setOfferAmount] = useState<number | null>(null);
 
   const { data: showing, isLoading } = useQuery({
     queryKey: ['showings', showingId],
     queryFn: () => showingsApi.getById(showingId),
     enabled: open && !!showingId,
+  });
+
+  // Fetch property match to check its current status
+  const { data: propertyMatch } = useQuery({
+    queryKey: ['propertyMatches', showing?.propertyMatchId],
+    queryFn: () => propertyMatchesApi.getById(showing!.propertyMatchId),
+    enabled: open && !!showing?.propertyMatchId,
   });
 
   const updateStatusMutation = useMutation({
@@ -44,6 +74,21 @@ const ShowingDetailModal = ({ open, onClose, showingId }: ShowingDetailModalProp
     },
     onError: (error: Error) => {
       message.error(error.message || 'Failed to update status');
+    },
+  });
+
+  const updateMatchStatusMutation = useMutation({
+    mutationFn: ({ status, offerAmount }: { status: PropertyMatchStatus; offerAmount?: number }) =>
+      propertyMatchesApi.updateStatus(showing!.propertyMatchId, { status, offerAmount }),
+    onSuccess: () => {
+      message.success('Match status updated');
+      queryClient.invalidateQueries({ queryKey: ['propertyMatches'] });
+      queryClient.invalidateQueries({ queryKey: ['showings'] });
+      setOfferModalOpen(false);
+      setOfferAmount(null);
+    },
+    onError: (error: Error) => {
+      message.error(error.message || 'Failed to update match status');
     },
   });
 
@@ -59,24 +104,25 @@ const ShowingDetailModal = ({ open, onClose, showingId }: ShowingDetailModalProp
     updateStatusMutation.mutate('NoShow');
   };
 
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
+  const handleMarkInterested = () => {
+    updateMatchStatusMutation.mutate({ status: 'ApplicantInterested' });
   };
 
-  const formatTime = (timeStr: string) => {
-    const [hours, minutes] = timeStr.split(':');
-    const date = new Date();
-    date.setHours(parseInt(hours), parseInt(minutes));
-    return date.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-    });
+  const handleOpenOfferModal = () => {
+    setOfferAmount(showing?.propertyPrice || null);
+    setOfferModalOpen(true);
+  };
+
+  const handleMakeOffer = () => {
+    if (!offerAmount || offerAmount <= 0) {
+      message.error('Please enter a valid offer amount');
+      return;
+    }
+    updateMatchStatusMutation.mutate({ status: 'OfferMade', offerAmount });
+  };
+
+  const handleNotInterested = () => {
+    updateMatchStatusMutation.mutate({ status: 'ApplicantRejected' });
   };
 
   const formatPrice = (price: number) => {
@@ -108,6 +154,38 @@ const ShowingDetailModal = ({ open, onClose, showingId }: ShowingDetailModalProp
                 <CheckOutlined /> Mark Completed
               </Button>
             </Space>
+          ) : showing?.status === 'Completed' && propertyMatch?.status !== 'ApplicantRejected' ? (
+            <Space>
+              {propertyMatch?.status !== 'ApplicantInterested' && propertyMatch?.status !== 'OfferMade' && (
+                <Button
+                  icon={<HeartOutlined />}
+                  onClick={handleMarkInterested}
+                  loading={updateMatchStatusMutation.isPending}
+                >
+                  Interested
+                </Button>
+              )}
+              {propertyMatch?.status !== 'OfferMade' && (
+                <Button
+                  type="primary"
+                  ghost
+                  icon={<DollarOutlined />}
+                  onClick={handleOpenOfferModal}
+                  loading={updateMatchStatusMutation.isPending}
+                >
+                  Make Offer
+                </Button>
+              )}
+              <Button
+                danger
+                icon={<CloseOutlined />}
+                onClick={handleNotInterested}
+                loading={updateMatchStatusMutation.isPending}
+              >
+                Not Interested
+              </Button>
+              <Button onClick={onClose}>Close</Button>
+            </Space>
           ) : (
             <Button onClick={onClose}>Close</Button>
           )
@@ -118,9 +196,21 @@ const ShowingDetailModal = ({ open, onClose, showingId }: ShowingDetailModalProp
         ) : showing ? (
           <>
             <div style={{ marginBottom: 16, textAlign: 'center' }}>
-              <Tag color={statusColors[showing.status]} style={{ fontSize: 14, padding: '4px 12px' }}>
-                {showing.status}
-              </Tag>
+              <Space>
+                <Tag color={statusColors[showing.status]} style={{ fontSize: 14, padding: '4px 12px' }}>
+                  Showing: {showing.status}
+                </Tag>
+                {propertyMatch && (
+                  <Tag
+                    color={matchStatusColors[propertyMatch.status] || 'default'}
+                    style={{ fontSize: 14, padding: '4px 12px' }}
+                  >
+                    {propertyMatch.status === 'OfferMade' && propertyMatch.offerAmount
+                      ? `Offer: ${formatPrice(propertyMatch.offerAmount)}`
+                      : matchStatusLabels[propertyMatch.status] || propertyMatch.status}
+                  </Tag>
+                )}
+              </Space>
             </div>
 
             <Descriptions column={1} bordered size="small">
@@ -131,7 +221,7 @@ const ShowingDetailModal = ({ open, onClose, showingId }: ShowingDetailModalProp
                   </>
                 }
               >
-                {formatDate(showing.scheduledDate)}
+                {formatDate(showing.scheduledDateTime, 'dddd, MMMM D, YYYY')}
               </Descriptions.Item>
               <Descriptions.Item
                 label={
@@ -140,7 +230,7 @@ const ShowingDetailModal = ({ open, onClose, showingId }: ShowingDetailModalProp
                   </>
                 }
               >
-                {formatTime(showing.scheduledTime)}
+                {formatTime(showing.scheduledDateTime)}
               </Descriptions.Item>
             </Descriptions>
 
@@ -166,11 +256,11 @@ const ShowingDetailModal = ({ open, onClose, showingId }: ShowingDetailModalProp
             </div>
 
             <Divider orientation="left">
-              <UserOutlined /> Family
+              <UserOutlined /> Applicant
             </Divider>
 
             <div style={{ marginBottom: 16 }}>
-              <div style={{ fontWeight: 600, fontSize: 16 }}>{showing.applicantName} Family</div>
+              <div style={{ fontWeight: 600, fontSize: 16 }}>{showing.applicantName}</div>
             </div>
 
             {showing.brokerUserName && (
@@ -202,9 +292,35 @@ const ShowingDetailModal = ({ open, onClose, showingId }: ShowingDetailModalProp
         open={rescheduleModalOpen}
         onClose={() => setRescheduleModalOpen(false)}
         showingId={showingId}
-        currentDate={showing?.scheduledDate || ''}
-        currentTime={showing?.scheduledTime || ''}
+        currentDateTime={showing?.scheduledDateTime}
       />
+
+      {/* Offer Amount Modal */}
+      <Modal
+        title="Enter Offer Amount"
+        open={offerModalOpen}
+        onOk={handleMakeOffer}
+        onCancel={() => {
+          setOfferModalOpen(false);
+          setOfferAmount(null);
+        }}
+        okText="Submit Offer"
+        confirmLoading={updateMatchStatusMutation.isPending}
+      >
+        <div style={{ marginBottom: 16 }}>
+          <Text>Enter the offer amount for {showing?.propertyStreet}:</Text>
+          <InputNumber
+            style={{ width: '100%', marginTop: 8 }}
+            size="large"
+            value={offerAmount}
+            onChange={(value) => setOfferAmount(value)}
+            formatter={(value) => `$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+            parser={(value) => Number(value?.replace(/\$\s?|(,*)/g, '') || 0)}
+            min={0}
+            placeholder="Enter offer amount"
+          />
+        </div>
+      </Modal>
     </>
   );
 };

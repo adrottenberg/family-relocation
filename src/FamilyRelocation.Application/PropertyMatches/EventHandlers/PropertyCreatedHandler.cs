@@ -148,7 +148,7 @@ public class PropertyCreatedHandler : INotificationHandler<DomainEventNotificati
 
             var command = new CreateReminderCommand(
                 Title: $"New high-score property match for {familyName} Family",
-                DueDate: DateTime.UtcNow.Date.AddDays(1), // Due tomorrow
+                DueDateTime: DateTime.UtcNow.Date.AddDays(1).AddHours(9), // Due tomorrow 9 AM UTC
                 EntityType: "PropertyMatch",
                 EntityId: match.Id,
                 Notes: $"Property at {property.Address.Street}, {property.Address.City} scored {match.MatchScore}% match. Review and schedule showing if appropriate.",

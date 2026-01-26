@@ -13,9 +13,9 @@ public class CreateReminderCommandValidator : AbstractValidator<CreateReminderCo
             .NotEmpty().WithMessage("Title is required.")
             .MaximumLength(200).WithMessage("Title cannot exceed 200 characters.");
 
-        RuleFor(x => x.DueDate)
-            .NotEmpty().WithMessage("Due date is required.")
-            .GreaterThanOrEqualTo(DateTime.UtcNow.Date).WithMessage("Due date cannot be in the past.");
+        RuleFor(x => x.DueDateTime)
+            .NotEmpty().WithMessage("Due date/time is required.")
+            .GreaterThanOrEqualTo(DateTime.UtcNow.AddMinutes(-5)).WithMessage("Due date/time cannot be in the past.");
 
         RuleFor(x => x.EntityType)
             .NotEmpty().WithMessage("Entity type is required.")

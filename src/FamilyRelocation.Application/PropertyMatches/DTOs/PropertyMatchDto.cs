@@ -15,6 +15,7 @@ public record PropertyMatchDto
     public MatchScoreBreakdownDto? MatchDetails { get; init; }
     public string? Notes { get; init; }
     public required bool IsAutoMatched { get; init; }
+    public decimal? OfferAmount { get; init; }
     public required DateTime CreatedAt { get; init; }
     public DateTime? ModifiedAt { get; init; }
 
@@ -37,6 +38,7 @@ public record PropertyMatchListDto
     public required int MatchScore { get; init; }
     public required bool IsAutoMatched { get; init; }
     public required DateTime CreatedAt { get; init; }
+    public decimal? OfferAmount { get; init; }
 
     // Lightweight property info
     public required string PropertyStreet { get; init; }
@@ -49,6 +51,48 @@ public record PropertyMatchListDto
     // Lightweight applicant info
     public required Guid ApplicantId { get; init; }
     public required string ApplicantName { get; init; }
+
+    // All showings for this match
+    public List<MatchShowingDto> Showings { get; init; } = [];
+
+    // Convenience properties - returns first future scheduled showing, or last showing if none upcoming
+    public DateTime? ScheduledShowingDateTime
+    {
+        get
+        {
+            var now = DateTime.UtcNow;
+
+            // First, look for future scheduled showings
+            var futureScheduled = Showings
+                .Where(s => s.Status == "Scheduled" && s.ScheduledDateTime >= now)
+                .OrderBy(s => s.ScheduledDateTime)
+                .FirstOrDefault();
+
+            if (futureScheduled != null)
+                return futureScheduled.ScheduledDateTime;
+
+            // If no future scheduled showings, return the most recent showing (any status)
+            var lastShowing = Showings
+                .OrderByDescending(s => s.ScheduledDateTime)
+                .FirstOrDefault();
+
+            return lastShowing?.ScheduledDateTime;
+        }
+    }
+}
+
+/// <summary>
+/// Showing info embedded in property match DTO.
+/// </summary>
+public record MatchShowingDto
+{
+    public required Guid Id { get; init; }
+    public required DateTime ScheduledDateTime { get; init; }
+    public required string Status { get; init; }
+    public Guid? BrokerUserId { get; init; }
+    public string? BrokerUserName { get; init; }
+    public string? Notes { get; init; }
+    public DateTime? CompletedAt { get; init; }
 }
 
 /// <summary>
@@ -108,4 +152,5 @@ public record UpdatePropertyMatchStatusRequest
 {
     public required string Status { get; init; }
     public string? Notes { get; init; }
+    public decimal? OfferAmount { get; init; }
 }
