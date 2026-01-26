@@ -49,7 +49,7 @@ import ContractInfoModal from '../pipeline/modals/ContractInfoModal';
 import ContractFailedModal from '../pipeline/modals/ContractFailedModal';
 import ClosingConfirmModal from '../pipeline/modals/ClosingConfirmModal';
 import { LogActivityModal } from '../activities';
-import { ReminderDetailModal, SnoozeModal } from '../reminders';
+import { ReminderDetailModal, SnoozeModal, EditReminderModal } from '../reminders';
 import { PropertyMatchList, CreatePropertyMatchModal, type MatchScheduleData } from '../propertyMatches';
 import { ScheduleShowingModal } from '../showings';
 import { ShowingSchedulerModal } from '../showings/scheduler';
@@ -72,6 +72,7 @@ const ApplicantDetailPage = () => {
   const [schedulerModalOpen, setSchedulerModalOpen] = useState(false);
   // Reminder modals
   const [reminderDetailId, setReminderDetailId] = useState<string | null>(null);
+  const [editReminderId, setEditReminderId] = useState<string | null>(null);
   const [snoozeReminderId, setSnoozeReminderId] = useState<string | null>(null);
 
   // Stage transition modal state
@@ -100,12 +101,40 @@ const ApplicantDetailPage = () => {
     enabled: !!housingSearchId,
   });
 
-  // Fetch urgent reminders for this applicant (overdue + due today)
-  const { data: applicantReminders } = useQuery({
-    queryKey: ['applicantReminders', id],
+  // Fetch active reminders for this applicant and their housing search (Open + Snoozed)
+  // We need both statuses because snoozed reminders with expired snooze are also "due"
+  const { data: applicantOpenReminders } = useQuery({
+    queryKey: ['applicantReminders', id, 'Open'],
     queryFn: () => remindersApi.getByEntity('Applicant', id!, 'Open'),
     enabled: !!id,
   });
+
+  const { data: applicantSnoozedReminders } = useQuery({
+    queryKey: ['applicantReminders', id, 'Snoozed'],
+    queryFn: () => remindersApi.getByEntity('Applicant', id!, 'Snoozed'),
+    enabled: !!id,
+  });
+
+  // Also fetch reminders linked to the housing search
+  const { data: hsOpenReminders } = useQuery({
+    queryKey: ['housingSearchReminders', housingSearchId, 'Open'],
+    queryFn: () => remindersApi.getByEntity('HousingSearch', housingSearchId!, 'Open'),
+    enabled: !!housingSearchId,
+  });
+
+  const { data: hsSnoozedReminders } = useQuery({
+    queryKey: ['housingSearchReminders', housingSearchId, 'Snoozed'],
+    queryFn: () => remindersApi.getByEntity('HousingSearch', housingSearchId!, 'Snoozed'),
+    enabled: !!housingSearchId,
+  });
+
+  // Combine all reminders (Applicant + HousingSearch, Open + Snoozed)
+  const applicantReminders = [
+    ...(applicantOpenReminders || []),
+    ...(applicantSnoozedReminders || []),
+    ...(hsOpenReminders || []),
+    ...(hsSnoozedReminders || []),
+  ];
 
   // Filter to only urgent reminders (overdue or due today) using backend-computed flags
   // This avoids timezone issues from client-side date comparison
@@ -414,14 +443,21 @@ const ApplicantDetailPage = () => {
       </Card>
 
       {/* Stage Timeline */}
-      <StageTimeline
-        applicantId={applicant.id}
-        housingSearchId={hs?.id}
-        boardDecision={boardDecision}
-        currentStage={stage}
-        onTransitionModalOpen={(type) => setActiveTransitionModal(type)}
-        onBoardDecisionClick={() => setBoardDecisionModalOpen(true)}
-      />
+      <Card
+        title="Application Progress"
+        size="small"
+        className="progress-card"
+        style={{ marginBottom: 16 }}
+      >
+        <StageTimeline
+          applicantId={applicant.id}
+          housingSearchId={hs?.id}
+          boardDecision={boardDecision}
+          currentStage={stage}
+          onTransitionModalOpen={(type) => setActiveTransitionModal(type)}
+          onBoardDecisionClick={() => setBoardDecisionModalOpen(true)}
+        />
+      </Card>
 
       {/* Urgent Reminders Banner - only shows when there are overdue or due today reminders */}
       {urgentReminders.length > 0 && (
@@ -433,7 +469,7 @@ const ApplicantDetailPage = () => {
           message={
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
               <span>
-                <strong>{urgentReminders.length} reminder{urgentReminders.length > 1 ? 's' : ''}</strong> need attention
+                <strong>{urgentReminders.length} reminder{urgentReminders.length > 1 ? 's' : ''}</strong> {urgentReminders.length === 1 ? 'needs' : 'need'} attention
               </span>
               <Space size="small" wrap>
                 {urgentReminders.slice(0, 3).map((reminder: ReminderListDto) => (
@@ -615,6 +651,10 @@ const ApplicantDetailPage = () => {
             setReminderDetailId(null);
           }).catch(() => message.error('Failed to reopen reminder'));
         }}
+        onEdit={(remId) => {
+          setReminderDetailId(null);
+          setEditReminderId(remId);
+        }}
       />
 
       {/* Snooze Modal */}
@@ -629,6 +669,19 @@ const ApplicantDetailPage = () => {
             queryClient.invalidateQueries({ queryKey: ['reminderCounts'] });
             setSnoozeReminderId(null);
           }
+        }}
+      />
+
+      {/* Edit Reminder Modal */}
+      <EditReminderModal
+        open={!!editReminderId}
+        reminderId={editReminderId}
+        onClose={() => setEditReminderId(null)}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ['applicantReminders', applicant.id] });
+          queryClient.invalidateQueries({ queryKey: ['housingSearchReminders'] });
+          queryClient.invalidateQueries({ queryKey: ['reminderCounts'] });
+          setEditReminderId(null);
         }}
       />
     </div>
@@ -1224,6 +1277,19 @@ const statusLabels: Record<string, string> = {
   Closed: 'Closed',
 };
 
+// Well-known IDs from the backend (WellKnownIds.cs)
+// These are special GUIDs with friendly display names
+const wellKnownIds: Record<string, string> = {
+  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa': 'Self-Submitted',
+  'AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA': 'Self-Submitted',
+  '00000000-0000-0000-0000-000000000001': 'System',
+  '00000000-0000-0000-0000-000000000000': 'System',
+  'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb01': 'Broker Agreement',
+  'BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBB01': 'Broker Agreement',
+  'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02': 'Community Takanos',
+  'BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBB02': 'Community Takanos',
+};
+
 // Format timestamp in friendly format with full date and time
 const formatTimestamp = (timestamp: string): string => {
   const date = new Date(timestamp);
@@ -1254,6 +1320,17 @@ const isGuid = (value: string): boolean => {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 };
 
+// Check if a field represents a user ID
+const isUserIdField = (field: string): boolean => {
+  const lowerField = field.toLowerCase();
+  return lowerField.endsWith('byid') ||
+    lowerField === 'createdby' ||
+    lowerField === 'modifiedby' ||
+    lowerField === 'assignedtouserid' ||
+    lowerField === 'brokeruserid' ||
+    lowerField === 'userid';
+};
+
 // Format a value for display, with optional resolved names lookup
 const formatValue = (field: string, value: string, resolvedNames?: Record<string, string>): string => {
   // Handle null/undefined values
@@ -1261,7 +1338,13 @@ const formatValue = (field: string, value: string, resolvedNames?: Record<string
     return '';
   }
 
-  // Check if this GUID has a resolved name
+  // Check well-known IDs first (case-insensitive)
+  const wellKnownName = wellKnownIds[value] || wellKnownIds[value.toLowerCase()];
+  if (wellKnownName) {
+    return wellKnownName;
+  }
+
+  // Check if this GUID has a resolved name from backend
   if (isGuid(value) && resolvedNames?.[value]) {
     return resolvedNames[value];
   }
@@ -1277,7 +1360,7 @@ const formatValue = (field: string, value: string, resolvedNames?: Record<string
   const isDateTimeField = field.toLowerCase().endsWith('at') ||
     field.toLowerCase().includes('modified') ||
     field.toLowerCase().includes('created');
-  if (isDateTimeField && !field.toLowerCase().includes('time')) {
+  if (isDateTimeField && !field.toLowerCase().includes('time') && !isUserIdField(field)) {
     const date = new Date(value);
     if (!isNaN(date.getTime())) {
       return date.toLocaleString('en-US', {
@@ -1321,6 +1404,10 @@ const formatValue = (field: string, value: string, resolvedNames?: Record<string
     // Handle empty/zero GUID (system/no user)
     if (value.startsWith('00000000-0000-0000') || value === '00000000-0000-0000-0000-000000000000') {
       return 'System';
+    }
+    // For user ID fields, show a friendly label instead of truncated GUID
+    if (isUserIdField(field)) {
+      return 'User';
     }
     // Show truncated version for other unresolved GUIDs
     return value.substring(0, 8) + '...';
@@ -1382,6 +1469,9 @@ const AuditHistoryTab = ({ auditLogs, isLoading }: AuditHistoryTabProps) => {
       // Skip the primary Id field
       if (key === 'Id') continue;
 
+      // Skip IsDeleted if value is false/No
+      if (key === 'IsDeleted' && (newVal === false || newVal === 'false' || newVal === 'False')) continue;
+
       const oldVal = oldValues?.[key];
 
       // Normalize empty values: treat null, undefined, "" as equivalent
@@ -1393,6 +1483,13 @@ const AuditHistoryTab = ({ auditLogs, isLoading }: AuditHistoryTabProps) => {
       if (normalizedOld === normalizedNew) continue;
 
       const newValStr = String(newVal ?? '');
+
+      // Skip user ID fields if we can't resolve them to actual names (but keep well-known IDs)
+      const isWellKnown = wellKnownIds[newValStr] || wellKnownIds[newValStr.toLowerCase()];
+      if (isUserIdField(key) && isGuid(newValStr) && !resolvedNames?.[newValStr] && !isWellKnown) {
+        continue;
+      }
+
       // For metadata fields (Created/Modified dates and users), only show new value
       const isMetadata = metadataFields.has(key);
       const oldValStr = !isMetadata && oldVal !== undefined && oldVal !== null && oldVal !== ''

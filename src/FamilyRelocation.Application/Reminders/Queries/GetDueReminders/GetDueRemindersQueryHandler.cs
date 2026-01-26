@@ -40,7 +40,9 @@ public class GetDueRemindersQueryHandler : IRequestHandler<GetDueRemindersQuery,
         if (query.AssignedToUserId.HasValue)
             baseQuery = baseQuery.Where(r => r.AssignedToUserId == query.AssignedToUserId.Value);
 
-        // Get overdue reminders (Open with DueDateTime < now OR Snoozed with SnoozedUntil < now)
+        // Get overdue reminders:
+        // - Open reminders with DueDateTime < now
+        // - Snoozed reminders with SnoozedUntil < now (snooze has expired, so they're now overdue)
         var overdueReminders = await baseQuery
             .Where(r =>
                 (r.Status == ReminderStatus.Open && r.DueDateTime < now) ||
@@ -50,39 +52,40 @@ public class GetDueRemindersQueryHandler : IRequestHandler<GetDueRemindersQuery,
             .Take(20)
             .ToListAsync(cancellationToken);
 
-        // Get due today reminders (DueDateTime >= todayStart AND DueDateTime <= todayEnd, but NOT overdue)
-        // A reminder is "due today" only if it's due later today (not yet past due)
+        // Get due today reminders:
+        // - Open reminders due later today (>= now and <= todayEnd)
+        // - Snoozed reminders are NOT included here - they only appear once their snooze expires
+        //   (at which point they become overdue, not "due today")
         var dueTodayReminders = await baseQuery
             .Where(r =>
-                (r.Status == ReminderStatus.Open && r.DueDateTime >= now && r.DueDateTime <= todayEnd) ||
-                (r.Status == ReminderStatus.Snoozed && r.SnoozedUntil.HasValue && r.SnoozedUntil.Value >= now && r.SnoozedUntil.Value <= todayEnd))
+                r.Status == ReminderStatus.Open && r.DueDateTime >= now && r.DueDateTime <= todayEnd)
             .OrderByDescending(r => r.Priority)
             .ThenBy(r => r.DueDateTime)
             .Take(20)
             .ToListAsync(cancellationToken);
 
         // Get upcoming reminders (next N days, excluding today)
+        // Only Open reminders - snoozed reminders don't appear until their snooze expires
         var upcomingReminders = await baseQuery
             .Where(r =>
-                (r.Status == ReminderStatus.Open && r.DueDateTime >= tomorrowStart && r.DueDateTime < upcomingEndDate) ||
-                (r.Status == ReminderStatus.Snoozed && r.SnoozedUntil.HasValue && r.SnoozedUntil.Value >= tomorrowStart && r.SnoozedUntil.Value < upcomingEndDate))
-            .OrderBy(r => r.Status == ReminderStatus.Snoozed ? r.SnoozedUntil : r.DueDateTime)
+                r.Status == ReminderStatus.Open && r.DueDateTime >= tomorrowStart && r.DueDateTime < upcomingEndDate)
+            .OrderBy(r => r.DueDateTime)
             .ThenByDescending(r => r.Priority)
             .Take(20)
             .ToListAsync(cancellationToken);
 
-        // Get counts using same range-based logic
+        // Get counts using same logic as above
         var overdueCount = await baseQuery.CountAsync(r =>
             (r.Status == ReminderStatus.Open && r.DueDateTime < now) ||
             (r.Status == ReminderStatus.Snoozed && r.SnoozedUntil.HasValue && r.SnoozedUntil.Value < now),
             cancellationToken);
+        // Due today only includes Open reminders (snoozed reminders don't count until snooze expires)
         var dueTodayCount = await baseQuery.CountAsync(r =>
-            (r.Status == ReminderStatus.Open && r.DueDateTime >= now && r.DueDateTime <= todayEnd) ||
-            (r.Status == ReminderStatus.Snoozed && r.SnoozedUntil.HasValue && r.SnoozedUntil.Value >= now && r.SnoozedUntil.Value <= todayEnd),
+            r.Status == ReminderStatus.Open && r.DueDateTime >= now && r.DueDateTime <= todayEnd,
             cancellationToken);
+        // Upcoming only includes Open reminders (snoozed reminders don't count until snooze expires)
         var upcomingCount = await baseQuery.CountAsync(r =>
-            (r.Status == ReminderStatus.Open && r.DueDateTime >= tomorrowStart && r.DueDateTime < upcomingEndDate) ||
-            (r.Status == ReminderStatus.Snoozed && r.SnoozedUntil.HasValue && r.SnoozedUntil.Value >= tomorrowStart && r.SnoozedUntil.Value < upcomingEndDate),
+            r.Status == ReminderStatus.Open && r.DueDateTime >= tomorrowStart && r.DueDateTime < upcomingEndDate,
             cancellationToken);
         var totalOpenCount = await baseQuery.CountAsync(cancellationToken);
 

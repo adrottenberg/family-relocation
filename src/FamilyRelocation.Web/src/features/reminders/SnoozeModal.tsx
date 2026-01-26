@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Modal, Space, Button, DatePicker, Typography } from 'antd';
 import dayjs from 'dayjs';
+import { toUtcString } from '../../utils/datetime';
 
 const { Text } = Typography;
 
@@ -17,8 +18,9 @@ const SnoozeModal = ({ open, onClose, onSnooze }: SnoozeModalProps) => {
   const handleQuickSnooze = async (days: number) => {
     setLoading(true);
     try {
-      const snoozeUntil = dayjs().add(days, 'day').format('YYYY-MM-DD');
-      await onSnooze(snoozeUntil);
+      // Set snooze time to 9 AM in user's timezone, then convert to UTC
+      const snoozeDateTime = dayjs().add(days, 'day').hour(9).minute(0).second(0);
+      await onSnooze(toUtcString(snoozeDateTime));
     } finally {
       setLoading(false);
     }
@@ -28,7 +30,9 @@ const SnoozeModal = ({ open, onClose, onSnooze }: SnoozeModalProps) => {
     if (!customDate) return;
     setLoading(true);
     try {
-      await onSnooze(customDate.format('YYYY-MM-DD'));
+      // Set snooze time to 9 AM in user's timezone, then convert to UTC
+      const snoozeDateTime = customDate.hour(9).minute(0).second(0);
+      await onSnooze(toUtcString(snoozeDateTime));
       setCustomDate(null);
     } finally {
       setLoading(false);

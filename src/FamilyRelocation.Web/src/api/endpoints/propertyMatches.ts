@@ -14,6 +14,12 @@ export interface UpdatePropertyMatchStatusRequest {
 }
 
 export const propertyMatchesApi = {
+  // Get all pending matches (ShowingRequested status without scheduled showing)
+  getPending: async (): Promise<PropertyMatchListDto[]> => {
+    const response = await apiClient.get('/property-matches/pending');
+    return response.data;
+  },
+
   // Get matches for a housing search
   getForHousingSearch: async (housingSearchId: string, status?: string): Promise<PropertyMatchListDto[]> => {
     const params: Record<string, string> = { housingSearchId };

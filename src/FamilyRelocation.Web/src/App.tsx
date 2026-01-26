@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from './store/authStore';
 
 // Lazy load pages for code splitting
@@ -18,6 +18,7 @@ const RemindersPage = lazy(() => import('./features/reminders/RemindersPage'));
 const SettingsPage = lazy(() => import('./features/settings/SettingsPage'));
 const UsersPage = lazy(() => import('./features/users/UsersPage'));
 const ShowingsCalendarPage = lazy(() => import('./features/showings/ShowingsCalendarPage'));
+const ScheduleShowingsPage = lazy(() => import('./features/showings/ScheduleShowingsPage'));
 const ShulsPage = lazy(() => import('./features/shuls/ShulsPage'));
 
 const LoadingFallback = () => (
@@ -26,13 +27,14 @@ const LoadingFallback = () => (
   </div>
 );
 
-// Protected route wrapper
+// Protected route wrapper - checks auth BEFORE rendering children
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  const location = window.location;
+  const location = useLocation();
 
+  // Redirect to login immediately if not authenticated
+  // This happens before any lazy-loaded content is rendered
   if (!isAuthenticated) {
-    // Pass the intended URL as state so we can redirect after login
     const returnUrl = location.pathname + location.search;
     return <Navigate to="/login" state={{ returnUrl }} replace />;
   }
@@ -41,6 +43,25 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 function App() {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const hasHydrated = useAuthStore((state) => state._hasHydrated);
+  const location = useLocation();
+
+  // Wait for store to hydrate from localStorage before making any routing decisions
+  // This prevents the flash of login page before auth state is restored
+  if (!hasHydrated) {
+    return <LoadingFallback />;
+  }
+
+  // For protected routes, check auth BEFORE showing any loading state
+  // This prevents the flash of the main layout before redirecting to login
+  const isProtectedRoute = !location.pathname.startsWith('/login') && !location.pathname.startsWith('/apply');
+
+  if (isProtectedRoute && !isAuthenticated) {
+    const returnUrl = location.pathname + location.search;
+    return <Navigate to="/login" state={{ returnUrl }} replace />;
+  }
+
   return (
     <Suspense fallback={<LoadingFallback />}>
       <Routes>
@@ -68,8 +89,9 @@ function App() {
           {/* Redirect old properties URLs */}
           <Route path="properties" element={<Navigate to="/listings" replace />} />
           <Route path="properties/:id" element={<Navigate to="/listings" replace />} />
-          {/* Showings Calendar */}
+          {/* Showings */}
           <Route path="showings" element={<ShowingsCalendarPage />} />
+          <Route path="schedule-showings" element={<ScheduleShowingsPage />} />
           {/* Redirect old broker-showings to main showings */}
           <Route path="broker-showings" element={<Navigate to="/showings" replace />} />
           <Route path="reminders" element={<RemindersPage />} />

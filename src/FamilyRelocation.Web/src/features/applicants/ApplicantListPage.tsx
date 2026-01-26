@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Table, Input, Select, Button, Tag, Space, Typography, Card, Empty } from 'antd';
-import { SearchOutlined, PlusOutlined, FilterOutlined } from '@ant-design/icons';
+import { Table, Input, Select, Button, Tag, Space, Typography, Card, Empty, Badge } from 'antd';
+import { SearchOutlined, PlusOutlined, FilterOutlined, BellOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
-import { applicantsApi } from '../../api';
+import { applicantsApi, remindersApi } from '../../api';
 import type { ApplicantListItemDto } from '../../api/types';
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
 import { colors, statusTagStyles, stageTagStyles } from '../../theme/antd-theme';
@@ -32,6 +32,37 @@ const ApplicantListPage = () => {
         stage: stage || undefined,
       }),
   });
+
+  // Fetch due reminders report to show badges
+  const { data: dueReport } = useQuery({
+    queryKey: ['reminders', 'due-report'],
+    queryFn: () => remindersApi.getDueReport(0), // Only overdue and due today
+  });
+
+  // Build a map of applicant IDs to their urgent reminder counts
+  const applicantReminderCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    if (!dueReport) return counts;
+
+    // Combine overdue and due today, but deduplicate by reminder ID
+    // (a reminder could theoretically appear in both arrays)
+    const allDue = [...(dueReport.overdue || []), ...(dueReport.dueToday || [])];
+    const uniqueReminders = new Map<string, typeof allDue[0]>();
+    allDue.forEach(r => {
+      if (!uniqueReminders.has(r.id)) {
+        uniqueReminders.set(r.id, r);
+      }
+    });
+
+    // Count unique reminders for applicants
+    uniqueReminders.forEach(r => {
+      if (r.entityType === 'Applicant') {
+        counts[r.entityId] = (counts[r.entityId] || 0) + 1;
+      }
+    });
+
+    return counts;
+  }, [dueReport]);
 
   const handleTableChange = (newPagination: TablePaginationConfig) => {
     setPagination({
@@ -78,9 +109,19 @@ const ApplicantListPage = () => {
     {
       title: 'NAME',
       key: 'familyName',
-      render: (_, record) => (
-        <Text strong>{record.husbandFullName}</Text>
-      ),
+      render: (_, record) => {
+        const reminderCount = applicantReminderCounts[record.id] || 0;
+        return (
+          <Space>
+            <Text strong>{record.husbandFullName}</Text>
+            {reminderCount > 0 && (
+              <Badge count={reminderCount} size="small" title={`${reminderCount} due reminder(s)`}>
+                <BellOutlined style={{ color: '#ff4d4f', fontSize: 14 }} />
+              </Badge>
+            )}
+          </Space>
+        );
+      },
     },
     {
       title: 'CONTACT',

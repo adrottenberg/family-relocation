@@ -5,6 +5,7 @@ using FamilyRelocation.Application.PropertyMatches.Commands.RequestShowing;
 using FamilyRelocation.Application.PropertyMatches.Commands.UpdatePropertyMatchStatus;
 using FamilyRelocation.Application.PropertyMatches.DTOs;
 using FamilyRelocation.Application.PropertyMatches.Queries.GetPropertyMatchById;
+using FamilyRelocation.Application.PropertyMatches.Queries.GetPendingPropertyMatches;
 using FamilyRelocation.Application.PropertyMatches.Queries.GetPropertyMatchesForHousingSearch;
 using FamilyRelocation.Application.PropertyMatches.Queries.GetPropertyMatchesForProperty;
 using MediatR;
@@ -66,6 +67,25 @@ public class PropertyMatchesController : ControllerBase
         }
 
         return Ok(result);
+    }
+
+    /// <summary>
+    /// Gets all property matches that are pending scheduling (ShowingRequested status without a scheduled showing).
+    /// </summary>
+    [HttpGet("pending")]
+    [ProducesResponseType(typeof(List<PropertyMatchListDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetPending()
+    {
+        try
+        {
+            var result = await _mediator.Send(new GetPendingPropertyMatchesQuery());
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in GetPending endpoint");
+            return StatusCode(500, new { message = ex.Message, inner = ex.InnerException?.Message });
+        }
     }
 
     /// <summary>

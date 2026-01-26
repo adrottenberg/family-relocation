@@ -102,12 +102,27 @@ export const formatRelativeTime = (utcString: string | undefined | null): string
  * Convert local datetime to UTC for sending to API
  * @param localDateTime - dayjs object or Date in user's local timezone
  * @returns ISO string in UTC
+ *
+ * The input represents a wall-clock time in the user's timezone.
+ * For example, if user picks "Jan 27 at 2:00 PM" and their timezone is America/New_York,
+ * we need to store this as the equivalent UTC time (Jan 27 at 7:00 PM UTC in winter).
  */
 export const toUtcString = (localDateTime: dayjs.Dayjs | Date): string => {
+  let dt: dayjs.Dayjs;
+
   if (localDateTime instanceof Date) {
-    return dayjs(localDateTime).tz(currentTimezone, true).utc().toISOString();
+    dt = dayjs(localDateTime);
+  } else {
+    dt = localDateTime;
   }
-  return localDateTime.tz(currentTimezone, true).utc().toISOString();
+
+  // Extract the wall-clock time components as a string
+  // This removes any implicit timezone offset from the dayjs object
+  const dateTimeStr = dt.format('YYYY-MM-DD HH:mm:ss');
+
+  // Create a new dayjs in the user's configured timezone and convert to UTC
+  // dayjs.tz(string, timezone) interprets the string as being in that timezone
+  return dayjs.tz(dateTimeStr, currentTimezone).utc().toISOString();
 };
 
 /**

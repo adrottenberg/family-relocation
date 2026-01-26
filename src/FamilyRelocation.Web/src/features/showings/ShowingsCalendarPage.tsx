@@ -113,7 +113,6 @@ const ShowingsCalendarPage = () => {
     { value: '', label: 'All Statuses' },
     { value: 'Scheduled', label: 'Scheduled' },
     { value: 'Completed', label: 'Completed' },
-    { value: 'Cancelled', label: 'Cancelled' },
     { value: 'NoShow', label: 'No Show' },
   ];
 
@@ -128,10 +127,12 @@ const ShowingsCalendarPage = () => {
       }),
   });
 
-  // Filter by broker on client side
+  // Filter by broker and exclude cancelled showings on client side
   const filteredShowings = useMemo(() => {
     if (!showings) return [];
     let filtered = showings;
+    // Always exclude cancelled showings from calendar view
+    filtered = filtered.filter(s => s.status !== 'Cancelled');
     if (brokerFilter !== 'all') {
       if (brokerFilter === 'unassigned') {
         filtered = filtered.filter(s => !s.brokerUserId);

@@ -24,10 +24,10 @@ const PendingMatchesSidebar = ({ matches, loading }: PendingMatchesSidebarProps)
   });
 
   // Filter to only show matches that need scheduling:
-  // - ShowingRequested status AND no FUTURE scheduled showings
+  // - ShowingRequested or ApplicantInterested status AND no FUTURE scheduled showings
   // (Past scheduled showings that weren't marked complete shouldn't block scheduling)
   const pendingMatches = matches.filter(m =>
-    m.status === 'ShowingRequested' &&
+    (m.status === 'ShowingRequested' || m.status === 'ApplicantInterested') &&
     !m.showings?.some(s =>
       s.status === 'Scheduled' &&
       !parseUtcToLocal(s.scheduledDateTime).isBefore(todayStart, 'day')

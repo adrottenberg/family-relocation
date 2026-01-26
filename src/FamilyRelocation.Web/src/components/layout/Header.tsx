@@ -11,9 +11,10 @@ const Header = () => {
   const navigate = useNavigate();
 
   // Fetch global reminder counts using due report
+  // Use upcomingDays=0 to only count overdue and due today (not upcoming)
   const { data: dueReport } = useQuery({
-    queryKey: ['reminderCounts'],
-    queryFn: () => remindersApi.getDueReport(),
+    queryKey: ['reminders', 'due-report'],
+    queryFn: () => remindersApi.getDueReport(0),
     refetchInterval: 60000, // Refresh every minute
   });
 
@@ -43,7 +44,7 @@ const Header = () => {
         <h1 className="page-title">{getPageTitle()}</h1>
       </div>
       <div className="header-right">
-        <Tooltip title={urgentCount > 0 ? `${urgentCount} reminder${urgentCount > 1 ? 's' : ''} need attention` : 'No urgent reminders'}>
+        <Tooltip title={urgentCount > 0 ? `${urgentCount} reminder${urgentCount > 1 ? 's' : ''} ${urgentCount === 1 ? 'needs' : 'need'} attention` : 'No urgent reminders'}>
           <Badge count={urgentCount} showZero={false}>
             <Button
               type="text"
