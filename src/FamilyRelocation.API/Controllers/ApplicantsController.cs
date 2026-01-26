@@ -85,7 +85,7 @@ public class ApplicantsController : ControllerBase
     /// Cannot update: board decision, created date, applicant ID.
     /// </summary>
     [HttpPut("{id:guid}")]
-    [Authorize(Roles = "Coordinator,Admin")]
+    [Authorize(Roles = "Coordinator,Admin,Broker")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

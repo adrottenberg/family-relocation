@@ -104,7 +104,7 @@ public class PropertyMatchesController : ControllerBase
     /// Creates a new property match (manual matching).
     /// </summary>
     [HttpPost]
-    [Authorize(Roles = "Coordinator,Admin")]
+    [Authorize(Roles = "Coordinator,Admin,Broker")]
     [ProducesResponseType(typeof(PropertyMatchDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -152,7 +152,7 @@ public class PropertyMatchesController : ControllerBase
     /// Updates a property match status.
     /// </summary>
     [HttpPut("{id:guid}/status")]
-    [Authorize(Roles = "Coordinator,Admin")]
+    [Authorize(Roles = "Coordinator,Admin,Broker")]
     [ProducesResponseType(typeof(PropertyMatchDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -177,7 +177,7 @@ public class PropertyMatchesController : ControllerBase
     /// Requests showings for one or more property matches (batch operation).
     /// </summary>
     [HttpPost("request-showings")]
-    [Authorize(Roles = "Coordinator,Admin")]
+    [Authorize(Roles = "Coordinator,Admin,Broker")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     public async Task<IActionResult> RequestShowings([FromBody] List<Guid> matchIds)
     {
@@ -189,7 +189,7 @@ public class PropertyMatchesController : ControllerBase
     /// Deletes a property match.
     /// </summary>
     [HttpDelete("{id:guid}")]
-    [Authorize(Roles = "Coordinator,Admin")]
+    [Authorize(Roles = "Coordinator,Admin,Broker")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(Guid id)
