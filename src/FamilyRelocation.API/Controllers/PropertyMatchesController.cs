@@ -76,8 +76,16 @@ public class PropertyMatchesController : ControllerBase
     [ProducesResponseType(typeof(List<PropertyMatchListDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetPending()
     {
-        var result = await _mediator.Send(new GetPendingPropertyMatchesQuery());
-        return Ok(result);
+        try
+        {
+            var result = await _mediator.Send(new GetPendingPropertyMatchesQuery());
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in GetPending endpoint");
+            return StatusCode(500, new { message = ex.Message, inner = ex.InnerException?.Message });
+        }
     }
 
     /// <summary>

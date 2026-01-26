@@ -23,7 +23,6 @@ public class GetPendingPropertyMatchesQueryHandler : IRequestHandler<GetPendingP
     public async Task<List<PropertyMatchListDto>> Handle(GetPendingPropertyMatchesQuery request, CancellationToken cancellationToken)
     {
         // Get all property matches that are ready to schedule
-        // Include both ShowingRequested and ApplicantInterested (legacy data before status consolidation)
         var matches = await _context.Set<PropertyMatch>()
             .Include(m => m.Property)
                 .ThenInclude(p => p.Photos)
@@ -31,9 +30,8 @@ public class GetPendingPropertyMatchesQueryHandler : IRequestHandler<GetPendingP
                 .ThenInclude(h => h.Applicant)
             .Where(m => m.Status == PropertyMatchStatus.ShowingRequested ||
                         m.Status == PropertyMatchStatus.ApplicantInterested)
-            .OrderBy(m => m.HousingSearch.Applicant.FamilyName)
-            .ThenByDescending(m => m.MatchScore)
-            .Take(200) // Limit for safety
+            .OrderByDescending(m => m.MatchScore)
+            .Take(200)
             .ToListAsync(cancellationToken);
 
         // Get all showings for these matches
@@ -69,7 +67,7 @@ public class GetPendingPropertyMatchesQueryHandler : IRequestHandler<GetPendingP
                       })
                       .ToList());
 
-        // Filter out matches that already have a scheduled showing (future)
+        // Filter out matches that already have a FUTURE scheduled showing
         var now = DateTime.UtcNow;
         var pendingMatches = matches
             .Where(m =>
@@ -77,7 +75,6 @@ public class GetPendingPropertyMatchesQueryHandler : IRequestHandler<GetPendingP
                 if (!showingsByMatch.TryGetValue(m.Id, out var showings))
                     return true; // No showings at all - needs scheduling
 
-                // Check if there's a scheduled showing in the future
                 return !showings.Any(s =>
                     s.Status == "Scheduled" &&
                     s.ScheduledDateTime >= now);
