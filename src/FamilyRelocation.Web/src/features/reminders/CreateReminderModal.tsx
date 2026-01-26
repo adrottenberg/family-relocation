@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Modal,
   Form,
@@ -9,9 +9,11 @@ import {
   Switch,
   message,
   Space,
+  Spin,
 } from 'antd';
 import dayjs from 'dayjs';
-import { remindersApi, CreateReminderRequest, ReminderPriority } from '../../api';
+import { useQuery } from '@tanstack/react-query';
+import { remindersApi, CreateReminderRequest, ReminderPriority, applicantsApi, propertiesApi } from '../../api';
 import { toUtcString } from '../../utils/datetime';
 
 const { TextArea } = Input;
@@ -45,6 +47,27 @@ const CreateReminderModal = ({
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [selectedEntityType, setSelectedEntityType] = useState<string>(prefilledEntityType || '');
+
+  // Reset selected entity type when modal opens/closes or prefilled type changes
+  useEffect(() => {
+    setSelectedEntityType(prefilledEntityType || '');
+  }, [prefilledEntityType, open]);
+
+  // Fetch applicants for Applicant and HousingSearch entity types
+  const { data: applicantsData, isLoading: isLoadingApplicants } = useQuery({
+    queryKey: ['applicants', 'all'],
+    queryFn: () => applicantsApi.getAll({ pageSize: 500 }),
+    enabled: open && (selectedEntityType === 'Applicant' || selectedEntityType === 'HousingSearch') && !prefilledEntityId,
+    staleTime: 30000, // Cache for 30 seconds
+  });
+
+  // Fetch properties for Property entity type
+  const { data: propertiesData, isLoading: isLoadingProperties } = useQuery({
+    queryKey: ['properties', 'all'],
+    queryFn: () => propertiesApi.getAll({ pageSize: 500 }),
+    enabled: open && selectedEntityType === 'Property' && !prefilledEntityId,
+    staleTime: 30000,
+  });
 
   const handleSubmit = async () => {
     try {
@@ -191,15 +214,68 @@ const CreateReminderModal = ({
             </Select>
           </Form.Item>
 
-          {selectedEntityType && selectedEntityType !== 'General' && !prefilledEntityId && (
+          {selectedEntityType === 'Applicant' && !prefilledEntityId && (
             <Form.Item
               name="entityId"
-              label="Entity ID"
-              rules={[{ required: true, message: 'Please enter entity ID' }]}
+              label="Applicant"
+              rules={[{ required: true, message: 'Please select an applicant' }]}
               style={{ flex: 1 }}
-              tooltip="Copy the ID from the detail page URL"
             >
-              <Input placeholder="Enter entity ID (GUID)" />
+              <Select
+                showSearch
+                placeholder="Search for an applicant..."
+                optionFilterProp="label"
+                loading={isLoadingApplicants}
+                notFoundContent={isLoadingApplicants ? <Spin size="small" /> : 'No applicants found'}
+                options={applicantsData?.items.map(a => ({
+                  value: a.id,
+                  label: a.husbandFullName,
+                }))}
+              />
+            </Form.Item>
+          )}
+
+          {selectedEntityType === 'HousingSearch' && !prefilledEntityId && (
+            <Form.Item
+              name="entityId"
+              label="Applicant's Housing Search"
+              rules={[{ required: true, message: 'Please select a housing search' }]}
+              style={{ flex: 1 }}
+            >
+              <Select
+                showSearch
+                placeholder="Search by applicant name..."
+                optionFilterProp="label"
+                loading={isLoadingApplicants}
+                notFoundContent={isLoadingApplicants ? <Spin size="small" /> : 'No housing searches found'}
+                options={applicantsData?.items
+                  .filter(a => a.housingSearchId) // Only show applicants with active housing searches
+                  .map(a => ({
+                    value: a.housingSearchId!,
+                    label: `${a.husbandFullName} (${a.stage || 'Unknown Stage'})`,
+                  }))}
+              />
+            </Form.Item>
+          )}
+
+          {selectedEntityType === 'Property' && !prefilledEntityId && (
+            <Form.Item
+              name="entityId"
+              label="Property"
+              rules={[{ required: true, message: 'Please select a property' }]}
+              style={{ flex: 1 }}
+            >
+              <Select
+                showSearch
+                placeholder="Search by address..."
+                optionFilterProp="label"
+                loading={isLoadingProperties}
+                notFoundContent={isLoadingProperties ? <Spin size="small" /> : 'No properties found'}
+                options={propertiesData?.items.map(p => ({
+                  value: p.id,
+                  label: `${p.street}, ${p.city}`,
+                }))}
+              />
             </Form.Item>
           )}
 

@@ -49,7 +49,7 @@ import ContractInfoModal from '../pipeline/modals/ContractInfoModal';
 import ContractFailedModal from '../pipeline/modals/ContractFailedModal';
 import ClosingConfirmModal from '../pipeline/modals/ClosingConfirmModal';
 import { LogActivityModal } from '../activities';
-import { ReminderDetailModal, SnoozeModal } from '../reminders';
+import { ReminderDetailModal, SnoozeModal, EditReminderModal } from '../reminders';
 import { PropertyMatchList, CreatePropertyMatchModal, type MatchScheduleData } from '../propertyMatches';
 import { ScheduleShowingModal } from '../showings';
 import { ShowingSchedulerModal } from '../showings/scheduler';
@@ -72,6 +72,7 @@ const ApplicantDetailPage = () => {
   const [schedulerModalOpen, setSchedulerModalOpen] = useState(false);
   // Reminder modals
   const [reminderDetailId, setReminderDetailId] = useState<string | null>(null);
+  const [editReminderId, setEditReminderId] = useState<string | null>(null);
   const [snoozeReminderId, setSnoozeReminderId] = useState<string | null>(null);
 
   // Stage transition modal state
@@ -650,6 +651,10 @@ const ApplicantDetailPage = () => {
             setReminderDetailId(null);
           }).catch(() => message.error('Failed to reopen reminder'));
         }}
+        onEdit={(remId) => {
+          setReminderDetailId(null);
+          setEditReminderId(remId);
+        }}
       />
 
       {/* Snooze Modal */}
@@ -664,6 +669,19 @@ const ApplicantDetailPage = () => {
             queryClient.invalidateQueries({ queryKey: ['reminderCounts'] });
             setSnoozeReminderId(null);
           }
+        }}
+      />
+
+      {/* Edit Reminder Modal */}
+      <EditReminderModal
+        open={!!editReminderId}
+        reminderId={editReminderId}
+        onClose={() => setEditReminderId(null)}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ['applicantReminders', applicant.id] });
+          queryClient.invalidateQueries({ queryKey: ['housingSearchReminders'] });
+          queryClient.invalidateQueries({ queryKey: ['reminderCounts'] });
+          setEditReminderId(null);
         }}
       />
     </div>
