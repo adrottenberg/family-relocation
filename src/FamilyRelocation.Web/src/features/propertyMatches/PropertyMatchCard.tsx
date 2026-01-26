@@ -85,7 +85,7 @@ const PropertyMatchCard = ({
   };
 
   const handleInterested = () => {
-    updateStatusMutation.mutate({ status: 'ApplicantInterested' });
+    updateStatusMutation.mutate({ status: 'ShowingRequested' });
   };
 
   const handleNotInterested = () => {

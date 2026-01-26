@@ -22,13 +22,15 @@ public class GetPendingPropertyMatchesQueryHandler : IRequestHandler<GetPendingP
 
     public async Task<List<PropertyMatchListDto>> Handle(GetPendingPropertyMatchesQuery request, CancellationToken cancellationToken)
     {
-        // Get all property matches with ShowingRequested status
+        // Get all property matches that are ready to schedule
+        // Include both ShowingRequested and ApplicantInterested (legacy data before status consolidation)
         var matches = await _context.Set<PropertyMatch>()
             .Include(m => m.Property)
                 .ThenInclude(p => p.Photos)
             .Include(m => m.HousingSearch)
                 .ThenInclude(h => h.Applicant)
-            .Where(m => m.Status == PropertyMatchStatus.ShowingRequested)
+            .Where(m => m.Status == PropertyMatchStatus.ShowingRequested ||
+                        m.Status == PropertyMatchStatus.ApplicantInterested)
             .OrderBy(m => m.HousingSearch.Applicant.FamilyName)
             .ThenByDescending(m => m.MatchScore)
             .Take(200) // Limit for safety
