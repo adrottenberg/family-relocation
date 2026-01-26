@@ -95,7 +95,7 @@ public class RemindersEndpointsTests : IDisposable
         var request = new
         {
             title = "Follow up with applicant",
-            dueDate = DateTime.UtcNow.Date.AddDays(1),
+            dueDateTime = DateTime.UtcNow.Date.AddDays(1).AddHours(14), // 2 PM
             entityType = "Applicant",
             entityId = entityId,
             notes = "Need to confirm documents",
@@ -124,7 +124,7 @@ public class RemindersEndpointsTests : IDisposable
         var request = new
         {
             title = "Urgent task",
-            dueDate = DateTime.UtcNow.Date.AddDays(1),
+            dueDateTime = DateTime.UtcNow.Date.AddDays(1).AddHours(14),
             entityType = "Applicant",
             entityId = Guid.NewGuid(),
             priority = "Urgent"
@@ -147,7 +147,7 @@ public class RemindersEndpointsTests : IDisposable
         var request = new
         {
             title = "",
-            dueDate = DateTime.UtcNow.Date.AddDays(1),
+            dueDateTime = DateTime.UtcNow.Date.AddDays(1).AddHours(14),
             entityType = "Applicant",
             entityId = Guid.NewGuid()
         };
@@ -170,7 +170,7 @@ public class RemindersEndpointsTests : IDisposable
         var createRequest = new
         {
             title = "Test reminder",
-            dueDate = DateTime.UtcNow.Date.AddDays(1),
+            dueDateTime = DateTime.UtcNow.Date.AddDays(1).AddHours(14),
             entityType = "Applicant",
             entityId = Guid.NewGuid()
         };
@@ -196,7 +196,7 @@ public class RemindersEndpointsTests : IDisposable
         var createRequest = new
         {
             title = "Open reminder",
-            dueDate = DateTime.UtcNow.Date.AddDays(1),
+            dueDateTime = DateTime.UtcNow.Date.AddDays(1).AddHours(14),
             entityType = "Applicant",
             entityId = entityId
         };
@@ -222,7 +222,7 @@ public class RemindersEndpointsTests : IDisposable
         await _client.PostAsJsonAsync("/api/reminders", new
         {
             title = "Reminder 1",
-            dueDate = DateTime.UtcNow.Date.AddDays(1),
+            dueDateTime = DateTime.UtcNow.Date.AddDays(1).AddHours(14),
             entityType = "Applicant",
             entityId = entityId1
         });
@@ -230,7 +230,7 @@ public class RemindersEndpointsTests : IDisposable
         await _client.PostAsJsonAsync("/api/reminders", new
         {
             title = "Reminder 2",
-            dueDate = DateTime.UtcNow.Date.AddDays(1),
+            dueDateTime = DateTime.UtcNow.Date.AddDays(1).AddHours(14),
             entityType = "Applicant",
             entityId = entityId2
         });
@@ -256,7 +256,7 @@ public class RemindersEndpointsTests : IDisposable
         var createRequest = new
         {
             title = "Get by ID test",
-            dueDate = DateTime.UtcNow.Date.AddDays(1),
+            dueDateTime = DateTime.UtcNow.Date.AddDays(1).AddHours(14),
             entityType = "Applicant",
             entityId = Guid.NewGuid()
         };
@@ -296,7 +296,7 @@ public class RemindersEndpointsTests : IDisposable
         await _client.PostAsJsonAsync("/api/reminders", new
         {
             title = "Due today",
-            dueDate = DateTime.UtcNow.Date,
+            dueDateTime = DateTime.UtcNow.Date.AddHours(14), // Today at 2 PM
             entityType = "Applicant",
             entityId = Guid.NewGuid()
         });
@@ -320,7 +320,7 @@ public class RemindersEndpointsTests : IDisposable
         await _client.PostAsJsonAsync("/api/reminders", new
         {
             title = "Upcoming reminder",
-            dueDate = DateTime.UtcNow.Date.AddDays(3),
+            dueDateTime = DateTime.UtcNow.Date.AddDays(3).AddHours(14),
             entityType = "Applicant",
             entityId = Guid.NewGuid()
         });
@@ -346,7 +346,7 @@ public class RemindersEndpointsTests : IDisposable
         var createResponse = await _client.PostAsJsonAsync("/api/reminders", new
         {
             title = "To complete",
-            dueDate = DateTime.UtcNow.Date.AddDays(1),
+            dueDateTime = DateTime.UtcNow.Date.AddDays(1).AddHours(14),
             entityType = "Applicant",
             entityId = Guid.NewGuid()
         });
@@ -387,7 +387,7 @@ public class RemindersEndpointsTests : IDisposable
         var createResponse = await _client.PostAsJsonAsync("/api/reminders", new
         {
             title = "To snooze",
-            dueDate = DateTime.UtcNow.Date.AddDays(1),
+            dueDateTime = DateTime.UtcNow.Date.AddDays(1).AddHours(14),
             entityType = "Applicant",
             entityId = Guid.NewGuid()
         });
@@ -424,7 +424,7 @@ public class RemindersEndpointsTests : IDisposable
         var createResponse = await _client.PostAsJsonAsync("/api/reminders", new
         {
             title = "To dismiss",
-            dueDate = DateTime.UtcNow.Date.AddDays(1),
+            dueDateTime = DateTime.UtcNow.Date.AddDays(1).AddHours(14),
             entityType = "Applicant",
             entityId = Guid.NewGuid()
         });
@@ -455,7 +455,7 @@ public class RemindersEndpointsTests : IDisposable
         var createResponse = await _client.PostAsJsonAsync("/api/reminders", new
         {
             title = "To reopen",
-            dueDate = DateTime.UtcNow.Date.AddDays(1),
+            dueDateTime = DateTime.UtcNow.Date.AddDays(1).AddHours(14),
             entityType = "Applicant",
             entityId = Guid.NewGuid()
         });
@@ -488,7 +488,7 @@ public class RemindersEndpointsTests : IDisposable
         var createResponse = await _client.PostAsJsonAsync("/api/reminders", new
         {
             title = "Original title",
-            dueDate = DateTime.UtcNow.Date.AddDays(1),
+            dueDateTime = DateTime.UtcNow.Date.AddDays(1).AddHours(14),
             entityType = "Applicant",
             entityId = Guid.NewGuid()
         });
@@ -535,8 +535,7 @@ public class RemindersEndpointsTests : IDisposable
         Guid Id,
         string Title,
         string? Notes,
-        DateTime DueDate,
-        TimeOnly? DueTime,
+        DateTime DueDateTime,
         ReminderPriority Priority,
         string EntityType,
         Guid EntityId,
@@ -549,8 +548,10 @@ public class RemindersEndpointsTests : IDisposable
         int SnoozeCount,
         DateTime CreatedAt,
         Guid CreatedBy,
+        string? CreatedByName,
         DateTime? CompletedAt,
         Guid? CompletedBy,
+        string? CompletedByName,
         bool IsOverdue,
         bool IsDueToday);
 
