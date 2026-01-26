@@ -35,7 +35,7 @@ public class ApplicantsController : ControllerBase
     /// Gets a paginated list of applicants with search, filter, and sort options.
     /// </summary>
     [HttpGet]
-    [Authorize(Roles = "Coordinator,Admin,BoardMember")]
+    [Authorize(Roles = "Coordinator,Admin,BoardMember,Broker")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAll([FromQuery] GetApplicantsQuery query)
     {
@@ -71,7 +71,7 @@ public class ApplicantsController : ControllerBase
     /// Gets an applicant by ID with full details including PII.
     /// </summary>
     [HttpGet("{id:guid}")]
-    [Authorize(Roles = "Coordinator,Admin,BoardMember")]
+    [Authorize(Roles = "Coordinator,Admin,BoardMember,Broker")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetById(Guid id)
