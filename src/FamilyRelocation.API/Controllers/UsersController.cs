@@ -106,6 +106,7 @@ public class UsersController : ControllerBase
     /// <param name="limit">Maximum users to return (1-60, default 60).</param>
     /// <param name="paginationToken">Token for fetching next page.</param>
     [HttpGet]
+    [Authorize(Roles = "Coordinator,Admin,BoardMember,Broker")]
     [ProducesResponseType(typeof(UserListResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> ListUsers(
         [FromQuery] string? search = null,
