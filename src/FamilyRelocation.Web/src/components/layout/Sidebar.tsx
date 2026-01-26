@@ -12,6 +12,7 @@ import {
   BankOutlined,
   FileTextOutlined,
   OrderedListOutlined,
+  ScheduleOutlined,
 } from '@ant-design/icons';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
@@ -32,6 +33,7 @@ const Sidebar = () => {
     if (path.startsWith('/applicants')) return 'applicants';
     if (path.startsWith('/pipeline')) return 'pipeline';
     if (path.startsWith('/listings')) return 'listings';
+    if (path.startsWith('/schedule-showings')) return 'schedule-showings';
     if (path.startsWith('/showings')) return 'showings';
     if (path.startsWith('/reminders')) return 'reminders';
     if (path.startsWith('/shuls')) return 'shuls';
@@ -47,7 +49,7 @@ const Sidebar = () => {
   const getOpenKeys = () => {
     const path = location.pathname;
     const keys: string[] = [];
-    if (path.startsWith('/listings') || path.startsWith('/showings')) {
+    if (path.startsWith('/listings') || path.startsWith('/showings') || path.startsWith('/schedule-showings')) {
       keys.push('listings-group');
     }
     if (path.startsWith('/shuls') || path.startsWith('/users') || path.startsWith('/settings')) {
@@ -101,6 +103,11 @@ const Sidebar = () => {
           key: 'listings',
           icon: <HomeOutlined />,
           label: 'All Listings',
+        },
+        {
+          key: 'schedule-showings',
+          icon: <ScheduleOutlined />,
+          label: 'Schedule Showings',
         },
         {
           key: 'showings',

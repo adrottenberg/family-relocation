@@ -18,6 +18,7 @@ const RemindersPage = lazy(() => import('./features/reminders/RemindersPage'));
 const SettingsPage = lazy(() => import('./features/settings/SettingsPage'));
 const UsersPage = lazy(() => import('./features/users/UsersPage'));
 const ShowingsCalendarPage = lazy(() => import('./features/showings/ShowingsCalendarPage'));
+const ScheduleShowingsPage = lazy(() => import('./features/showings/ScheduleShowingsPage'));
 const ShulsPage = lazy(() => import('./features/shuls/ShulsPage'));
 
 const LoadingFallback = () => (
@@ -88,8 +89,9 @@ function App() {
           {/* Redirect old properties URLs */}
           <Route path="properties" element={<Navigate to="/listings" replace />} />
           <Route path="properties/:id" element={<Navigate to="/listings" replace />} />
-          {/* Showings Calendar */}
+          {/* Showings */}
           <Route path="showings" element={<ShowingsCalendarPage />} />
+          <Route path="schedule-showings" element={<ScheduleShowingsPage />} />
           {/* Redirect old broker-showings to main showings */}
           <Route path="broker-showings" element={<Navigate to="/showings" replace />} />
           <Route path="reminders" element={<RemindersPage />} />
