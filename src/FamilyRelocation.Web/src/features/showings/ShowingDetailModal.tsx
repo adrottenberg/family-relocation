@@ -39,19 +39,12 @@ const matchStatusColors: Record<string, string> = {
   ApplicantRejected: 'default',
 };
 
-const matchStatusLabels: Record<string, string> = {
-  MatchIdentified: 'Match Identified',
-  ShowingRequested: 'Showing Requested',
-  ApplicantInterested: 'Interested',
-  OfferMade: 'Offer Made',
-  ApplicantRejected: 'Not Interested',
-};
-
 const ShowingDetailModal = ({ open, onClose, showingId }: ShowingDetailModalProps) => {
   const queryClient = useQueryClient();
   const [rescheduleModalOpen, setRescheduleModalOpen] = useState(false);
   const [offerModalOpen, setOfferModalOpen] = useState(false);
   const [offerAmount, setOfferAmount] = useState<number | null>(null);
+  const [interestModalOpen, setInterestModalOpen] = useState(false);
 
   const { data: showing, isLoading } = useQuery({
     queryKey: ['showings', showingId],
@@ -93,7 +86,25 @@ const ShowingDetailModal = ({ open, onClose, showingId }: ShowingDetailModalProp
   });
 
   const handleComplete = () => {
-    updateStatusMutation.mutate('Completed');
+    // Show interest confirmation dialog
+    setInterestModalOpen(true);
+  };
+
+  const handleCompleteWithInterest = (stillInterested: boolean) => {
+    updateStatusMutation.mutate('Completed', {
+      onSuccess: () => {
+        setInterestModalOpen(false);
+        if (stillInterested) {
+          // Keep or set status to ApplicantInterested
+          if (propertyMatch?.status !== 'ApplicantInterested' && propertyMatch?.status !== 'OfferMade') {
+            updateMatchStatusMutation.mutate({ status: 'ApplicantInterested' });
+          }
+        } else {
+          // Mark as not interested
+          updateMatchStatusMutation.mutate({ status: 'ApplicantRejected' });
+        }
+      },
+    });
   };
 
   const handleCancel = () => {
@@ -195,23 +206,25 @@ const ShowingDetailModal = ({ open, onClose, showingId }: ShowingDetailModalProp
           <div>Loading...</div>
         ) : showing ? (
           <>
-            <div style={{ marginBottom: 16, textAlign: 'center' }}>
-              <Space>
+            {/* Only show status tags if showing is cancelled */}
+            {showing.status === 'Cancelled' && (
+              <div style={{ marginBottom: 16, textAlign: 'center' }}>
                 <Tag color={statusColors[showing.status]} style={{ fontSize: 14, padding: '4px 12px' }}>
                   Showing: {showing.status}
                 </Tag>
-                {propertyMatch && (
-                  <Tag
-                    color={matchStatusColors[propertyMatch.status] || 'default'}
-                    style={{ fontSize: 14, padding: '4px 12px' }}
-                  >
-                    {propertyMatch.status === 'OfferMade' && propertyMatch.offerAmount
-                      ? `Offer: ${formatPrice(propertyMatch.offerAmount)}`
-                      : matchStatusLabels[propertyMatch.status] || propertyMatch.status}
-                  </Tag>
-                )}
-              </Space>
-            </div>
+              </div>
+            )}
+            {/* Show offer info if applicable */}
+            {propertyMatch?.status === 'OfferMade' && propertyMatch.offerAmount && (
+              <div style={{ marginBottom: 16, textAlign: 'center' }}>
+                <Tag
+                  color={matchStatusColors[propertyMatch.status]}
+                  style={{ fontSize: 14, padding: '4px 12px' }}
+                >
+                  Offer: {formatPrice(propertyMatch.offerAmount)}
+                </Tag>
+              </div>
+            )}
 
             <Descriptions column={1} bordered size="small">
               <Descriptions.Item
@@ -320,6 +333,34 @@ const ShowingDetailModal = ({ open, onClose, showingId }: ShowingDetailModalProp
             placeholder="Enter offer amount"
           />
         </div>
+      </Modal>
+
+      {/* Interest Confirmation Modal */}
+      <Modal
+        title="Showing Completed"
+        open={interestModalOpen}
+        footer={null}
+        onCancel={() => setInterestModalOpen(false)}
+      >
+        <div style={{ marginBottom: 24 }}>
+          <Text>Is the applicant still interested in this listing?</Text>
+        </div>
+        <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
+          <Button
+            danger
+            onClick={() => handleCompleteWithInterest(false)}
+            loading={updateStatusMutation.isPending || updateMatchStatusMutation.isPending}
+          >
+            No, Not Interested
+          </Button>
+          <Button
+            type="primary"
+            onClick={() => handleCompleteWithInterest(true)}
+            loading={updateStatusMutation.isPending || updateMatchStatusMutation.isPending}
+          >
+            Yes, Still Interested
+          </Button>
+        </Space>
       </Modal>
     </>
   );

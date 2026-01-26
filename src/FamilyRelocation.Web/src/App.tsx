@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from './store/authStore';
 
 // Lazy load pages for code splitting
@@ -26,13 +26,14 @@ const LoadingFallback = () => (
   </div>
 );
 
-// Protected route wrapper
+// Protected route wrapper - checks auth BEFORE rendering children
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  const location = window.location;
+  const location = useLocation();
 
+  // Redirect to login immediately if not authenticated
+  // This happens before any lazy-loaded content is rendered
   if (!isAuthenticated) {
-    // Pass the intended URL as state so we can redirect after login
     const returnUrl = location.pathname + location.search;
     return <Navigate to="/login" state={{ returnUrl }} replace />;
   }
@@ -41,6 +42,18 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 function App() {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const location = useLocation();
+
+  // For protected routes, check auth BEFORE showing any loading state
+  // This prevents the flash of the main layout before redirecting to login
+  const isProtectedRoute = !location.pathname.startsWith('/login') && !location.pathname.startsWith('/apply');
+
+  if (isProtectedRoute && !isAuthenticated) {
+    const returnUrl = location.pathname + location.search;
+    return <Navigate to="/login" state={{ returnUrl }} replace />;
+  }
+
   return (
     <Suspense fallback={<LoadingFallback />}>
       <Routes>

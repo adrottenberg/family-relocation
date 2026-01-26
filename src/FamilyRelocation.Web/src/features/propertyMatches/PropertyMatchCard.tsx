@@ -1,5 +1,5 @@
-import { Card, Tag, Button, Space, Typography, Checkbox, Image, message, Modal, InputNumber } from 'antd';
-import { EyeOutlined, CalendarOutlined, FileProtectOutlined, CheckCircleOutlined, CloseCircleOutlined, HeartOutlined, DollarOutlined } from '@ant-design/icons';
+import { Card, Tag, Button, Space, Typography, Image, message, Modal, InputNumber } from 'antd';
+import { CalendarOutlined, CheckCircleOutlined, HeartOutlined, DollarOutlined, CloseCircleOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -12,40 +12,26 @@ const { Text } = Typography;
 
 interface PropertyMatchCardProps {
   match: PropertyMatchListDto;
-  selectable?: boolean;
-  selected?: boolean;
-  onSelect?: (id: string, selected: boolean) => void;
-  onRequestShowing?: (id: string) => void;
   onScheduleShowing?: (id: string) => void;
   onEnterContract?: (propertyId: string, offerAmount?: number) => void;
+  onRemove?: (id: string) => void; // Callback when match is removed (rejected/no longer interested)
   showApplicant?: boolean;
   showProperty?: boolean;
 }
 
 const statusColors: Record<string, string> = {
   MatchIdentified: 'blue',
-  ShowingRequested: 'orange',
+  ShowingRequested: 'processing',
   ApplicantInterested: 'green',
   OfferMade: 'purple',
   ApplicantRejected: 'default',
 };
 
-const statusLabels: Record<string, string> = {
-  MatchIdentified: 'Match Identified',
-  ShowingRequested: 'Showing Requested',
-  ApplicantInterested: 'Interested',
-  OfferMade: 'Offer Made',
-  ApplicantRejected: 'Rejected',
-};
-
 const PropertyMatchCard = ({
   match,
-  selectable = false,
-  selected = false,
-  onSelect,
-  onRequestShowing,
   onScheduleShowing,
   onEnterContract,
+  onRemove,
   showApplicant = true,
   showProperty = true,
 }: PropertyMatchCardProps) => {
@@ -56,11 +42,15 @@ const PropertyMatchCard = ({
   const updateStatusMutation = useMutation({
     mutationFn: ({ status, offerAmount }: { status: PropertyMatchStatus; offerAmount?: number }) =>
       propertyMatchesApi.updateStatus(match.id, { status, offerAmount }),
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       message.success('Status updated');
       queryClient.invalidateQueries({ queryKey: ['propertyMatches'] });
       setOfferModalOpen(false);
       setOfferAmount(null);
+      // Notify parent if match was removed
+      if (variables.status === 'ApplicantRejected' && onRemove) {
+        onRemove(match.id);
+      }
     },
     onError: (error: Error) => {
       message.error(error.message || 'Failed to update status');
@@ -76,6 +66,10 @@ const PropertyMatchCard = ({
   };
 
   const hasScheduledShowing = match.showings?.some(s => s.status === 'Scheduled');
+  const hasCompletedShowing = match.showings?.some(s => s.status === 'Completed');
+  const isNewMatch = match.status === 'MatchIdentified';
+  const isInterested = match.status === 'ApplicantInterested' || match.status === 'ShowingRequested';
+  const hasOffer = match.status === 'OfferMade';
 
   const handleOfferSubmit = () => {
     if (!offerAmount || offerAmount <= 0) {
@@ -86,223 +80,268 @@ const PropertyMatchCard = ({
   };
 
   const openOfferModal = () => {
-    setOfferAmount(match.propertyPrice); // Default to property price
+    setOfferAmount(match.propertyPrice);
     setOfferModalOpen(true);
+  };
+
+  const handleInterested = () => {
+    updateStatusMutation.mutate({ status: 'ApplicantInterested' });
+  };
+
+  const handleNotInterested = () => {
+    Modal.confirm({
+      title: 'Remove this listing?',
+      icon: <ExclamationCircleOutlined />,
+      content: 'This listing will be removed from the suggestions. This action cannot be undone.',
+      okText: 'Yes, Remove',
+      okButtonProps: { danger: true },
+      cancelText: 'Cancel',
+      onOk: () => {
+        updateStatusMutation.mutate({ status: 'ApplicantRejected' });
+      },
+    });
+  };
+
+  const handleNoLongerInterested = () => {
+    const hasUpcomingShowings = match.showings?.some(s => s.status === 'Scheduled');
+
+    Modal.confirm({
+      title: 'No longer interested?',
+      icon: <ExclamationCircleOutlined />,
+      content: hasUpcomingShowings
+        ? 'This will remove the listing from suggestions and cancel any scheduled showings for this applicant on this property.'
+        : 'This listing will be removed from the suggestions. This action cannot be undone.',
+      okText: 'Yes, Remove',
+      okButtonProps: { danger: true },
+      cancelText: 'Cancel',
+      onOk: () => {
+        updateStatusMutation.mutate({ status: 'ApplicantRejected' });
+      },
+    });
+  };
+
+  // Render status tag
+  const renderStatusTag = () => {
+    if (hasOffer && match.offerAmount) {
+      return (
+        <Tag color={statusColors.OfferMade}>
+          Offer: {formatPrice(match.offerAmount)}
+        </Tag>
+      );
+    }
+    if (hasScheduledShowing) {
+      return <Tag color="green">Showing Scheduled</Tag>;
+    }
+    if (isInterested) {
+      return <Tag color={statusColors.ApplicantInterested}>Interested</Tag>;
+    }
+    return null;
+  };
+
+  // Render action buttons based on state
+  const renderActionButtons = () => {
+    const buttons: React.ReactNode[] = [];
+
+    // New match: Interested / Not Interested
+    if (isNewMatch) {
+      buttons.push(
+        <Button
+          key="interested"
+          type="primary"
+          icon={<HeartOutlined />}
+          onClick={handleInterested}
+          loading={updateStatusMutation.isPending}
+          block
+        >
+          Interested
+        </Button>,
+        <Button
+          key="not-interested"
+          danger
+          icon={<CloseCircleOutlined />}
+          onClick={handleNotInterested}
+          loading={updateStatusMutation.isPending}
+          block
+        >
+          Not Interested
+        </Button>
+      );
+    }
+    // Interested but no offer yet: Schedule Showing / Make Offer / No Longer Interested
+    else if (isInterested) {
+      // Show Schedule Showing if no scheduled showing yet
+      if (!hasScheduledShowing && onScheduleShowing) {
+        buttons.push(
+          <Button
+            key="schedule"
+            type="primary"
+            icon={<CalendarOutlined />}
+            onClick={() => onScheduleShowing(match.id)}
+            block
+          >
+            Schedule Showing
+          </Button>
+        );
+      }
+      buttons.push(
+        <Button
+          key="offer"
+          type="primary"
+          ghost
+          icon={<DollarOutlined />}
+          onClick={openOfferModal}
+          loading={updateStatusMutation.isPending}
+          block
+        >
+          Make Offer
+        </Button>,
+        <Button
+          key="no-longer"
+          danger
+          icon={<CloseCircleOutlined />}
+          onClick={handleNoLongerInterested}
+          loading={updateStatusMutation.isPending}
+          block
+        >
+          No Longer Interested
+        </Button>
+      );
+    }
+    // Has offer: Enter Contract / No Longer Interested
+    else if (hasOffer) {
+      if (onEnterContract) {
+        buttons.push(
+          <Button
+            key="contract"
+            type="primary"
+            onClick={() => onEnterContract(match.propertyId, match.offerAmount)}
+            block
+          >
+            Enter Contract
+          </Button>
+        );
+      }
+      buttons.push(
+        <Button
+          key="no-longer"
+          danger
+          icon={<CloseCircleOutlined />}
+          onClick={handleNoLongerInterested}
+          loading={updateStatusMutation.isPending}
+          block
+        >
+          No Longer Interested
+        </Button>
+      );
+    }
+
+    return buttons;
   };
 
   return (
     <>
-      <Card
-        size="small"
-        style={{
-          marginBottom: 12,
-          border: selected ? '2px solid #1890ff' : undefined,
-        }}
-      >
-      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', paddingTop: 4 }}>
-        {/* Checkbox area - always reserve space for alignment */}
-        <div style={{ width: 24, flexShrink: 0, paddingTop: 4 }}>
-          {selectable && (
-            <Checkbox
-              checked={selected}
-              onChange={(e) => onSelect?.(match.id, e.target.checked)}
-            />
-          )}
-        </div>
-
-        {/* Property Photo */}
-        {showProperty && (
-          <div style={{ flexShrink: 0 }}>
-            {match.propertyPhotoUrl ? (
-              <Image
-                src={match.propertyPhotoUrl}
-                alt="Property"
-                width={100}
-                height={75}
-                style={{ objectFit: 'cover', borderRadius: 4 }}
-                preview={false}
-              />
-            ) : (
-              <div
-                style={{
-                  width: 100,
-                  height: 75,
-                  background: '#f0f0f0',
-                  borderRadius: 4,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Text type="secondary" style={{ fontSize: 11 }}>No photo</Text>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Match Score */}
-        <div style={{ flexShrink: 0 }}>
-          <MatchScoreDisplay score={match.matchScore} size="small" />
-        </div>
-
-        {/* Main Content */}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          {/* Header row with name and status tags */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-            <div>
-              {showProperty && (
-                <div>
-                  <Link to={`/listings/${match.propertyId}`} style={{ fontWeight: 500 }}>
-                    {match.propertyStreet}
-                  </Link>
-                  <Text type="secondary" style={{ marginLeft: 8 }}>{match.propertyCity}</Text>
-                </div>
-              )}
-              {showApplicant && (
-                <div style={{ marginTop: showProperty ? 2 : 0 }}>
-                  <Link to={`/applicants/${match.applicantId}`}>
-                    {match.applicantName}
-                  </Link>
+      <Card size="small" style={{ marginBottom: 12 }}>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+          {/* Property Photo */}
+          {showProperty && (
+            <div style={{ flexShrink: 0 }}>
+              {match.propertyPhotoUrl ? (
+                <Image
+                  src={match.propertyPhotoUrl}
+                  alt="Property"
+                  width={100}
+                  height={75}
+                  style={{ objectFit: 'cover', borderRadius: 4 }}
+                  preview={false}
+                />
+              ) : (
+                <div
+                  style={{
+                    width: 100,
+                    height: 75,
+                    background: '#f0f0f0',
+                    borderRadius: 4,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Text type="secondary" style={{ fontSize: 11 }}>No photo</Text>
                 </div>
               )}
             </div>
-            <Space size="small" style={{ flexShrink: 0 }}>
-              {/* Show match status - offer amount takes priority */}
-              {match.status === 'OfferMade' && match.offerAmount ? (
-                <Tag color={statusColors[match.status]}>
-                  Offer: {formatPrice(match.offerAmount)}
-                </Tag>
-              ) : hasScheduledShowing ? (
-                <Tag color="green">Scheduled</Tag>
-              ) : (
-                <Tag color={statusColors[match.status] || 'default'}>
-                  {statusLabels[match.status] || match.status}
-                </Tag>
-              )}
+          )}
+
+          {/* Match Score */}
+          <div style={{ flexShrink: 0 }}>
+            <MatchScoreDisplay score={match.matchScore} size="small" />
+          </div>
+
+          {/* Main Content */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {/* Property Info */}
+            {showProperty && (
+              <div style={{ marginBottom: 4 }}>
+                <Link
+                  to={`/listings/${match.propertyId}`}
+                  style={{ fontWeight: 600, fontSize: 16, color: '#1890ff' }}
+                >
+                  {match.propertyStreet}
+                </Link>
+                <Text type="secondary" style={{ marginLeft: 8 }}>{match.propertyCity}</Text>
+              </div>
+            )}
+
+            {/* Applicant Info */}
+            {showApplicant && (
+              <div style={{ marginBottom: 4 }}>
+                <Link
+                  to={`/applicants/${match.applicantId}`}
+                  style={{ fontWeight: 600, fontSize: 16, color: '#1890ff' }}
+                >
+                  {match.applicantName}
+                </Link>
+              </div>
+            )}
+
+            {/* Price and details */}
+            {showProperty && (
+              <div style={{ marginBottom: 4 }}>
+                <Text strong style={{ color: '#52c41a', fontSize: 15 }}>{formatPrice(match.propertyPrice)}</Text>
+                <Text type="secondary" style={{ marginLeft: 12 }}>
+                  {match.propertyBedrooms} bed · {match.propertyBathrooms} bath
+                </Text>
+              </div>
+            )}
+
+            {/* Status and showing info */}
+            <Space size="small" wrap>
+              {renderStatusTag()}
               {match.isAutoMatched ? (
                 <Tag>Auto</Tag>
               ) : (
                 <Tag color="cyan">Manual</Tag>
               )}
+              {/* Scheduled showings */}
+              {match.showings?.filter(s => s.status === 'Scheduled').map((showing) => (
+                <Tag key={showing.id} icon={<CalendarOutlined />} color="processing">
+                  {formatDateTime(showing.scheduledDateTime, 'MMM D [at] h:mm A')}
+                </Tag>
+              ))}
+              {/* Completed showings count */}
+              {hasCompletedShowing && (
+                <Tag color="success" icon={<CheckCircleOutlined />}>
+                  {match.showings?.filter(s => s.status === 'Completed').length} shown
+                </Tag>
+              )}
             </Space>
           </div>
 
-          {/* Price and details */}
-          {showProperty && (
-            <div style={{ marginBottom: 8 }}>
-              <Text strong style={{ color: '#1890ff' }}>{formatPrice(match.propertyPrice)}</Text>
-              <Text type="secondary" style={{ marginLeft: 12 }}>
-                {match.propertyBedrooms} bed · {match.propertyBathrooms} bath
-              </Text>
-            </div>
-          )}
-
-          {/* Showing info tags */}
-          {match.showings && match.showings.length > 0 && (
-            <div style={{ marginBottom: 8 }}>
-              <Space size="small" wrap>
-                {match.showings.filter(s => s.status === 'Scheduled').map((showing) => (
-                  <Tag key={showing.id} icon={<CalendarOutlined />} color="processing">
-                    Showing: {formatDateTime(showing.scheduledDateTime, 'MMM D [at] h:mm A')}
-                  </Tag>
-                ))}
-                {match.showings.filter(s => s.status === 'Completed').length > 0 && (
-                  <Tag color="success" icon={<CheckCircleOutlined />}>
-                    {match.showings.filter(s => s.status === 'Completed').length} completed
-                  </Tag>
-                )}
-                {match.showings.filter(s => s.status === 'Cancelled').length > 0 && (
-                  <Tag color="default">
-                    {match.showings.filter(s => s.status === 'Cancelled').length} cancelled
-                  </Tag>
-                )}
-              </Space>
-            </div>
-          )}
-
-          {/* Action Buttons */}
-          <Space size="small" wrap>
-            <Link to={`/listings/${match.propertyId}`}>
-              <Button size="small" icon={<EyeOutlined />}>
-                View Listing
-              </Button>
-            </Link>
-
-            {/* Request Showing - only for MatchIdentified */}
-            {match.status === 'MatchIdentified' && onRequestShowing && (
-              <Button
-                size="small"
-                type="primary"
-                ghost
-                onClick={() => onRequestShowing(match.id)}
-              >
-                Request Showing
-              </Button>
-            )}
-
-            {/* Schedule Showing - for ShowingRequested without scheduled showing */}
-            {match.status === 'ShowingRequested' && onScheduleShowing && !hasScheduledShowing && (
-              <Button
-                size="small"
-                type="primary"
-                icon={<CalendarOutlined />}
-                onClick={() => onScheduleShowing(match.id)}
-              >
-                Schedule Showing
-              </Button>
-            )}
-
-            {/* Status action buttons - show for non-rejected statuses */}
-            {match.status !== 'ApplicantRejected' && match.status !== 'ApplicantInterested' && (
-              <Button
-                size="small"
-                icon={<HeartOutlined />}
-                onClick={() => updateStatusMutation.mutate({ status: 'ApplicantInterested' })}
-                loading={updateStatusMutation.isPending}
-              >
-                Interested
-              </Button>
-            )}
-
-            {match.status !== 'ApplicantRejected' && match.status !== 'OfferMade' && (
-              <Button
-                size="small"
-                type="primary"
-                ghost
-                icon={<DollarOutlined />}
-                onClick={openOfferModal}
-                loading={updateStatusMutation.isPending}
-              >
-                Make Offer
-              </Button>
-            )}
-
-            {match.status !== 'ApplicantRejected' && (
-              <Button
-                size="small"
-                danger
-                icon={<CloseCircleOutlined />}
-                onClick={() => updateStatusMutation.mutate({ status: 'ApplicantRejected' })}
-                loading={updateStatusMutation.isPending}
-              >
-                Not Interested
-              </Button>
-            )}
-
-            {/* Enter Contract button - only show after offer is made */}
-            {match.status === 'OfferMade' && onEnterContract && (
-              <Button
-                size="small"
-                type="primary"
-                icon={<FileProtectOutlined />}
-                onClick={() => onEnterContract(match.propertyId, match.offerAmount)}
-              >
-                Enter Contract
-              </Button>
-            )}
-          </Space>
+          {/* Action Buttons - Vertical stack on right */}
+          <div style={{ flexShrink: 0, width: 160, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {renderActionButtons()}
+          </div>
         </div>
-      </div>
       </Card>
 
       {/* Offer Amount Modal */}
