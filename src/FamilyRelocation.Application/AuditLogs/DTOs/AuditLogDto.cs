@@ -17,6 +17,17 @@ public class AuditLogDto
     public Guid? UserId { get; init; }
     public string? UserEmail { get; init; }
     public DateTime Timestamp { get; init; }
+
+    /// <summary>
+    /// Resolved friendly names for IDs found in OldValues/NewValues.
+    /// Key is the GUID string, value is the friendly display name.
+    /// </summary>
+    public Dictionary<string, string>? ResolvedNames { get; set; }
+
+    /// <summary>
+    /// Friendly description of the entity being changed (e.g., property address, applicant name).
+    /// </summary>
+    public string? EntityDescription { get; set; }
 }
 
 /// <summary>

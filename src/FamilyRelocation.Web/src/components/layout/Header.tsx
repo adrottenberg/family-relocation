@@ -1,11 +1,23 @@
-import { Layout, Button, Badge } from 'antd';
+import { Layout, Button, Badge, Tooltip } from 'antd';
 import { BellOutlined } from '@ant-design/icons';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { remindersApi } from '../../api';
 
 const { Header: AntHeader } = Layout;
 
 const Header = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+
+  // Fetch global reminder counts using due report
+  const { data: dueReport } = useQuery({
+    queryKey: ['reminderCounts'],
+    queryFn: () => remindersApi.getDueReport(),
+    refetchInterval: 60000, // Refresh every minute
+  });
+
+  const urgentCount = (dueReport?.overdueCount || 0) + (dueReport?.dueTodayCount || 0);
 
   // Get page title based on current route
   const getPageTitle = () => {
@@ -27,13 +39,16 @@ const Header = () => {
         <h1 className="page-title">{getPageTitle()}</h1>
       </div>
       <div className="header-right">
-        <Badge count={0} showZero={false}>
-          <Button
-            type="text"
-            icon={<BellOutlined style={{ fontSize: 18 }} />}
-            className="notification-btn"
-          />
-        </Badge>
+        <Tooltip title={urgentCount > 0 ? `${urgentCount} reminder${urgentCount > 1 ? 's' : ''} need attention` : 'No urgent reminders'}>
+          <Badge count={urgentCount} showZero={false}>
+            <Button
+              type="text"
+              icon={<BellOutlined style={{ fontSize: 18, color: urgentCount > 0 ? '#ff4d4f' : undefined }} />}
+              className="notification-btn"
+              onClick={() => navigate('/reminders')}
+            />
+          </Badge>
+        </Tooltip>
       </div>
     </AntHeader>
   );

@@ -50,9 +50,76 @@ public record PropertyMatchListDto
     public required Guid ApplicantId { get; init; }
     public required string ApplicantName { get; init; }
 
-    // Showing info - populated if a showing is scheduled for this match
-    public DateTime? ScheduledShowingDate { get; init; }
-    public TimeOnly? ScheduledShowingTime { get; init; }
+    // All showings for this match
+    public List<MatchShowingDto> Showings { get; init; } = [];
+
+    // Convenience properties - returns first future scheduled showing, or last showing if none upcoming
+    public DateTime? ScheduledShowingDate
+    {
+        get
+        {
+            var today = DateOnly.FromDateTime(DateTime.Today);
+
+            // First, look for future scheduled showings
+            var futureScheduled = Showings
+                .Where(s => s.Status == "Scheduled" && s.ScheduledDate >= today)
+                .OrderBy(s => s.ScheduledDate)
+                .ThenBy(s => s.ScheduledTime)
+                .FirstOrDefault();
+
+            if (futureScheduled != null)
+                return futureScheduled.ScheduledDate.ToDateTime(futureScheduled.ScheduledTime);
+
+            // If no future scheduled showings, return the most recent showing (any status)
+            var lastShowing = Showings
+                .OrderByDescending(s => s.ScheduledDate)
+                .ThenByDescending(s => s.ScheduledTime)
+                .FirstOrDefault();
+
+            return lastShowing?.ScheduledDate.ToDateTime(lastShowing.ScheduledTime);
+        }
+    }
+
+    public TimeOnly? ScheduledShowingTime
+    {
+        get
+        {
+            var today = DateOnly.FromDateTime(DateTime.Today);
+
+            // First, look for future scheduled showings
+            var futureScheduled = Showings
+                .Where(s => s.Status == "Scheduled" && s.ScheduledDate >= today)
+                .OrderBy(s => s.ScheduledDate)
+                .ThenBy(s => s.ScheduledTime)
+                .FirstOrDefault();
+
+            if (futureScheduled != null)
+                return futureScheduled.ScheduledTime;
+
+            // If no future scheduled showings, return the most recent showing (any status)
+            var lastShowing = Showings
+                .OrderByDescending(s => s.ScheduledDate)
+                .ThenByDescending(s => s.ScheduledTime)
+                .FirstOrDefault();
+
+            return lastShowing?.ScheduledTime;
+        }
+    }
+}
+
+/// <summary>
+/// Showing info embedded in property match DTO.
+/// </summary>
+public record MatchShowingDto
+{
+    public required Guid Id { get; init; }
+    public required DateOnly ScheduledDate { get; init; }
+    public required TimeOnly ScheduledTime { get; init; }
+    public required string Status { get; init; }
+    public Guid? BrokerUserId { get; init; }
+    public string? BrokerUserName { get; init; }
+    public string? Notes { get; init; }
+    public DateTime? CompletedAt { get; init; }
 }
 
 /// <summary>

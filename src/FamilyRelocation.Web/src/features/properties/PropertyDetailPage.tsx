@@ -37,6 +37,7 @@ import { propertiesApi, shulsApi } from '../../api';
 import type { PropertyPhotoDto, PropertyShulDistanceDto } from '../../api/types';
 import { PropertyMatchList, CreatePropertyMatchModal, type MatchScheduleData } from '../propertyMatches';
 import { ScheduleShowingModal } from '../showings';
+import { ShowingSchedulerModal } from '../showings/scheduler';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -65,6 +66,8 @@ const PropertyDetailPage = () => {
   const [createMatchModalOpen, setCreateMatchModalOpen] = useState(false);
   // Queue of showings to schedule - each modal close advances to the next
   const [showingsToSchedule, setShowingsToSchedule] = useState<MatchScheduleData[]>([]);
+  // Drag-and-drop scheduler modal
+  const [schedulerModalOpen, setSchedulerModalOpen] = useState(false);
 
   const { data: property, isLoading, error } = useQuery({
     queryKey: ['property', id],
@@ -436,6 +439,7 @@ const PropertyDetailPage = () => {
                 // Queue all matches for sequential scheduling
                 setShowingsToSchedule(matches);
               }}
+              onOpenScheduler={() => setSchedulerModalOpen(true)}
               showApplicant={true}
               showProperty={false}
             />
@@ -658,6 +662,14 @@ const PropertyDetailPage = () => {
           } : undefined}
         />
       )}
+
+      {/* Showing Scheduler Modal (Drag-and-Drop) */}
+      <ShowingSchedulerModal
+        open={schedulerModalOpen}
+        onClose={() => setSchedulerModalOpen(false)}
+        mode="property"
+        propertyId={property.id}
+      />
     </div>
   );
 };

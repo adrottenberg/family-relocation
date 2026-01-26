@@ -37,17 +37,46 @@ public class GetPropertyMatchesForPropertyQueryHandler : IRequestHandler<GetProp
             .Take(100) // Limit for safety
             .ToListAsync(cancellationToken);
 
-        // Get scheduled showings for these matches (only Scheduled status, not completed/cancelled)
+        // Get all showings for these matches (all statuses)
         var matchIds = matches.Select(m => m.Id).ToList();
-        var scheduledShowings = await _context.Set<Showing>()
-            .Where(s => matchIds.Contains(s.PropertyMatchId) && s.Status == ShowingStatus.Scheduled)
-            .Select(s => new { s.PropertyMatchId, s.ScheduledDate, s.ScheduledTime })
-            .ToDictionaryAsync(s => s.PropertyMatchId, cancellationToken);
+        var showingsList = await _context.Set<Showing>()
+            .Where(s => matchIds.Contains(s.PropertyMatchId))
+            .Select(s => new
+            {
+                s.Id,
+                s.PropertyMatchId,
+                s.ScheduledDate,
+                s.ScheduledTime,
+                s.Status,
+                s.BrokerUserId,
+                s.Notes,
+                s.CompletedAt
+            })
+            .ToListAsync(cancellationToken);
+
+        // Group showings by PropertyMatchId
+        var showingsByMatch = showingsList
+            .GroupBy(s => s.PropertyMatchId)
+            .ToDictionary(
+                g => g.Key,
+                g => g.OrderByDescending(s => s.ScheduledDate)
+                      .ThenByDescending(s => s.ScheduledTime)
+                      .Select(s => new MatchShowingDto
+                      {
+                          Id = s.Id,
+                          ScheduledDate = s.ScheduledDate,
+                          ScheduledTime = s.ScheduledTime,
+                          Status = s.Status.ToString(),
+                          BrokerUserId = s.BrokerUserId,
+                          Notes = s.Notes,
+                          CompletedAt = s.CompletedAt
+                      })
+                      .ToList());
 
         return matches.Select(m =>
         {
-            scheduledShowings.TryGetValue(m.Id, out var showing);
-            return m.ToListDto(showing?.ScheduledDate, showing?.ScheduledTime);
+            showingsByMatch.TryGetValue(m.Id, out var showings);
+            return m.ToListDto(showings);
         }).ToList();
     }
 }

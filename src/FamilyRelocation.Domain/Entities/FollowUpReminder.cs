@@ -175,19 +175,21 @@ public class FollowUpReminder
     }
 
     /// <summary>
-    /// Checks if the reminder is overdue.
-    /// </summary>
-    public bool IsOverdue => Status == ReminderStatus.Open &&
-        (DueDate < DateTime.UtcNow.Date ||
-         (DueDate == DateTime.UtcNow.Date && DueTime.HasValue && DueTime.Value < TimeOnly.FromDateTime(DateTime.UtcNow)));
-
-    /// <summary>
-    /// Checks if the reminder is due today.
-    /// </summary>
-    public bool IsDueToday => Status == ReminderStatus.Open && DueDate == DateTime.UtcNow.Date;
-
-    /// <summary>
     /// Gets the effective due date (considering snooze).
     /// </summary>
     public DateTime EffectiveDueDate => SnoozedUntil ?? DueDate;
+
+    /// <summary>
+    /// Checks if the reminder is overdue.
+    /// Only applies to Open reminders - snoozed reminders are handled separately.
+    /// </summary>
+    public bool IsOverdue => Status == ReminderStatus.Open &&
+        (DueDate.Date < DateTime.UtcNow.Date ||
+         (DueDate.Date == DateTime.UtcNow.Date && DueTime.HasValue && DueTime.Value < TimeOnly.FromDateTime(DateTime.UtcNow)));
+
+    /// <summary>
+    /// Checks if the reminder is due today.
+    /// Only applies to Open reminders - snoozed reminders are handled separately.
+    /// </summary>
+    public bool IsDueToday => Status == ReminderStatus.Open && DueDate.Date == DateTime.UtcNow.Date;
 }

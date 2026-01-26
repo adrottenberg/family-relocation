@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Typography,
   Table,
@@ -32,6 +33,9 @@ import {
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
 import type { MenuProps } from 'antd';
 import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+
+dayjs.extend(utc);
 import {
   remindersApi,
   ReminderListDto,
@@ -63,6 +67,7 @@ const statusColors: Record<ReminderStatus, string> = {
 };
 
 const RemindersPage = () => {
+  const queryClient = useQueryClient();
   const [reminders, setReminders] = useState<ReminderListDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState<TablePaginationConfig>({
@@ -138,6 +143,7 @@ const RemindersPage = () => {
       await remindersApi.complete(id);
       message.success('Reminder completed');
       fetchReminders(pagination.current, pagination.pageSize);
+      queryClient.invalidateQueries({ queryKey: ['reminderCounts'] });
     } catch (error) {
       console.error('Failed to complete reminder:', error);
       message.error('Failed to complete reminder');
@@ -149,6 +155,7 @@ const RemindersPage = () => {
       await remindersApi.dismiss(id);
       message.success('Reminder dismissed');
       fetchReminders(pagination.current, pagination.pageSize);
+      queryClient.invalidateQueries({ queryKey: ['reminderCounts'] });
     } catch (error) {
       console.error('Failed to dismiss reminder:', error);
       message.error('Failed to dismiss reminder');
@@ -160,6 +167,7 @@ const RemindersPage = () => {
       await remindersApi.reopen(id);
       message.success('Reminder reopened');
       fetchReminders(pagination.current, pagination.pageSize);
+      queryClient.invalidateQueries({ queryKey: ['reminderCounts'] });
     } catch (error) {
       console.error('Failed to reopen reminder:', error);
       message.error('Failed to reopen reminder');
@@ -179,6 +187,7 @@ const RemindersPage = () => {
       setSnoozeModalOpen(false);
       setSelectedReminderId(null);
       fetchReminders(pagination.current, pagination.pageSize);
+      queryClient.invalidateQueries({ queryKey: ['reminderCounts'] });
     } catch (error) {
       console.error('Failed to snooze reminder:', error);
       message.error('Failed to snooze reminder');
@@ -224,7 +233,8 @@ const RemindersPage = () => {
   };
 
   const formatDate = (dateStr: string, timeStr?: string) => {
-    const date = dayjs(dateStr);
+    // Parse as UTC to avoid timezone conversion (dates are calendar dates, not moments in time)
+    const date = dayjs.utc(dateStr);
     let formatted = date.format('MMM D, YYYY');
     if (timeStr) {
       formatted += ` at ${timeStr.substring(0, 5)}`;
@@ -244,7 +254,12 @@ const RemindersPage = () => {
               <ExclamationCircleOutlined style={{ color: '#ff4d4f' }} />
             </Tooltip>
           )}
-          <span style={{ fontWeight: record.isOverdue ? 600 : 400 }}>{title}</span>
+          {record.isDueToday && !record.isOverdue && (
+            <Tooltip title="Due Today">
+              <ClockCircleOutlined style={{ color: '#faad14' }} />
+            </Tooltip>
+          )}
+          <span style={{ fontWeight: record.isOverdue || record.isDueToday ? 600 : 400 }}>{title}</span>
           {record.snoozeCount > 0 && (
             <Tag>Snoozed {record.snoozeCount}x</Tag>
           )}

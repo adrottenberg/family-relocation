@@ -109,7 +109,7 @@ const ApplicantListPage = () => {
       key: 'stage',
       width: 140,
       render: (_, record) => {
-        const stageName = record.stage || 'N/A';
+        const stageName = record.stage || 'Submitted';
         const style = getStageTagStyle(stageName);
         return <Tag style={style}>{formatStageName(stageName)}</Tag>;
       },

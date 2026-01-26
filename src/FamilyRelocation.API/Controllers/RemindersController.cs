@@ -131,9 +131,13 @@ public class RemindersController : ControllerBase
         [FromBody] CreateReminderRequest request,
         CancellationToken cancellationToken)
     {
+        // Ensure the DueDate is treated as a calendar date (no timezone shift)
+        // Parse the date and create it as UTC midnight to avoid timezone conversion issues
+        var dueDate = DateTime.SpecifyKind(request.DueDate.Date, DateTimeKind.Utc);
+
         var command = new CreateReminderCommand(
             request.Title,
-            request.DueDate,
+            dueDate,
             request.EntityType,
             request.EntityId,
             request.Notes,
@@ -159,10 +163,15 @@ public class RemindersController : ControllerBase
     {
         try
         {
+            // Ensure the DueDate is treated as a calendar date (no timezone shift)
+            DateTime? dueDate = request.DueDate.HasValue
+                ? DateTime.SpecifyKind(request.DueDate.Value.Date, DateTimeKind.Utc)
+                : null;
+
             var command = new UpdateReminderCommand(
                 id,
                 request.Title,
-                request.DueDate,
+                dueDate,
                 request.DueTime,
                 request.Priority,
                 request.Notes,
@@ -216,7 +225,10 @@ public class RemindersController : ControllerBase
     {
         try
         {
-            await _mediator.Send(new SnoozeReminderCommand(id, request.SnoozeUntil), cancellationToken);
+            // Ensure the SnoozeUntil date is treated as a calendar date (no timezone shift)
+            var snoozeUntil = DateTime.SpecifyKind(request.SnoozeUntil.Date, DateTimeKind.Utc);
+
+            await _mediator.Send(new SnoozeReminderCommand(id, snoozeUntil), cancellationToken);
             return NoContent();
         }
         catch (NotFoundException ex)

@@ -15,6 +15,9 @@ import {
 } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+
+dayjs.extend(utc);
 import { remindersApi, ReminderDto, ReminderPriority, ReminderStatus } from '../../api';
 import { ActivityDetailModal } from '../activities';
 
@@ -86,7 +89,8 @@ const ReminderDetailModal = ({
   }, [open, reminderId]);
 
   const formatDate = (dateStr: string, timeStr?: string) => {
-    const date = dayjs(dateStr);
+    // Parse as UTC to avoid timezone conversion (dates are calendar dates, not moments in time)
+    const date = dayjs.utc(dateStr);
     let formatted = date.format('dddd, MMMM D, YYYY');
     if (timeStr) {
       formatted += ` at ${timeStr.substring(0, 5)}`;

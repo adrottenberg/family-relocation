@@ -4,6 +4,7 @@ import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { applicantsApi, shulsApi } from '../../api';
 import type { ApplicantDto, PhoneNumberDto, ChildDto } from '../../api/types';
 import { useEffect } from 'react';
+import AddressAutocomplete from '../../components/AddressAutocomplete';
 
 const { Panel } = Collapse;
 
@@ -343,6 +344,17 @@ const EditApplicantModal = ({ open, onClose, applicant }: EditApplicantModalProp
 
           {/* Address Section */}
           <Panel header="Current Address" key="address">
+            <Form.Item label="Search Address">
+              <AddressAutocomplete
+                onAddressSelect={(address) => {
+                  form.setFieldValue(['address', 'street'], address.street);
+                  form.setFieldValue(['address', 'city'], address.city);
+                  form.setFieldValue(['address', 'state'], address.state);
+                  form.setFieldValue(['address', 'zipCode'], address.zipCode);
+                }}
+              />
+            </Form.Item>
+
             <Form.Item
               name={['address', 'street']}
               label="Street Address"

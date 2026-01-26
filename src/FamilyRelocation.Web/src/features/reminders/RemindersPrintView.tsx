@@ -2,7 +2,10 @@ import { useEffect, useState, useRef } from 'react';
 import { Modal, Spin, Typography, Divider, Empty, Button, Space } from 'antd';
 import { PrinterOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
 import { remindersApi, DueRemindersReportDto, ReminderListDto } from '../../api';
+
+dayjs.extend(utc);
 
 const { Title, Text } = Typography;
 
@@ -91,7 +94,8 @@ const RemindersPrintView = ({ open, onClose }: RemindersPrintViewProps) => {
   };
 
   const formatDate = (dateStr: string) => {
-    return dayjs(dateStr).format('ddd, MMM D, YYYY');
+    // Parse as UTC to avoid timezone conversion (dates are calendar dates, not moments in time)
+    return dayjs.utc(dateStr).format('ddd, MMM D, YYYY');
   };
 
   const renderReminderList = (reminders: ReminderListDto[], emptyMessage: string) => {

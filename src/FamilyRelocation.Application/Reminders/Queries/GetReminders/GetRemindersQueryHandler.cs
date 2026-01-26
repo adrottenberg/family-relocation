@@ -26,6 +26,7 @@ public class GetRemindersQueryHandler : IRequestHandler<GetRemindersQuery, Remin
         var take = Math.Clamp(query.Take, 1, 100);
 
         var today = DateTime.UtcNow.Date;
+        var tomorrow = today.AddDays(1);
 
         var queryable = _context.Set<FollowUpReminder>().AsQueryable();
 
@@ -51,19 +52,28 @@ public class GetRemindersQueryHandler : IRequestHandler<GetRemindersQuery, Remin
         if (query.DueDateTo.HasValue)
             queryable = queryable.Where(r => r.DueDate <= query.DueDateTo.Value.Date);
 
+        // Include snoozed reminders - use SnoozedUntil as effective due date for snoozed reminders
         if (query.IncludeOverdueOnly == true)
-            queryable = queryable.Where(r => r.Status == ReminderStatus.Open && r.DueDate < today);
+            queryable = queryable.Where(r =>
+                (r.Status == ReminderStatus.Open && r.DueDate < today) ||
+                (r.Status == ReminderStatus.Snoozed && r.SnoozedUntil.HasValue && r.SnoozedUntil.Value < today));
 
         if (query.IncludeDueTodayOnly == true)
-            queryable = queryable.Where(r => r.Status == ReminderStatus.Open && r.DueDate == today);
+            queryable = queryable.Where(r =>
+                (r.Status == ReminderStatus.Open && r.DueDate >= today && r.DueDate < tomorrow) ||
+                (r.Status == ReminderStatus.Snoozed && r.SnoozedUntil.HasValue && r.SnoozedUntil.Value >= today && r.SnoozedUntil.Value < tomorrow));
 
-        // Get counts for open reminders
+        // Get counts for open AND snoozed reminders (snoozed uses SnoozedUntil as effective due date)
         var overdueCount = await _context.Set<FollowUpReminder>()
-            .Where(r => r.Status == ReminderStatus.Open && r.DueDate < today)
+            .Where(r =>
+                (r.Status == ReminderStatus.Open && r.DueDate < today) ||
+                (r.Status == ReminderStatus.Snoozed && r.SnoozedUntil.HasValue && r.SnoozedUntil.Value < today))
             .CountAsync(cancellationToken);
 
         var dueTodayCount = await _context.Set<FollowUpReminder>()
-            .Where(r => r.Status == ReminderStatus.Open && r.DueDate == today)
+            .Where(r =>
+                (r.Status == ReminderStatus.Open && r.DueDate >= today && r.DueDate < tomorrow) ||
+                (r.Status == ReminderStatus.Snoozed && r.SnoozedUntil.HasValue && r.SnoozedUntil.Value >= today && r.SnoozedUntil.Value < tomorrow))
             .CountAsync(cancellationToken);
 
         var totalCount = await queryable.CountAsync(cancellationToken);

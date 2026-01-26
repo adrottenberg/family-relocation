@@ -40,6 +40,22 @@ public class ScheduleShowingCommandHandler : IRequestHandler<ScheduleShowingComm
             throw new NotFoundException(nameof(PropertyMatch), request.PropertyMatchId);
         }
 
+        // Check for existing future scheduled showing for this property match
+        // Rule: Only one future showing can be scheduled per property match at a time
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var existingFutureShowing = await _context.Set<Showing>()
+            .Where(s => s.PropertyMatchId == request.PropertyMatchId &&
+                       s.Status == Domain.Enums.ShowingStatus.Scheduled &&
+                       s.ScheduledDate >= today)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (existingFutureShowing != null)
+        {
+            throw new ArgumentException(
+                $"A showing is already scheduled for this property match on {existingFutureShowing.ScheduledDate:MMM d, yyyy} at {existingFutureShowing.ScheduledTime}. " +
+                "Please reschedule the existing showing instead of creating a new one.");
+        }
+
         // Create the showing
         var showing = Showing.Create(
             propertyMatchId: request.PropertyMatchId,

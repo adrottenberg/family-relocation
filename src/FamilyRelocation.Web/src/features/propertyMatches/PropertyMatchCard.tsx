@@ -126,9 +126,14 @@ const PropertyMatchCard = ({
               )}
             </div>
             <Space size="small">
-              <Tag color={statusColors[match.status] || 'default'}>
-                {statusLabels[match.status] || match.status}
-              </Tag>
+              {/* Show "Scheduled" if there are scheduled showings, otherwise show the match status */}
+              {match.showings?.some(s => s.status === 'Scheduled') ? (
+                <Tag color="green">Scheduled</Tag>
+              ) : (
+                <Tag color={statusColors[match.status] || 'default'}>
+                  {statusLabels[match.status] || match.status}
+                </Tag>
+              )}
               {match.isAutoMatched ? (
                 <Tag>Auto</Tag>
               ) : (
@@ -173,10 +178,25 @@ const PropertyMatchCard = ({
                 Schedule Showing
               </Button>
             )}
-            {match.scheduledShowingDate && (
-              <Tag icon={<CalendarOutlined />} color="processing">
-                Showing: {new Date(match.scheduledShowingDate).toLocaleDateString()}
-              </Tag>
+            {/* Show all showings */}
+            {match.showings && match.showings.length > 0 && (
+              <>
+                {match.showings.filter(s => s.status === 'Scheduled').map((showing, idx) => (
+                  <Tag key={showing.id} icon={<CalendarOutlined />} color="processing">
+                    {idx === 0 ? 'Showing: ' : ''}{new Date(showing.scheduledDate).toLocaleDateString()} {showing.scheduledTime?.substring(0, 5)}
+                  </Tag>
+                ))}
+                {match.showings.filter(s => s.status === 'Completed').length > 0 && (
+                  <Tag color="success">
+                    {match.showings.filter(s => s.status === 'Completed').length} completed
+                  </Tag>
+                )}
+                {match.showings.filter(s => s.status === 'Cancelled').length > 0 && (
+                  <Tag color="default">
+                    {match.showings.filter(s => s.status === 'Cancelled').length} cancelled
+                  </Tag>
+                )}
+              </>
             )}
           </Space>
         </div>
