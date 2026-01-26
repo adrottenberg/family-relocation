@@ -12,19 +12,16 @@ import {
   Empty,
   Timeline,
   Table,
-  Dropdown,
   message,
   Tooltip,
   Alert,
 } from 'antd';
-import type { MenuProps } from 'antd';
 import {
   ArrowLeftOutlined,
   EditOutlined,
   PhoneOutlined,
   MailOutlined,
   PrinterOutlined,
-  SwapOutlined,
   MessageOutlined,
   FileTextOutlined,
   HistoryOutlined,
@@ -37,23 +34,16 @@ import {
   BellOutlined,
   ExclamationCircleOutlined,
 } from '@ant-design/icons';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { applicantsApi, documentsApi, getStageRequirements, housingSearchesApi, activitiesApi, propertyMatchesApi, remindersApi } from '../../api';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { applicantsApi, documentsApi, activitiesApi, propertyMatchesApi, remindersApi } from '../../api';
 import type { ApplicantDto, AuditLogDto, ReminderListDto } from '../../api/types';
 import { colors, statusTagStyles, stageTagStyles } from '../../theme/antd-theme';
-import { useAuthStore } from '../../store/authStore';
-import BoardReviewSection from './BoardReviewSection';
 import SetBoardDecisionModal from './SetBoardDecisionModal';
 import EditApplicantModal from './EditApplicantModal';
 import DocumentUploadModal from './DocumentUploadModal';
 import EditPreferencesModal from './EditPreferencesModal';
-import {
-  validateTransition,
-  formatStage,
-  getPipelineStage,
-  type PipelineStage,
-  type TransitionType,
-} from '../pipeline/transitionRules';
+import StageTimeline from './StageTimeline';
+import { getPipelineStage, type TransitionType } from '../pipeline/transitionRules';
 import AgreementsRequiredModal from '../pipeline/modals/AgreementsRequiredModal';
 import ContractInfoModal from '../pipeline/modals/ContractInfoModal';
 import ContractFailedModal from '../pipeline/modals/ContractFailedModal';
@@ -71,7 +61,6 @@ const ApplicantDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const canApproveBoardDecisions = useAuthStore((state) => state.canApproveBoardDecisions);
   const [boardDecisionModalOpen, setBoardDecisionModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [documentUploadModalOpen, setDocumentUploadModalOpen] = useState(false);
@@ -119,20 +108,6 @@ const ApplicantDetailPage = () => {
   // This avoids timezone issues from client-side date comparison
   const urgentReminders = (applicantReminders || []).filter((r: ReminderListDto) => {
     return r.isOverdue || r.isDueToday;
-  });
-
-  // Direct stage change mutation (for transitions that don't need a modal)
-  const directStageMutation = useMutation({
-    mutationFn: (newStage: string) =>
-      housingSearchesApi.changeStage(applicant?.housingSearch?.id || '', { newStage }),
-    onSuccess: () => {
-      message.success('Stage updated successfully');
-      queryClient.invalidateQueries({ queryKey: ['applicant', id] });
-      queryClient.invalidateQueries({ queryKey: ['pipeline'] });
-    },
-    onError: () => {
-      message.error('Failed to update stage');
-    },
   });
 
   if (isLoading) {
@@ -186,87 +161,11 @@ const ApplicantDetailPage = () => {
   const hs = applicant.housingSearch;
   const boardDecision = applicant.boardReview?.decision || 'Pending';
   const stage = hs?.stage || 'Submitted';
-
-  // Get the current pipeline stage
   const currentPipelineStage = getPipelineStage(boardDecision, stage);
-
-  // Build the stage change dropdown menu
-  const getStageChangeMenuItems = (): MenuProps['items'] => {
-    if (!currentPipelineStage || currentPipelineStage === 'Closed') {
-      return [];
-    }
-
-    const allStages: PipelineStage[] = ['Submitted', 'AwaitingAgreements', 'Searching', 'UnderContract', 'Closed'];
-    const items: MenuProps['items'] = [];
-
-    for (const targetStage of allStages) {
-      if (targetStage === currentPipelineStage) continue;
-
-      const transition = validateTransition(currentPipelineStage, targetStage, {
-        boardDecision,
-      });
-
-      if (transition.type !== 'blocked') {
-        items.push({
-          key: targetStage,
-          label: formatStage(targetStage),
-          onClick: () => handleStageChange(targetStage),
-        });
-      }
-    }
-
-    return items;
-  };
-
-  const handleStageChange = async (toStage: PipelineStage) => {
-    if (!currentPipelineStage) return;
-
-    const transition = validateTransition(currentPipelineStage, toStage, {
-      boardDecision,
-    });
-
-    switch (transition.type) {
-      case 'needsBoardApproval':
-        setBoardDecisionModalOpen(true);
-        break;
-      case 'needsAgreements':
-        // Check if all required documents are already uploaded
-        try {
-          const requirements = await getStageRequirements(currentPipelineStage, toStage, applicant.id);
-          const allRequiredUploaded = requirements.requirements.every(
-            (req) => !req.isRequired || req.isUploaded
-          );
-          if (allRequiredUploaded) {
-            // All docs uploaded - transition directly
-            directStageMutation.mutate(toStage);
-          } else {
-            // Show modal for missing documents
-            setActiveTransitionModal('needsAgreements');
-          }
-        } catch {
-          // On error, show modal anyway
-          setActiveTransitionModal('needsAgreements');
-        }
-        break;
-      case 'needsContractInfo':
-        setActiveTransitionModal('needsContractInfo');
-        break;
-      case 'needsClosingInfo':
-        setActiveTransitionModal('needsClosingInfo');
-        break;
-      case 'contractFailed':
-        setActiveTransitionModal('contractFailed');
-        break;
-      default:
-        break;
-    }
-  };
 
   const closeTransitionModal = () => {
     setActiveTransitionModal(null);
   };
-
-  const stageChangeMenuItems = getStageChangeMenuItems();
 
   const handlePrint = () => {
     const printWindow = window.open('', '_blank');
@@ -432,14 +331,7 @@ const ApplicantDetailPage = () => {
     {
       key: 'overview',
       label: 'Overview',
-      children: (
-        <OverviewTab
-          applicant={applicant}
-          onRecordBoardDecision={() => setBoardDecisionModalOpen(true)}
-          onUploadDocuments={() => setDocumentUploadModalOpen(true)}
-          canApprove={canApproveBoardDecisions()}
-        />
-      ),
+      children: <OverviewTab applicant={applicant} />,
     },
     ...(hs ? [{
       key: 'matches',
@@ -496,13 +388,6 @@ const ApplicantDetailPage = () => {
               <div className="header-tags">
                 <Tag style={getStatusTagStyle(boardDecision)}>{boardDecision}</Tag>
                 <Tag style={getStageTagStyle(stage)}>{formatStageName(stage)}</Tag>
-                {stageChangeMenuItems && stageChangeMenuItems.length > 0 && (
-                  <Dropdown menu={{ items: stageChangeMenuItems }} trigger={['click']}>
-                    <Button size="small" icon={<SwapOutlined />}>
-                      Change Stage
-                    </Button>
-                  </Dropdown>
-                )}
               </div>
             </div>
           </div>
@@ -519,6 +404,16 @@ const ApplicantDetailPage = () => {
           </div>
         </div>
       </Card>
+
+      {/* Stage Timeline */}
+      <StageTimeline
+        applicantId={applicant.id}
+        housingSearchId={hs?.id}
+        boardDecision={boardDecision}
+        currentStage={stage}
+        onTransitionModalOpen={(type) => setActiveTransitionModal(type)}
+        onBoardDecisionClick={() => setBoardDecisionModalOpen(true)}
+      />
 
       {/* Urgent Reminders Banner - only shows when there are overdue or due today reminders */}
       {urgentReminders.length > 0 && (
@@ -736,26 +631,12 @@ const getPrimaryPhone = (phoneNumbers?: { number: string; isPrimary: boolean }[]
 // Overview Tab
 interface OverviewTabProps {
   applicant: ApplicantDto;
-  onRecordBoardDecision: () => void;
-  onUploadDocuments: () => void;
-  canApprove: boolean;
 }
 
-const OverviewTab = ({ applicant, onRecordBoardDecision, onUploadDocuments, canApprove }: OverviewTabProps) => {
+const OverviewTab = ({ applicant }: OverviewTabProps) => {
   const { husband, wife, address } = applicant;
   const hs = applicant.housingSearch;
   const [editPreferencesOpen, setEditPreferencesOpen] = useState(false);
-
-  // Determine if board review section should be shown
-  // Hide once they're past AwaitingAgreements (i.e., in Searching, UnderContract, Closed, etc.)
-  const boardDecision = applicant.boardReview?.decision || 'Pending';
-  const housingSearchStage = applicant.housingSearch?.stage;
-  const showBoardReview =
-    boardDecision === 'Pending' ||
-    boardDecision === 'Deferred' ||
-    boardDecision === 'Rejected' ||
-    housingSearchStage === 'AwaitingAgreements' ||
-    !housingSearchStage;
 
   // Get phone icon based on type
   const getPhoneIcon = (type: string) => {
@@ -797,18 +678,6 @@ const OverviewTab = ({ applicant, onRecordBoardDecision, onUploadDocuments, canA
 
   return (
     <div className="tab-content">
-      {/* Board Review - Show only for pending/awaiting stages */}
-      {showBoardReview && (
-        <div style={{ marginBottom: 16 }}>
-          <BoardReviewSection
-            applicant={applicant}
-            onRecordDecision={onRecordBoardDecision}
-            onUploadDocuments={onUploadDocuments}
-            canApprove={canApprove}
-          />
-        </div>
-      )}
-
       {/* Two-column layout for Husband and Wife */}
       <div className="family-info-grid">
         {/* Husband Info */}
