@@ -7,12 +7,14 @@ import {
   InputNumber,
   Switch,
   DatePicker,
+  TimePicker,
   message,
   Space,
 } from 'antd';
 import { PhoneOutlined, FileTextOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { activitiesApi, LogActivityRequest } from '../../api';
+import { toUtcString } from '../../utils/datetime';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -66,6 +68,22 @@ const LogActivityModal = ({
       const values = await form.validateFields();
       setLoading(true);
 
+      // Combine follow-up date and time, convert to UTC
+      let followUpDateTime: string | undefined;
+      if (values.createFollowUp && values.followUpDate) {
+        let combinedDateTime = values.followUpDate;
+        if (values.followUpTime) {
+          combinedDateTime = values.followUpDate
+            .hour(values.followUpTime.hour())
+            .minute(values.followUpTime.minute())
+            .second(0);
+        } else {
+          // Default to 9 AM if no time specified
+          combinedDateTime = values.followUpDate.hour(9).minute(0).second(0);
+        }
+        followUpDateTime = toUtcString(combinedDateTime);
+      }
+
       const request: LogActivityRequest = {
         entityType,
         entityId,
@@ -74,7 +92,7 @@ const LogActivityModal = ({
         durationMinutes: values.durationMinutes,
         outcome: values.outcome,
         createFollowUp: values.createFollowUp || false,
-        followUpDate: values.followUpDate ? values.followUpDate.format('YYYY-MM-DD') : undefined,
+        followUpDate: followUpDateTime,
         followUpTitle: values.followUpTitle,
       };
 
@@ -212,28 +230,42 @@ const LogActivityModal = ({
         >
           {({ getFieldValue }) =>
             getFieldValue('createFollowUp') && (
-              <Space style={{ width: '100%' }} size="middle">
-                <Form.Item
-                  name="followUpDate"
-                  label="Follow-up Date"
-                  rules={[{ required: true, message: 'Please select a follow-up date' }]}
-                  style={{ flex: 1 }}
-                >
-                  <DatePicker
-                    style={{ width: '100%' }}
-                    disabledDate={(current) => current && current < dayjs().startOf('day')}
-                    format="MMMM D, YYYY"
-                  />
-                </Form.Item>
+              <>
+                <Space style={{ width: '100%' }} size="middle">
+                  <Form.Item
+                    name="followUpDate"
+                    label="Follow-up Date"
+                    rules={[{ required: true, message: 'Please select a follow-up date' }]}
+                    style={{ flex: 1 }}
+                  >
+                    <DatePicker
+                      style={{ width: '100%' }}
+                      disabledDate={(current) => current && current < dayjs().startOf('day')}
+                      format="MMMM D, YYYY"
+                    />
+                  </Form.Item>
+
+                  <Form.Item
+                    name="followUpTime"
+                    label="Time (optional, default 9 AM)"
+                    style={{ flex: 1 }}
+                  >
+                    <TimePicker
+                      style={{ width: '100%' }}
+                      format="h:mm A"
+                      use12Hours
+                      minuteStep={15}
+                    />
+                  </Form.Item>
+                </Space>
 
                 <Form.Item
                   name="followUpTitle"
                   label="Reminder Title (optional)"
-                  style={{ flex: 1 }}
                 >
                   <Input placeholder="e.g., Call back about documents" />
                 </Form.Item>
-              </Space>
+              </>
             )
           }
         </Form.Item>

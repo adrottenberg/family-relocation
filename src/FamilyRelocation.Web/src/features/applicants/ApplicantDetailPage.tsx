@@ -100,12 +100,40 @@ const ApplicantDetailPage = () => {
     enabled: !!housingSearchId,
   });
 
-  // Fetch urgent reminders for this applicant (overdue + due today)
-  const { data: applicantReminders } = useQuery({
-    queryKey: ['applicantReminders', id],
+  // Fetch active reminders for this applicant and their housing search (Open + Snoozed)
+  // We need both statuses because snoozed reminders with expired snooze are also "due"
+  const { data: applicantOpenReminders } = useQuery({
+    queryKey: ['applicantReminders', id, 'Open'],
     queryFn: () => remindersApi.getByEntity('Applicant', id!, 'Open'),
     enabled: !!id,
   });
+
+  const { data: applicantSnoozedReminders } = useQuery({
+    queryKey: ['applicantReminders', id, 'Snoozed'],
+    queryFn: () => remindersApi.getByEntity('Applicant', id!, 'Snoozed'),
+    enabled: !!id,
+  });
+
+  // Also fetch reminders linked to the housing search
+  const { data: hsOpenReminders } = useQuery({
+    queryKey: ['housingSearchReminders', housingSearchId, 'Open'],
+    queryFn: () => remindersApi.getByEntity('HousingSearch', housingSearchId!, 'Open'),
+    enabled: !!housingSearchId,
+  });
+
+  const { data: hsSnoozedReminders } = useQuery({
+    queryKey: ['housingSearchReminders', housingSearchId, 'Snoozed'],
+    queryFn: () => remindersApi.getByEntity('HousingSearch', housingSearchId!, 'Snoozed'),
+    enabled: !!housingSearchId,
+  });
+
+  // Combine all reminders (Applicant + HousingSearch, Open + Snoozed)
+  const applicantReminders = [
+    ...(applicantOpenReminders || []),
+    ...(applicantSnoozedReminders || []),
+    ...(hsOpenReminders || []),
+    ...(hsSnoozedReminders || []),
+  ];
 
   // Filter to only urgent reminders (overdue or due today) using backend-computed flags
   // This avoids timezone issues from client-side date comparison
@@ -440,7 +468,7 @@ const ApplicantDetailPage = () => {
           message={
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
               <span>
-                <strong>{urgentReminders.length} reminder{urgentReminders.length > 1 ? 's' : ''}</strong> need attention
+                <strong>{urgentReminders.length} reminder{urgentReminders.length > 1 ? 's' : ''}</strong> {urgentReminders.length === 1 ? 'needs' : 'need'} attention
               </span>
               <Space size="small" wrap>
                 {urgentReminders.slice(0, 3).map((reminder: ReminderListDto) => (

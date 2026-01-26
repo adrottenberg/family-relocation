@@ -69,17 +69,16 @@ public class GetRemindersQueryHandler : IRequestHandler<GetRemindersQuery, Remin
                 (r.Status == ReminderStatus.Open && r.DueDateTime >= todayStart && r.DueDateTime <= todayEnd) ||
                 (r.Status == ReminderStatus.Snoozed && r.SnoozedUntil.HasValue && r.SnoozedUntil.Value >= todayStart && r.SnoozedUntil.Value <= todayEnd));
 
-        // Get counts for open AND snoozed reminders (snoozed uses SnoozedUntil as effective due date)
+        // Get counts - snoozed reminders only count as overdue once their snooze expires
         var overdueCount = await _context.Set<FollowUpReminder>()
             .Where(r =>
                 (r.Status == ReminderStatus.Open && r.DueDateTime < now) ||
                 (r.Status == ReminderStatus.Snoozed && r.SnoozedUntil.HasValue && r.SnoozedUntil.Value < now))
             .CountAsync(cancellationToken);
 
+        // Due today only includes Open reminders (snoozed don't count until snooze expires)
         var dueTodayCount = await _context.Set<FollowUpReminder>()
-            .Where(r =>
-                (r.Status == ReminderStatus.Open && r.DueDateTime >= todayStart && r.DueDateTime <= todayEnd) ||
-                (r.Status == ReminderStatus.Snoozed && r.SnoozedUntil.HasValue && r.SnoozedUntil.Value >= todayStart && r.SnoozedUntil.Value <= todayEnd))
+            .Where(r => r.Status == ReminderStatus.Open && r.DueDateTime >= now && r.DueDateTime <= todayEnd)
             .CountAsync(cancellationToken);
 
         var totalCount = await queryable.CountAsync(cancellationToken);
@@ -112,12 +111,32 @@ public class GetRemindersQueryHandler : IRequestHandler<GetRemindersQuery, Remin
         }
 
         // Compute IsOverdue and IsDueToday for each reminder
+        // - Snoozed reminders only become overdue once their snooze expires (SnoozedUntil < now)
+        // - Snoozed reminders are never "due today" - they're either still snoozed or overdue
         var items = new List<ReminderDto>();
         foreach (var r in reminders)
         {
             var effectiveDue = r.EffectiveDueDateTime;
-            var isOverdue = effectiveDue < now && r.Status != ReminderStatus.Completed && r.Status != ReminderStatus.Dismissed;
-            var isDueToday = effectiveDue >= todayStart && effectiveDue <= todayEnd && r.Status != ReminderStatus.Completed && r.Status != ReminderStatus.Dismissed;
+            bool isOverdue;
+            bool isDueToday;
+
+            if (r.Status == ReminderStatus.Snoozed)
+            {
+                // Snoozed: only overdue if snooze has expired
+                isOverdue = r.SnoozedUntil.HasValue && r.SnoozedUntil.Value < now;
+                isDueToday = false; // Snoozed reminders are never "due today"
+            }
+            else if (r.Status == ReminderStatus.Open)
+            {
+                isOverdue = r.DueDateTime < now;
+                isDueToday = r.DueDateTime >= now && r.DueDateTime <= todayEnd;
+            }
+            else
+            {
+                // Completed or Dismissed
+                isOverdue = false;
+                isDueToday = false;
+            }
 
             items.Add(new ReminderDto
             {

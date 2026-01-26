@@ -1,5 +1,5 @@
 import { Card, Button, Space, Empty, Spin, Collapse, Badge, Typography } from 'antd';
-import { PlusOutlined, CalendarOutlined, HeartOutlined, QuestionCircleOutlined } from '@ant-design/icons';
+import { PlusOutlined, CalendarOutlined, HeartOutlined, QuestionCircleOutlined, DollarOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { propertyMatchesApi } from '../../api';
 import type { PropertyMatchListDto } from '../../api/types';
@@ -54,18 +54,21 @@ const PropertyMatchList = ({
     enabled: !!(housingSearchId || propertyId),
   });
 
-  // Categorize matches
-  const pendingMatches = (allMatches || []).filter(
-    m => m.status === 'MatchIdentified'
+  // Categorize matches into 3 groups: Offer Made, Interested, Pending Review
+  const offerMadeMatches = (allMatches || []).filter(
+    m => m.status === 'OfferMade'
   );
   const interestedMatches = (allMatches || []).filter(
-    m => m.status === 'ApplicantInterested' || m.status === 'ShowingRequested' || m.status === 'OfferMade'
+    m => m.status === 'ApplicantInterested' || m.status === 'ShowingRequested'
+  );
+  const pendingMatches = (allMatches || []).filter(
+    m => m.status === 'MatchIdentified'
   );
   // Note: ApplicantRejected matches are not shown at all per requirements
 
   // Count matches needing scheduling (interested but no scheduled showing)
   const needsScheduling = interestedMatches.filter(
-    m => m.status !== 'OfferMade' && !m.showings?.some(s => s.status === 'Scheduled')
+    m => !m.showings?.some(s => s.status === 'Scheduled')
   );
 
   const renderMatchList = (matches: PropertyMatchListDto[]) => {
@@ -95,17 +98,18 @@ const PropertyMatchList = ({
     ));
   };
 
+  // Accordion items in priority order: Offer Made → Interested → Pending Review
   const accordionItems = [
     {
-      key: 'pending',
+      key: 'offerMade',
       label: (
         <Space>
-          <QuestionCircleOutlined />
-          <span>Pending Review</span>
-          <Badge count={pendingMatches.length} style={{ backgroundColor: '#1890ff' }} />
+          <DollarOutlined />
+          <span>Offer Made</span>
+          <Badge count={offerMadeMatches.length} style={{ backgroundColor: '#722ed1' }} />
         </Space>
       ),
-      children: renderMatchList(pendingMatches),
+      children: renderMatchList(offerMadeMatches),
     },
     {
       key: 'interested',
@@ -123,12 +127,24 @@ const PropertyMatchList = ({
       ),
       children: renderMatchList(interestedMatches),
     },
+    {
+      key: 'pending',
+      label: (
+        <Space>
+          <QuestionCircleOutlined />
+          <span>Pending Review</span>
+          <Badge count={pendingMatches.length} style={{ backgroundColor: '#1890ff' }} />
+        </Space>
+      ),
+      children: renderMatchList(pendingMatches),
+    },
   ];
 
-  // Default open panels based on content
-  const defaultActiveKeys = [];
-  if (pendingMatches.length > 0) defaultActiveKeys.push('pending');
+  // Default open panels based on content - open sections that have items
+  const defaultActiveKeys: string[] = [];
+  if (offerMadeMatches.length > 0) defaultActiveKeys.push('offerMade');
   if (interestedMatches.length > 0) defaultActiveKeys.push('interested');
+  if (pendingMatches.length > 0) defaultActiveKeys.push('pending');
   // If nothing has content, open pending
   if (defaultActiveKeys.length === 0) defaultActiveKeys.push('pending');
 

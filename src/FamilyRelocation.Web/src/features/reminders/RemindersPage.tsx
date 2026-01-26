@@ -42,6 +42,7 @@ import {
   ReminderStatus,
 } from '../../api';
 import CreateReminderModal from './CreateReminderModal';
+import EditReminderModal from './EditReminderModal';
 import SnoozeModal from './SnoozeModal';
 import RemindersPrintView from './RemindersPrintView';
 import ReminderDetailModal from './ReminderDetailModal';
@@ -83,6 +84,7 @@ const RemindersPage = () => {
 
   // Modal states
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
   const [snoozeModalOpen, setSnoozeModalOpen] = useState(false);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedReminderId, setSelectedReminderId] = useState<string | null>(null);
@@ -516,6 +518,26 @@ const RemindersPage = () => {
         onReopen={(id) => {
           handleReopen(id);
           setDetailModalOpen(false);
+        }}
+        onEdit={(id) => {
+          setDetailModalOpen(false);
+          setSelectedReminderId(id);
+          setEditModalOpen(true);
+        }}
+      />
+
+      {/* Edit Reminder Modal */}
+      <EditReminderModal
+        open={editModalOpen}
+        reminderId={selectedReminderId}
+        onClose={() => {
+          setEditModalOpen(false);
+          setSelectedReminderId(null);
+        }}
+        onSuccess={() => {
+          fetchReminders(pagination.current, pagination.pageSize);
+          queryClient.invalidateQueries({ queryKey: ['reminderCounts'] });
+          queryClient.invalidateQueries({ queryKey: ['reminders', 'due-report'] });
         }}
       />
     </div>

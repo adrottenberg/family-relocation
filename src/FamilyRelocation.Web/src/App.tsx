@@ -43,7 +43,14 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 function App() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const hasHydrated = useAuthStore((state) => state._hasHydrated);
   const location = useLocation();
+
+  // Wait for store to hydrate from localStorage before making any routing decisions
+  // This prevents the flash of login page before auth state is restored
+  if (!hasHydrated) {
+    return <LoadingFallback />;
+  }
 
   // For protected routes, check auth BEFORE showing any loading state
   // This prevents the flash of the main layout before redirecting to login

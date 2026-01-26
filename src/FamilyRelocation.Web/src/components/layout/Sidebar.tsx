@@ -58,8 +58,13 @@ const Sidebar = () => {
 
   const isAdmin = user?.roles?.includes('Admin');
 
-  const handleMenuSelect: MenuProps['onSelect'] = (info) => {
+  // Use onClick instead of onSelect to ensure navigation works even when
+  // clicking an already-selected item (e.g., clicking Applicants from /applicants/:id)
+  const handleMenuClick: MenuProps['onClick'] = (info) => {
     const key = info.key;
+
+    // Don't navigate for group/submenu keys
+    if (key === 'listings-group' || key === 'settings-group') return;
 
     // Navigate to the path based on key
     const path = key === 'dashboard' ? '/dashboard' : `/${key}`;
@@ -163,7 +168,7 @@ const Sidebar = () => {
         selectedKeys={[getSelectedKey()]}
         defaultOpenKeys={getOpenKeys()}
         items={menuItems}
-        onSelect={handleMenuSelect}
+        onClick={handleMenuClick}
         className="sidebar-menu"
       />
 

@@ -19,11 +19,13 @@ interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
   rolesFetched: boolean;
+  _hasHydrated: boolean;
   setTokens: (tokens: AuthTokens) => void;
   setUser: (user: User) => void;
   logout: () => void;
   canApproveBoardDecisions: () => boolean;
   fetchAndSetRoles: () => Promise<void>;
+  setHasHydrated: (state: boolean) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -33,6 +35,9 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       isAuthenticated: false,
       rolesFetched: false,
+      _hasHydrated: false,
+
+      setHasHydrated: (state) => set({ _hasHydrated: state }),
 
       setTokens: (tokens) =>
         set({
@@ -90,7 +95,11 @@ export const useAuthStore = create<AuthState>()(
         user: state.user,
         isAuthenticated: state.isAuthenticated,
         // Don't persist rolesFetched - we want to fetch fresh roles on page refresh
+        // Don't persist _hasHydrated - it's runtime state
       }),
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
     }
   )
 );

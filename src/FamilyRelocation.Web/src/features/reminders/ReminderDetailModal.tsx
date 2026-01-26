@@ -12,6 +12,7 @@ import {
   MailOutlined,
   MessageOutlined,
   FileTextOutlined,
+  EditOutlined,
 } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 import { remindersApi, ReminderDto, ReminderPriority, ReminderStatus } from '../../api';
@@ -43,6 +44,7 @@ interface ReminderDetailModalProps {
   onSnooze: (id: string) => void;
   onDismiss: (id: string) => void;
   onReopen: (id: string) => void;
+  onEdit: (id: string) => void;
 }
 
 const priorityColors: Record<ReminderPriority, string> = {
@@ -67,6 +69,7 @@ const ReminderDetailModal = ({
   onSnooze,
   onDismiss,
   onReopen,
+  onEdit,
 }: ReminderDetailModalProps) => {
   const [reminder, setReminder] = useState<ReminderDto | null>(null);
   const [loading, setLoading] = useState(false);
@@ -130,6 +133,14 @@ const ReminderDetailModal = ({
                   }}
                 >
                   Complete
+                </Button>
+                <Button
+                  icon={<EditOutlined />}
+                  onClick={() => {
+                    onEdit(reminder.id);
+                  }}
+                >
+                  Edit
                 </Button>
                 <Button
                   icon={<ClockCircleOutlined />}

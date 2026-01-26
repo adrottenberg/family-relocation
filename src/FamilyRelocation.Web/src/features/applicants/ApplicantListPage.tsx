@@ -44,13 +44,22 @@ const ApplicantListPage = () => {
     const counts: Record<string, number> = {};
     if (!dueReport) return counts;
 
-    // Count overdue and due today reminders for applicants
+    // Combine overdue and due today, but deduplicate by reminder ID
+    // (a reminder could theoretically appear in both arrays)
     const allDue = [...(dueReport.overdue || []), ...(dueReport.dueToday || [])];
-    allDue
-      .filter(r => r.entityType === 'Applicant')
-      .forEach(r => {
+    const uniqueReminders = new Map<string, typeof allDue[0]>();
+    allDue.forEach(r => {
+      if (!uniqueReminders.has(r.id)) {
+        uniqueReminders.set(r.id, r);
+      }
+    });
+
+    // Count unique reminders for applicants
+    uniqueReminders.forEach(r => {
+      if (r.entityType === 'Applicant') {
         counts[r.entityId] = (counts[r.entityId] || 0) + 1;
-      });
+      }
+    });
 
     return counts;
   }, [dueReport]);

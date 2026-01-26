@@ -167,22 +167,9 @@ const PropertyMatchCard = ({
         </Button>
       );
     }
-    // Interested but no offer yet: Schedule Showing / Make Offer / No Longer Interested
+    // Interested but no offer yet: Make Offer / No Longer Interested
+    // (Schedule Showing is handled by the top-level calendar button)
     else if (isInterested) {
-      // Show Schedule Showing if no scheduled showing yet
-      if (!hasScheduledShowing && onScheduleShowing) {
-        buttons.push(
-          <Button
-            key="schedule"
-            type="primary"
-            icon={<CalendarOutlined />}
-            onClick={() => onScheduleShowing(match.id)}
-            block
-          >
-            Schedule Showing
-          </Button>
-        );
-      }
       buttons.push(
         <Button
           key="offer"
@@ -240,8 +227,8 @@ const PropertyMatchCard = ({
 
   return (
     <>
-      <Card size="small" style={{ marginBottom: 12 }}>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+      <Card size="small" styles={{ body: { padding: 12 } }} style={{ marginBottom: 12 }}>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
           {/* Property Photo */}
           {showProperty && (
             <div style={{ flexShrink: 0 }}>
