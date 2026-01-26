@@ -19,6 +19,7 @@ interface PropertyMatchListProps {
   onCreateMatch?: () => void;
   onScheduleShowings?: (matches: MatchScheduleData[]) => void;
   onOpenScheduler?: () => void;
+  onEnterContract?: (propertyId: string, offerAmount?: number) => void;
   showApplicant?: boolean;
   showProperty?: boolean;
 }
@@ -38,6 +39,7 @@ const PropertyMatchList = ({
   onCreateMatch,
   onScheduleShowings,
   onOpenScheduler,
+  onEnterContract,
   showApplicant = true,
   showProperty = true,
 }: PropertyMatchListProps) => {
@@ -201,6 +203,7 @@ const PropertyMatchList = ({
                 }]);
               }
             } : undefined}
+            onEnterContract={onEnterContract}
             showApplicant={showApplicant}
             showProperty={showProperty}
           />

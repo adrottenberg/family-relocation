@@ -76,6 +76,9 @@ const ApplicantDetailPage = () => {
 
   // Stage transition modal state
   const [activeTransitionModal, setActiveTransitionModal] = useState<TransitionType | null>(null);
+  // Preselected property for contract modal (when entering contract from property match)
+  const [preselectedPropertyId, setPreselectedPropertyId] = useState<string | undefined>(undefined);
+  const [preselectedOfferAmount, setPreselectedOfferAmount] = useState<number | undefined>(undefined);
 
   const { data: applicant, isLoading, error } = useQuery({
     queryKey: ['applicant', id],
@@ -347,6 +350,11 @@ const ApplicantDetailPage = () => {
             setShowingsToSchedule(matches);
           }}
           onOpenScheduler={() => setSchedulerModalOpen(true)}
+          onEnterContract={(propertyId, offerAmount) => {
+            setPreselectedPropertyId(propertyId);
+            setPreselectedOfferAmount(offerAmount);
+            setActiveTransitionModal('needsContractInfo');
+          }}
         />
       ),
     }] : []),
@@ -547,9 +555,15 @@ const ApplicantDetailPage = () => {
 
           <ContractInfoModal
             open={activeTransitionModal === 'needsContractInfo'}
-            onClose={closeTransitionModal}
+            onClose={() => {
+              closeTransitionModal();
+              setPreselectedPropertyId(undefined);
+              setPreselectedOfferAmount(undefined);
+            }}
             housingSearchId={hs.id}
             familyName={applicant.husband.lastName}
+            preselectedPropertyId={preselectedPropertyId}
+            offerAmount={preselectedOfferAmount}
           />
 
           <ContractFailedModal
@@ -889,9 +903,10 @@ interface PropertyMatchesTabProps {
   onCreateMatch: () => void;
   onScheduleShowing: (matches: MatchScheduleData[]) => void;
   onOpenScheduler: () => void;
+  onEnterContract: (propertyId: string, offerAmount?: number) => void;
 }
 
-const PropertyMatchesTab = ({ housingSearchId, onCreateMatch, onScheduleShowing, onOpenScheduler }: PropertyMatchesTabProps) => {
+const PropertyMatchesTab = ({ housingSearchId, onCreateMatch, onScheduleShowing, onOpenScheduler, onEnterContract }: PropertyMatchesTabProps) => {
   return (
     <div className="tab-content">
       <PropertyMatchList
@@ -899,6 +914,7 @@ const PropertyMatchesTab = ({ housingSearchId, onCreateMatch, onScheduleShowing,
         onCreateMatch={onCreateMatch}
         onScheduleShowings={onScheduleShowing}
         onOpenScheduler={onOpenScheduler}
+        onEnterContract={onEnterContract}
         showApplicant={false}
         showProperty={true}
       />

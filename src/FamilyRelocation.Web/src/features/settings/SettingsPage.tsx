@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   Card,
   Table,
@@ -7,7 +6,6 @@ import {
   Alert,
   Spin,
   Empty,
-  Menu,
   Button,
   Modal,
   Form,
@@ -18,8 +16,6 @@ import {
   message,
 } from 'antd';
 import {
-  FileTextOutlined,
-  SettingOutlined,
   PlusOutlined,
   EditOutlined,
   DeleteOutlined,
@@ -37,10 +33,15 @@ import {
 } from '../../api';
 import type { DocumentTypeDto, StageTransitionRequirementDto } from '../../api/types';
 import './SettingsPage.css';
+import { useState } from 'react';
 
 const { Title, Text } = Typography;
 
 type SettingsSection = 'documentTypes' | 'stageRequirements';
+
+interface SettingsPageProps {
+  section?: SettingsSection;
+}
 
 const STAGES = [
   { value: 'AwaitingAgreements', label: 'Awaiting Agreements' },
@@ -51,23 +52,9 @@ const STAGES = [
   { value: 'Paused', label: 'Paused' },
 ];
 
-const SettingsPage = () => {
-  const [activeSection, setActiveSection] = useState<SettingsSection>('documentTypes');
-
-  const menuItems = [
-    {
-      key: 'documents',
-      label: 'Documents',
-      icon: <FileTextOutlined />,
-      children: [
-        { key: 'documentTypes', label: 'Document Types' },
-        { key: 'stageRequirements', label: 'Stage Requirements' },
-      ],
-    },
-  ];
-
+const SettingsPage = ({ section = 'documentTypes' }: SettingsPageProps) => {
   const renderContent = () => {
-    switch (activeSection) {
+    switch (section) {
       case 'documentTypes':
         return <DocumentTypesSection />;
       case 'stageRequirements':
@@ -79,28 +66,8 @@ const SettingsPage = () => {
 
   return (
     <div className="settings-page">
-      <div className="settings-header">
-        <SettingOutlined className="settings-icon" />
-        <div>
-          <Title level={2} style={{ margin: 0 }}>Settings</Title>
-          <Text type="secondary">Manage system configuration</Text>
-        </div>
-      </div>
-
-      <div className="settings-layout">
-        <Card className="settings-sidebar" size="small">
-          <Menu
-            mode="inline"
-            selectedKeys={[activeSection]}
-            defaultOpenKeys={['documents']}
-            items={menuItems}
-            onClick={(e) => setActiveSection(e.key as SettingsSection)}
-          />
-        </Card>
-
-        <div className="settings-content">
-          {renderContent()}
-        </div>
+      <div className="settings-content-full">
+        {renderContent()}
       </div>
     </div>
   );
@@ -258,7 +225,7 @@ const DocumentTypesSection = () => {
 
   return (
     <Card
-      title="Document Types"
+      title={<Title level={4} style={{ margin: 0 }}>Document Types</Title>}
       extra={
         <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditingType(null); form.resetFields(); setModalOpen(true); }}>
           Add Document Type
@@ -404,7 +371,7 @@ const StageRequirementsSection = () => {
 
   return (
     <Card
-      title="Stage Transition Requirements"
+      title={<Title level={4} style={{ margin: 0 }}>Stage Transition Requirements</Title>}
       extra={
         <Button type="primary" icon={<PlusOutlined />} onClick={() => { form.resetFields(); setModalOpen(true); }}>
           Add Requirement

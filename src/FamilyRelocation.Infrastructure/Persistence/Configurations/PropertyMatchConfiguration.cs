@@ -57,6 +57,10 @@ public class PropertyMatchConfiguration : IEntityTypeConfiguration<PropertyMatch
             .IsRequired()
             .HasDefaultValue(false);
 
+        // OfferAmount (nullable decimal for when offer is made)
+        builder.Property(pm => pm.OfferAmount)
+            .HasPrecision(18, 2);
+
         // Audit fields
         builder.Property(pm => pm.CreatedBy)
             .IsRequired();

@@ -15,6 +15,7 @@ public record PropertyMatchDto
     public MatchScoreBreakdownDto? MatchDetails { get; init; }
     public string? Notes { get; init; }
     public required bool IsAutoMatched { get; init; }
+    public decimal? OfferAmount { get; init; }
     public required DateTime CreatedAt { get; init; }
     public DateTime? ModifiedAt { get; init; }
 
@@ -37,6 +38,7 @@ public record PropertyMatchListDto
     public required int MatchScore { get; init; }
     public required bool IsAutoMatched { get; init; }
     public required DateTime CreatedAt { get; init; }
+    public decimal? OfferAmount { get; init; }
 
     // Lightweight property info
     public required string PropertyStreet { get; init; }
@@ -150,4 +152,5 @@ public record UpdatePropertyMatchStatusRequest
 {
     public required string Status { get; init; }
     public string? Notes { get; init; }
+    public decimal? OfferAmount { get; init; }
 }

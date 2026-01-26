@@ -25,10 +25,14 @@ const Header = () => {
     if (path.startsWith('/applicants/') && path !== '/applicants') return 'Applicant Details';
     if (path.startsWith('/applicants')) return 'Applicants';
     if (path.startsWith('/pipeline')) return 'Pipeline';
-    if (path.startsWith('/properties/') && path !== '/properties') return 'Property Details';
-    if (path.startsWith('/properties')) return 'Properties';
-    if (path.startsWith('/showings')) return 'Showings';
+    if (path.startsWith('/listings/') && path !== '/listings') return 'Listing Details';
+    if (path.startsWith('/listings')) return 'Listings';
+    if (path.startsWith('/showings')) return 'Showings Calendar';
     if (path.startsWith('/reminders')) return 'Reminders';
+    if (path.startsWith('/shuls')) return 'Shuls';
+    if (path.startsWith('/users')) return 'Users';
+    if (path === '/settings/document-types') return 'Document Types';
+    if (path === '/settings/stage-requirements') return 'Stage Requirements';
     if (path.startsWith('/settings')) return 'Settings';
     return 'Dashboard';
   };

@@ -104,7 +104,7 @@ const ShowingCard = ({
           {/* Property Info */}
           <div style={{ marginBottom: 4 }}>
             <HomeOutlined style={{ marginRight: 6, color: '#666' }} />
-            <Link to={`/properties/${showing.propertyId}`}>
+            <Link to={`/listings/${showing.propertyId}`}>
               {showing.propertyStreet}, {showing.propertyCity}
             </Link>
           </div>

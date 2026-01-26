@@ -53,8 +53,19 @@ public class UpdatePropertyMatchStatusCommandHandler : IRequestHandler<UpdatePro
 
         var oldStatus = match.Status;
 
-        // Update status
-        match.UpdateStatus(newStatus, userId, request.Notes);
+        // Update status - use specialized method for OfferMade to require amount
+        if (newStatus == PropertyMatchStatus.OfferMade)
+        {
+            if (!request.OfferAmount.HasValue || request.OfferAmount.Value <= 0)
+            {
+                throw new ValidationException("Offer amount is required when setting status to OfferMade");
+            }
+            match.MarkOfferMade(request.OfferAmount.Value, userId, request.Notes);
+        }
+        else
+        {
+            match.UpdateStatus(newStatus, userId, request.Notes);
+        }
         await _context.SaveChangesAsync(cancellationToken);
 
         var familyName = match.HousingSearch.Applicant?.Husband?.LastName ?? "Unknown";

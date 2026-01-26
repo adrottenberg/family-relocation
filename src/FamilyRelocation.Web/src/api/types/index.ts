@@ -324,6 +324,7 @@ export interface PropertyMatchDto {
   matchDetails?: MatchScoreBreakdownDto;
   notes?: string;
   isAutoMatched: boolean;
+  offerAmount?: number;
   createdAt: string;
   modifiedAt?: string;
   property: PropertyListDto;
@@ -348,6 +349,7 @@ export interface PropertyMatchListDto {
   matchScore: number;
   isAutoMatched: boolean;
   createdAt: string;
+  offerAmount?: number;
   propertyStreet: string;
   propertyCity: string;
   propertyPrice: number;

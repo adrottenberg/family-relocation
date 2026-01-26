@@ -102,7 +102,7 @@ const ShowingsList = ({
       title: 'Property',
       key: 'property',
       render: (_, record) => (
-        <Link to={`/properties/${record.propertyId}`}>
+        <Link to={`/listings/${record.propertyId}`}>
           {record.propertyStreet}, {record.propertyCity}
         </Link>
       ),

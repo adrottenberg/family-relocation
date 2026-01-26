@@ -9,4 +9,5 @@ namespace FamilyRelocation.Application.PropertyMatches.Commands.UpdatePropertyMa
 public record UpdatePropertyMatchStatusCommand(
     Guid MatchId,
     string Status,
-    string? Notes) : IRequest<PropertyMatchDto>;
+    string? Notes,
+    decimal? OfferAmount = null) : IRequest<PropertyMatchDto>;

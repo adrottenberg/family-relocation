@@ -10,6 +10,8 @@ import {
   UserOutlined,
   CalendarOutlined,
   BankOutlined,
+  FileTextOutlined,
+  OrderedListOutlined,
 } from '@ant-design/icons';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
@@ -29,25 +31,44 @@ const Sidebar = () => {
     const path = location.pathname;
     if (path.startsWith('/applicants')) return 'applicants';
     if (path.startsWith('/pipeline')) return 'pipeline';
-    if (path.startsWith('/properties')) return 'properties';
-    if (path.startsWith('/broker-showings')) return 'broker-showings';
+    if (path.startsWith('/listings')) return 'listings';
     if (path.startsWith('/showings')) return 'showings';
     if (path.startsWith('/reminders')) return 'reminders';
     if (path.startsWith('/shuls')) return 'shuls';
-    if (path.startsWith('/settings')) return 'settings';
     if (path.startsWith('/users')) return 'users';
+    // Settings sub-routes need exact matching
+    if (path === '/settings/document-types') return 'settings/document-types';
+    if (path === '/settings/stage-requirements') return 'settings/stage-requirements';
+    if (path.startsWith('/settings')) return 'settings/document-types';
     return 'dashboard';
+  };
+
+  // Determine which submenus should be open
+  const getOpenKeys = () => {
+    const path = location.pathname;
+    const keys: string[] = [];
+    if (path.startsWith('/listings') || path.startsWith('/showings')) {
+      keys.push('listings-group');
+    }
+    if (path.startsWith('/shuls') || path.startsWith('/users') || path.startsWith('/settings')) {
+      keys.push('settings-group');
+    }
+    return keys;
   };
 
   const isAdmin = user?.roles?.includes('Admin');
 
-  const handleMenuClick: MenuProps['onClick'] = (e) => {
-    if (e.key === 'logout') {
-      logout();
-      navigate('/login', { replace: true });
-    } else {
-      navigate(`/${e.key === 'dashboard' ? 'dashboard' : e.key}`);
-    }
+  const handleMenuSelect: MenuProps['onSelect'] = (info) => {
+    const key = info.key;
+
+    // Navigate to the path based on key
+    const path = key === 'dashboard' ? '/dashboard' : `/${key}`;
+    navigate(path);
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login', { replace: true });
   };
 
   const menuItems: MenuItem[] = [
@@ -67,22 +88,19 @@ const Sidebar = () => {
       label: 'Pipeline',
     },
     {
-      key: 'properties',
+      key: 'listings-group',
       icon: <HomeOutlined />,
-      label: 'Properties',
-    },
-    {
-      key: 'showings',
-      icon: <CalendarOutlined />,
-      label: 'Showings',
+      label: 'Listings',
       children: [
         {
-          key: 'showings',
-          label: 'All Showings',
+          key: 'listings',
+          icon: <HomeOutlined />,
+          label: 'All Listings',
         },
         {
-          key: 'broker-showings',
-          label: 'Broker Schedule',
+          key: 'showings',
+          icon: <CalendarOutlined />,
+          label: 'Showings Calendar',
         },
       ],
     },
@@ -92,25 +110,37 @@ const Sidebar = () => {
       label: 'Reminders',
     },
     {
-      key: 'shuls',
-      icon: <BankOutlined />,
-      label: 'Shuls',
-    },
-    {
-      key: 'settings',
+      key: 'settings-group',
       icon: <SettingOutlined />,
       label: 'Settings',
+      children: [
+        {
+          key: 'shuls',
+          icon: <BankOutlined />,
+          label: 'Shuls',
+        },
+        {
+          key: 'settings/document-types',
+          icon: <FileTextOutlined />,
+          label: 'Document Types',
+        },
+        {
+          key: 'settings/stage-requirements',
+          icon: <OrderedListOutlined />,
+          label: 'Stage Requirements',
+        },
+        // Admin-only: Users
+        ...(isAdmin
+          ? [
+              {
+                key: 'users',
+                icon: <UserOutlined />,
+                label: 'Users',
+              },
+            ]
+          : []),
+      ],
     },
-    // Admin-only menu items
-    ...(isAdmin
-      ? [
-          {
-            key: 'users',
-            icon: <UserOutlined />,
-            label: 'Users',
-          },
-        ]
-      : []),
   ];
 
   // Get user initials for avatar
@@ -131,8 +161,9 @@ const Sidebar = () => {
       <Menu
         mode="inline"
         selectedKeys={[getSelectedKey()]}
+        defaultOpenKeys={getOpenKeys()}
         items={menuItems}
-        onClick={handleMenuClick}
+        onSelect={handleMenuSelect}
         className="sidebar-menu"
       />
 
@@ -145,7 +176,7 @@ const Sidebar = () => {
             <div className="user-role">{user?.roles?.[0] || 'User'}</div>
           </div>
         </div>
-        <button className="logout-btn" onClick={() => handleMenuClick({ key: 'logout' } as never)}>
+        <button className="logout-btn" onClick={handleLogout}>
           <LogoutOutlined /> Sign out
         </button>
       </div>
