@@ -50,11 +50,12 @@ public class GetDueRemindersQueryHandler : IRequestHandler<GetDueRemindersQuery,
             .Take(20)
             .ToListAsync(cancellationToken);
 
-        // Get due today reminders (DueDateTime >= todayStart AND DueDateTime <= todayEnd)
+        // Get due today reminders (DueDateTime >= todayStart AND DueDateTime <= todayEnd, but NOT overdue)
+        // A reminder is "due today" only if it's due later today (not yet past due)
         var dueTodayReminders = await baseQuery
             .Where(r =>
-                (r.Status == ReminderStatus.Open && r.DueDateTime >= todayStart && r.DueDateTime <= todayEnd) ||
-                (r.Status == ReminderStatus.Snoozed && r.SnoozedUntil.HasValue && r.SnoozedUntil.Value >= todayStart && r.SnoozedUntil.Value <= todayEnd))
+                (r.Status == ReminderStatus.Open && r.DueDateTime >= now && r.DueDateTime <= todayEnd) ||
+                (r.Status == ReminderStatus.Snoozed && r.SnoozedUntil.HasValue && r.SnoozedUntil.Value >= now && r.SnoozedUntil.Value <= todayEnd))
             .OrderByDescending(r => r.Priority)
             .ThenBy(r => r.DueDateTime)
             .Take(20)
@@ -76,8 +77,8 @@ public class GetDueRemindersQueryHandler : IRequestHandler<GetDueRemindersQuery,
             (r.Status == ReminderStatus.Snoozed && r.SnoozedUntil.HasValue && r.SnoozedUntil.Value < now),
             cancellationToken);
         var dueTodayCount = await baseQuery.CountAsync(r =>
-            (r.Status == ReminderStatus.Open && r.DueDateTime >= todayStart && r.DueDateTime <= todayEnd) ||
-            (r.Status == ReminderStatus.Snoozed && r.SnoozedUntil.HasValue && r.SnoozedUntil.Value >= todayStart && r.SnoozedUntil.Value <= todayEnd),
+            (r.Status == ReminderStatus.Open && r.DueDateTime >= now && r.DueDateTime <= todayEnd) ||
+            (r.Status == ReminderStatus.Snoozed && r.SnoozedUntil.HasValue && r.SnoozedUntil.Value >= now && r.SnoozedUntil.Value <= todayEnd),
             cancellationToken);
         var upcomingCount = await baseQuery.CountAsync(r =>
             (r.Status == ReminderStatus.Open && r.DueDateTime >= tomorrowStart && r.DueDateTime < upcomingEndDate) ||
@@ -103,7 +104,8 @@ public class GetDueRemindersQueryHandler : IRequestHandler<GetDueRemindersQuery,
         {
             var effectiveDue = r.EffectiveDueDateTime;
             var isOverdue = effectiveDue < now && r.Status != ReminderStatus.Completed && r.Status != ReminderStatus.Dismissed;
-            var isDueToday = effectiveDue >= todayStart && effectiveDue <= todayEnd && r.Status != ReminderStatus.Completed && r.Status != ReminderStatus.Dismissed;
+            // Due today means it's due later today (not yet overdue)
+            var isDueToday = effectiveDue >= now && effectiveDue <= todayEnd && r.Status != ReminderStatus.Completed && r.Status != ReminderStatus.Dismissed;
 
             return new ReminderDto
             {
