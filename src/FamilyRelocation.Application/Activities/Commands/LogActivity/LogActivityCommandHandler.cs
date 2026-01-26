@@ -29,7 +29,7 @@ public class LogActivityCommandHandler : IRequestHandler<LogActivityCommand, Log
 
             var reminder = FollowUpReminder.Create(
                 title: reminderTitle,
-                dueDate: command.FollowUpDate.Value,
+                dueDateTime: command.FollowUpDate.Value,
                 entityType: command.EntityType,
                 entityId: command.EntityId,
                 createdBy: _currentUser.UserId ?? Guid.Empty,

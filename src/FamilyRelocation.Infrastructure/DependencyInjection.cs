@@ -65,6 +65,9 @@ public static class DependencyInjection
         // User Role Service
         services.AddScoped<IUserRoleService, UserRoleService>();
 
+        // User Timezone Service
+        services.AddScoped<IUserTimezoneService, UserTimezoneService>();
+
         // Walking Distance Service (OSRM/OpenStreetMap)
         services.AddHttpClient<IWalkingDistanceService, OsrmWalkingDistanceService>();
 

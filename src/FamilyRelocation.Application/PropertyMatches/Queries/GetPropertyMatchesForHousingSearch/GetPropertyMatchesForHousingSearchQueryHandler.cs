@@ -45,8 +45,7 @@ public class GetPropertyMatchesForHousingSearchQueryHandler : IRequestHandler<Ge
             {
                 s.Id,
                 s.PropertyMatchId,
-                s.ScheduledDate,
-                s.ScheduledTime,
+                s.ScheduledDateTime,
                 s.Status,
                 s.BrokerUserId,
                 s.Notes,
@@ -59,13 +58,11 @@ public class GetPropertyMatchesForHousingSearchQueryHandler : IRequestHandler<Ge
             .GroupBy(s => s.PropertyMatchId)
             .ToDictionary(
                 g => g.Key,
-                g => g.OrderByDescending(s => s.ScheduledDate)
-                      .ThenByDescending(s => s.ScheduledTime)
+                g => g.OrderByDescending(s => s.ScheduledDateTime)
                       .Select(s => new MatchShowingDto
                       {
                           Id = s.Id,
-                          ScheduledDate = s.ScheduledDate,
-                          ScheduledTime = s.ScheduledTime,
+                          ScheduledDateTime = s.ScheduledDateTime,
                           Status = s.Status.ToString(),
                           BrokerUserId = s.BrokerUserId,
                           Notes = s.Notes,

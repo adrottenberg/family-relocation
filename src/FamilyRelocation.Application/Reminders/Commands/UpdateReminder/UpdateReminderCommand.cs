@@ -10,8 +10,7 @@ namespace FamilyRelocation.Application.Reminders.Commands.UpdateReminder;
 public record UpdateReminderCommand(
     Guid ReminderId,
     string? Title = null,
-    DateTime? DueDate = null,
-    TimeOnly? DueTime = null,
+    DateTime? DueDateTime = null,
     ReminderPriority? Priority = null,
     string? Notes = null,
     Guid? AssignedToUserId = null,

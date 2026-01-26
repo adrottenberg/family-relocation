@@ -13,10 +13,14 @@ namespace FamilyRelocation.Application.Reminders.Commands.UpdateReminder;
 public class UpdateReminderCommandHandler : IRequestHandler<UpdateReminderCommand, ReminderDto>
 {
     private readonly IApplicationDbContext _context;
+    private readonly IUserTimezoneService _timezoneService;
 
-    public UpdateReminderCommandHandler(IApplicationDbContext context)
+    public UpdateReminderCommandHandler(
+        IApplicationDbContext context,
+        IUserTimezoneService timezoneService)
     {
         _context = context;
+        _timezoneService = timezoneService;
     }
 
     public async Task<ReminderDto> Handle(UpdateReminderCommand command, CancellationToken cancellationToken)
@@ -27,8 +31,7 @@ public class UpdateReminderCommandHandler : IRequestHandler<UpdateReminderComman
 
         reminder.Update(
             command.Title,
-            command.DueDate,
-            command.DueTime,
+            command.DueDateTime,
             command.Priority,
             command.Notes,
             command.AssignedToUserId,
@@ -36,13 +39,16 @@ public class UpdateReminderCommandHandler : IRequestHandler<UpdateReminderComman
 
         await _context.SaveChangesAsync(cancellationToken);
 
+        // Compute timezone-aware IsOverdue and IsDueToday
+        var isOverdue = await _timezoneService.IsOverdueAsync(reminder.EffectiveDueDateTime);
+        var isDueToday = await _timezoneService.IsTodayAsync(reminder.EffectiveDueDateTime);
+
         return new ReminderDto
         {
             Id = reminder.Id,
             Title = reminder.Title,
             Notes = reminder.Notes,
-            DueDate = reminder.DueDate,
-            DueTime = reminder.DueTime,
+            DueDateTime = reminder.DueDateTime,
             Priority = reminder.Priority,
             EntityType = reminder.EntityType,
             EntityId = reminder.EntityId,
@@ -55,8 +61,8 @@ public class UpdateReminderCommandHandler : IRequestHandler<UpdateReminderComman
             CreatedBy = reminder.CreatedBy,
             CompletedAt = reminder.CompletedAt,
             CompletedBy = reminder.CompletedBy,
-            IsOverdue = reminder.IsOverdue,
-            IsDueToday = reminder.IsDueToday
+            IsOverdue = isOverdue,
+            IsDueToday = isDueToday
         };
     }
 }

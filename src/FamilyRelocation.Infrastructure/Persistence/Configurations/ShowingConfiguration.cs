@@ -28,11 +28,8 @@ public class ShowingConfiguration : IEntityTypeConfiguration<Showing>
             .HasForeignKey(s => s.PropertyMatchId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // Scheduled Date and Time
-        builder.Property(s => s.ScheduledDate)
-            .IsRequired();
-
-        builder.Property(s => s.ScheduledTime)
+        // Scheduled DateTime (consolidated from ScheduledDate + ScheduledTime)
+        builder.Property(s => s.ScheduledDateTime)
             .IsRequired();
 
         // Status
@@ -59,14 +56,13 @@ public class ShowingConfiguration : IEntityTypeConfiguration<Showing>
         builder.Ignore(s => s.DomainEvents);
 
         // Ignore computed properties
-        builder.Ignore(s => s.ScheduledDateTime);
         builder.Ignore(s => s.IsUpcoming);
 
         // Indexes
         builder.HasIndex(s => s.PropertyMatchId);
-        builder.HasIndex(s => s.ScheduledDate);
+        builder.HasIndex(s => s.ScheduledDateTime);
         builder.HasIndex(s => s.Status);
         builder.HasIndex(s => s.BrokerUserId);
-        builder.HasIndex(s => new { s.ScheduledDate, s.Status });
+        builder.HasIndex(s => new { s.ScheduledDateTime, s.Status });
     }
 }

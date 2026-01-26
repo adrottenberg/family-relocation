@@ -2,8 +2,8 @@ import apiClient from '../client';
 import type { ShowingDto, ShowingListDto } from '../types';
 
 export interface GetShowingsParams {
-  fromDate?: string;
-  toDate?: string;
+  fromDateTime?: string; // UTC ISO datetime
+  toDateTime?: string; // UTC ISO datetime
   status?: string;
   brokerId?: string;
   propertyMatchId?: string;
@@ -11,15 +11,13 @@ export interface GetShowingsParams {
 
 export interface ScheduleShowingRequest {
   propertyMatchId: string;
-  scheduledDate: string;
-  scheduledTime: string;
+  scheduledDateTime: string; // UTC ISO datetime
   notes?: string;
   brokerUserId?: string;
 }
 
 export interface RescheduleShowingRequest {
-  newDate: string;
-  newTime: string;
+  newScheduledDateTime: string; // UTC ISO datetime
 }
 
 export interface UpdateShowingStatusRequest {

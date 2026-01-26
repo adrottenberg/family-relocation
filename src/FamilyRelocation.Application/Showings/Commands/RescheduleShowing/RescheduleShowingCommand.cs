@@ -8,5 +8,4 @@ namespace FamilyRelocation.Application.Showings.Commands.RescheduleShowing;
 /// </summary>
 public record RescheduleShowingCommand(
     Guid ShowingId,
-    DateOnly NewDate,
-    TimeOnly NewTime) : IRequest<ShowingDto>;
+    DateTime NewScheduledDateTime) : IRequest<ShowingDto>;

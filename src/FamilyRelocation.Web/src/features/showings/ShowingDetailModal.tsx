@@ -12,6 +12,7 @@ import { showingsApi } from '../../api';
 import type { ShowingStatus } from '../../api/types';
 import { useState } from 'react';
 import RescheduleShowingModal from './RescheduleShowingModal';
+import { formatDate, formatTime } from '../../utils/datetime';
 
 interface ShowingDetailModalProps {
   open: boolean;
@@ -57,26 +58,6 @@ const ShowingDetailModal = ({ open, onClose, showingId }: ShowingDetailModalProp
 
   const handleNoShow = () => {
     updateStatusMutation.mutate('NoShow');
-  };
-
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  };
-
-  const formatTime = (timeStr: string) => {
-    const [hours, minutes] = timeStr.split(':');
-    const date = new Date();
-    date.setHours(parseInt(hours), parseInt(minutes));
-    return date.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-    });
   };
 
   const formatPrice = (price: number) => {
@@ -131,7 +112,7 @@ const ShowingDetailModal = ({ open, onClose, showingId }: ShowingDetailModalProp
                   </>
                 }
               >
-                {formatDate(showing.scheduledDate)}
+                {formatDate(showing.scheduledDateTime, 'dddd, MMMM D, YYYY')}
               </Descriptions.Item>
               <Descriptions.Item
                 label={
@@ -140,7 +121,7 @@ const ShowingDetailModal = ({ open, onClose, showingId }: ShowingDetailModalProp
                   </>
                 }
               >
-                {formatTime(showing.scheduledTime)}
+                {formatTime(showing.scheduledDateTime)}
               </Descriptions.Item>
             </Descriptions>
 
@@ -202,8 +183,7 @@ const ShowingDetailModal = ({ open, onClose, showingId }: ShowingDetailModalProp
         open={rescheduleModalOpen}
         onClose={() => setRescheduleModalOpen(false)}
         showingId={showingId}
-        currentDate={showing?.scheduledDate || ''}
-        currentTime={showing?.scheduledTime || ''}
+        currentDateTime={showing?.scheduledDateTime}
       />
     </>
   );

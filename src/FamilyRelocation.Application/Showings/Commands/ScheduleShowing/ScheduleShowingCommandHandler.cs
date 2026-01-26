@@ -42,25 +42,24 @@ public class ScheduleShowingCommandHandler : IRequestHandler<ScheduleShowingComm
 
         // Check for existing future scheduled showing for this property match
         // Rule: Only one future showing can be scheduled per property match at a time
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var now = DateTime.UtcNow;
         var existingFutureShowing = await _context.Set<Showing>()
             .Where(s => s.PropertyMatchId == request.PropertyMatchId &&
                        s.Status == Domain.Enums.ShowingStatus.Scheduled &&
-                       s.ScheduledDate >= today)
+                       s.ScheduledDateTime >= now)
             .FirstOrDefaultAsync(cancellationToken);
 
         if (existingFutureShowing != null)
         {
             throw new ArgumentException(
-                $"A showing is already scheduled for this property match on {existingFutureShowing.ScheduledDate:MMM d, yyyy} at {existingFutureShowing.ScheduledTime}. " +
+                $"A showing is already scheduled for this property match on {existingFutureShowing.ScheduledDateTime:MMM d, yyyy 'at' h:mm tt}. " +
                 "Please reschedule the existing showing instead of creating a new one.");
         }
 
         // Create the showing
         var showing = Showing.Create(
             propertyMatchId: request.PropertyMatchId,
-            scheduledDate: request.ScheduledDate,
-            scheduledTime: request.ScheduledTime,
+            scheduledDateTime: request.ScheduledDateTime,
             createdBy: userId,
             notes: request.Notes,
             brokerUserId: request.BrokerUserId);
@@ -85,7 +84,7 @@ public class ScheduleShowingCommandHandler : IRequestHandler<ScheduleShowingComm
             "Showing",
             showing.Id,
             "Scheduled",
-            $"Showing scheduled for {familyName} family at {propertyAddress} on {request.ScheduledDate:MMM d, yyyy} at {request.ScheduledTime}",
+            $"Showing scheduled for {familyName} family at {propertyAddress} on {request.ScheduledDateTime:MMM d, yyyy 'at' h:mm tt}",
             cancellationToken);
 
         return savedShowing.ToDto();

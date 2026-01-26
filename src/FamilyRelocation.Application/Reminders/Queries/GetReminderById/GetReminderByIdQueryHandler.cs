@@ -12,10 +12,14 @@ namespace FamilyRelocation.Application.Reminders.Queries.GetReminderById;
 public class GetReminderByIdQueryHandler : IRequestHandler<GetReminderByIdQuery, ReminderDto?>
 {
     private readonly IApplicationDbContext _context;
+    private readonly IUserTimezoneService _timezoneService;
 
-    public GetReminderByIdQueryHandler(IApplicationDbContext context)
+    public GetReminderByIdQueryHandler(
+        IApplicationDbContext context,
+        IUserTimezoneService timezoneService)
     {
         _context = context;
+        _timezoneService = timezoneService;
     }
 
     public async Task<ReminderDto?> Handle(GetReminderByIdQuery query, CancellationToken cancellationToken)
@@ -47,13 +51,16 @@ public class GetReminderByIdQueryHandler : IRequestHandler<GetReminderByIdQuery,
             .Select(a => new { a.Id, a.Type, a.Timestamp })
             .FirstOrDefaultAsync(cancellationToken);
 
+        // Compute timezone-aware IsOverdue and IsDueToday
+        var isOverdue = await _timezoneService.IsOverdueAsync(reminder.EffectiveDueDateTime);
+        var isDueToday = await _timezoneService.IsTodayAsync(reminder.EffectiveDueDateTime);
+
         return new ReminderDto
         {
             Id = reminder.Id,
             Title = reminder.Title,
             Notes = reminder.Notes,
-            DueDate = reminder.DueDate,
-            DueTime = reminder.DueTime,
+            DueDateTime = reminder.DueDateTime,
             Priority = reminder.Priority,
             EntityType = reminder.EntityType,
             EntityId = reminder.EntityId,
@@ -67,8 +74,8 @@ public class GetReminderByIdQueryHandler : IRequestHandler<GetReminderByIdQuery,
             CreatedBy = reminder.CreatedBy,
             CompletedAt = reminder.CompletedAt,
             CompletedBy = reminder.CompletedBy,
-            IsOverdue = reminder.IsOverdue,
-            IsDueToday = reminder.IsDueToday,
+            IsOverdue = isOverdue,
+            IsDueToday = isDueToday,
             SourceActivityId = sourceActivity?.Id,
             SourceActivityType = sourceActivity?.Type.ToString(),
             SourceActivityTimestamp = sourceActivity?.Timestamp

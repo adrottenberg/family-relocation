@@ -10,6 +10,7 @@ import dayjs, { Dayjs } from 'dayjs';
 import type { ColumnsType } from 'antd/es/table';
 import type { MenuProps } from 'antd';
 import { Link } from 'react-router-dom';
+import { formatDate, formatTime, toUtcString } from '../../utils/datetime';
 
 const { RangePicker } = DatePicker;
 
@@ -31,8 +32,7 @@ const BrokerShowingsPage = () => {
   const [brokerFilter, setBrokerFilter] = useState<string>('all');
   const [rescheduleModalData, setRescheduleModalData] = useState<{
     showingId: string;
-    date?: string;
-    time?: string;
+    scheduledDateTime?: string;
     propertyInfo?: { street: string; city: string };
   } | null>(null);
 
@@ -69,8 +69,8 @@ const BrokerShowingsPage = () => {
     queryKey: ['showings', dateRange[0]?.format('YYYY-MM-DD'), dateRange[1]?.format('YYYY-MM-DD'), statusFilter],
     queryFn: () =>
       showingsApi.getAll({
-        fromDate: dateRange[0]?.format('YYYY-MM-DD'),
-        toDate: dateRange[1]?.format('YYYY-MM-DD'),
+        fromDateTime: dateRange[0] ? toUtcString(dateRange[0].startOf('day')) : undefined,
+        toDateTime: dateRange[1] ? toUtcString(dateRange[1].endOf('day')) : undefined,
         status: statusFilter || undefined,
       }),
   });
@@ -83,20 +83,23 @@ const BrokerShowingsPage = () => {
     return showings.filter(s => s.brokerUserId === brokerFilter);
   }, [showings, brokerFilter]);
 
-  // Group showings by date
+  // Group showings by date (in user's timezone)
   const showingsByDate = useMemo(() => {
     const grouped: Record<string, ShowingListDto[]> = {};
     filteredShowings.forEach(showing => {
-      if (!grouped[showing.scheduledDate]) {
-        grouped[showing.scheduledDate] = [];
+      const dateKey = formatDate(showing.scheduledDateTime, 'YYYY-MM-DD');
+      if (!grouped[dateKey]) {
+        grouped[dateKey] = [];
       }
-      grouped[showing.scheduledDate].push(showing);
+      grouped[dateKey].push(showing);
     });
-    // Sort dates
+    // Sort dates and times
     return Object.entries(grouped)
       .sort(([a], [b]) => a.localeCompare(b))
       .reduce((acc, [date, items]) => {
-        acc[date] = items.sort((a, b) => a.scheduledTime.localeCompare(b.scheduledTime));
+        acc[date] = items.sort((a, b) =>
+          new Date(a.scheduledDateTime).getTime() - new Date(b.scheduledDateTime).getTime()
+        );
         return acc;
       }, {} as Record<string, ShowingListDto[]>);
   }, [filteredShowings]);
@@ -142,8 +145,7 @@ const BrokerShowingsPage = () => {
   const handleReschedule = (showing: ShowingListDto) => {
     setRescheduleModalData({
       showingId: showing.id,
-      date: showing.scheduledDate,
-      time: showing.scheduledTime,
+      scheduledDateTime: showing.scheduledDateTime,
       propertyInfo: {
         street: showing.propertyStreet,
         city: showing.propertyCity,
@@ -191,10 +193,10 @@ const BrokerShowingsPage = () => {
   const columns: ColumnsType<ShowingListDto> = [
     {
       title: 'Time',
-      dataIndex: 'scheduledTime',
+      dataIndex: 'scheduledDateTime',
       key: 'time',
       width: 100,
-      render: (time: string) => time?.substring(0, 5),
+      render: (dateTime: string) => formatTime(dateTime),
     },
     {
       title: 'Property',
@@ -332,8 +334,7 @@ const BrokerShowingsPage = () => {
           open={true}
           onClose={() => setRescheduleModalData(null)}
           showingId={rescheduleModalData.showingId}
-          currentDate={rescheduleModalData.date}
-          currentTime={rescheduleModalData.time}
+          currentDateTime={rescheduleModalData.scheduledDateTime}
           propertyInfo={rescheduleModalData.propertyInfo}
         />
       )}

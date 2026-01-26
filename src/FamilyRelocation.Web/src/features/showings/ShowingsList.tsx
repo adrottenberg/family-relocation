@@ -9,7 +9,7 @@ import {
 import { Link } from 'react-router-dom';
 import type { ColumnsType } from 'antd/es/table';
 import type { ShowingListDto } from '../../api/types';
-import dayjs from 'dayjs';
+import { formatDate, formatTime, parseUtcToLocal, isToday } from '../../utils/datetime';
 
 interface ShowingsListProps {
   showings: ShowingListDto[];
@@ -78,26 +78,25 @@ const ShowingsList = ({
   const columns: ColumnsType<ShowingListDto> = [
     {
       title: 'Date',
-      dataIndex: 'scheduledDate',
+      dataIndex: 'scheduledDateTime',
       key: 'date',
       width: 120,
-      sorter: (a, b) => dayjs(a.scheduledDate).unix() - dayjs(b.scheduledDate).unix(),
-      render: (date: string) => {
-        const d = dayjs(date);
-        const isToday = d.isSame(dayjs(), 'day');
+      sorter: (a, b) => parseUtcToLocal(a.scheduledDateTime).unix() - parseUtcToLocal(b.scheduledDateTime).unix(),
+      render: (dateTime: string) => {
+        const isTodayShowing = isToday(dateTime);
         return (
-          <span style={{ fontWeight: isToday ? 600 : 400, color: isToday ? '#1890ff' : undefined }}>
-            {isToday ? 'Today' : d.format('MMM D, YYYY')}
+          <span style={{ fontWeight: isTodayShowing ? 600 : 400, color: isTodayShowing ? '#1890ff' : undefined }}>
+            {isTodayShowing ? 'Today' : formatDate(dateTime)}
           </span>
         );
       },
     },
     {
       title: 'Time',
-      dataIndex: 'scheduledTime',
+      dataIndex: 'scheduledDateTime',
       key: 'time',
       width: 100,
-      render: (time: string) => dayjs(`2000-01-01T${time}`).format('h:mm A'),
+      render: (dateTime: string) => formatTime(dateTime),
     },
     {
       title: 'Property',

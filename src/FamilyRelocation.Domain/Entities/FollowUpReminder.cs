@@ -10,8 +10,7 @@ public class FollowUpReminder
     public Guid Id { get; private set; }
     public string Title { get; private set; } = string.Empty;
     public string? Notes { get; private set; }
-    public DateTime DueDate { get; private set; }
-    public TimeOnly? DueTime { get; private set; }
+    public DateTime DueDateTime { get; private set; }
     public ReminderPriority Priority { get; private set; }
     public string EntityType { get; private set; } = string.Empty;
     public Guid EntityId { get; private set; }
@@ -32,12 +31,11 @@ public class FollowUpReminder
     /// </summary>
     public static FollowUpReminder Create(
         string title,
-        DateTime dueDate,
+        DateTime dueDateTime,
         string entityType,
         Guid entityId,
         Guid createdBy,
         string? notes = null,
-        TimeOnly? dueTime = null,
         ReminderPriority priority = ReminderPriority.Normal,
         Guid? assignedToUserId = null,
         bool sendEmailNotification = false)
@@ -51,16 +49,15 @@ public class FollowUpReminder
         if (string.IsNullOrWhiteSpace(entityType))
             throw new ArgumentException("Entity type is required", nameof(entityType));
 
-        if (dueDate.Date < DateTime.UtcNow.Date)
-            throw new ArgumentException("Due date cannot be in the past", nameof(dueDate));
+        if (dueDateTime < DateTime.UtcNow.AddMinutes(-5)) // Allow slight flexibility for clock drift
+            throw new ArgumentException("Due date/time cannot be in the past", nameof(dueDateTime));
 
         return new FollowUpReminder
         {
             Id = Guid.NewGuid(),
             Title = title.Trim(),
             Notes = notes?.Trim(),
-            DueDate = DateTime.SpecifyKind(dueDate.Date, DateTimeKind.Utc),
-            DueTime = dueTime,
+            DueDateTime = DateTime.SpecifyKind(dueDateTime, DateTimeKind.Utc),
             Priority = priority,
             EntityType = entityType,
             EntityId = entityId,
@@ -88,18 +85,18 @@ public class FollowUpReminder
     }
 
     /// <summary>
-    /// Snoozes the reminder until the specified date.
+    /// Snoozes the reminder until the specified date/time.
     /// </summary>
     public void Snooze(DateTime snoozeUntil, Guid userId)
     {
         if (Status == ReminderStatus.Completed)
             throw new InvalidOperationException("Cannot snooze a completed reminder");
 
-        if (snoozeUntil.Date < DateTime.UtcNow.Date)
-            throw new ArgumentException("Snooze date cannot be in the past", nameof(snoozeUntil));
+        if (snoozeUntil < DateTime.UtcNow.AddMinutes(-5))
+            throw new ArgumentException("Snooze date/time cannot be in the past", nameof(snoozeUntil));
 
         Status = ReminderStatus.Snoozed;
-        SnoozedUntil = DateTime.SpecifyKind(snoozeUntil.Date, DateTimeKind.Utc);
+        SnoozedUntil = DateTime.SpecifyKind(snoozeUntil, DateTimeKind.Utc);
         SnoozeCount++;
     }
 
@@ -135,8 +132,7 @@ public class FollowUpReminder
     /// </summary>
     public void Update(
         string? title = null,
-        DateTime? dueDate = null,
-        TimeOnly? dueTime = null,
+        DateTime? dueDateTime = null,
         ReminderPriority? priority = null,
         string? notes = null,
         Guid? assignedToUserId = null,
@@ -151,15 +147,12 @@ public class FollowUpReminder
             Title = title.Trim();
         }
 
-        if (dueDate.HasValue)
+        if (dueDateTime.HasValue)
         {
-            if (dueDate.Value.Date < DateTime.UtcNow.Date)
-                throw new ArgumentException("Due date cannot be in the past", nameof(dueDate));
-            DueDate = DateTime.SpecifyKind(dueDate.Value.Date, DateTimeKind.Utc);
+            if (dueDateTime.Value < DateTime.UtcNow.AddMinutes(-5))
+                throw new ArgumentException("Due date/time cannot be in the past", nameof(dueDateTime));
+            DueDateTime = DateTime.SpecifyKind(dueDateTime.Value, DateTimeKind.Utc);
         }
-
-        if (dueTime.HasValue)
-            DueTime = dueTime;
 
         if (priority.HasValue)
             Priority = priority.Value;
@@ -175,21 +168,7 @@ public class FollowUpReminder
     }
 
     /// <summary>
-    /// Gets the effective due date (considering snooze).
+    /// Gets the effective due date/time (considering snooze).
     /// </summary>
-    public DateTime EffectiveDueDate => SnoozedUntil ?? DueDate;
-
-    /// <summary>
-    /// Checks if the reminder is overdue.
-    /// Only applies to Open reminders - snoozed reminders are handled separately.
-    /// </summary>
-    public bool IsOverdue => Status == ReminderStatus.Open &&
-        (DueDate.Date < DateTime.UtcNow.Date ||
-         (DueDate.Date == DateTime.UtcNow.Date && DueTime.HasValue && DueTime.Value < TimeOnly.FromDateTime(DateTime.UtcNow)));
-
-    /// <summary>
-    /// Checks if the reminder is due today.
-    /// Only applies to Open reminders - snoozed reminders are handled separately.
-    /// </summary>
-    public bool IsDueToday => Status == ReminderStatus.Open && DueDate.Date == DateTime.UtcNow.Date;
+    public DateTime EffectiveDueDateTime => SnoozedUntil ?? DueDateTime;
 }

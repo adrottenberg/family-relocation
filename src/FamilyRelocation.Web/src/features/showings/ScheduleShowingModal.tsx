@@ -3,6 +3,7 @@ import { Modal, Form, DatePicker, TimePicker, Input, message } from 'antd';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { showingsApi } from '../../api';
 import dayjs from 'dayjs';
+import { toUtcString } from '../../utils/datetime';
 
 const { TextArea } = Input;
 
@@ -62,10 +63,14 @@ const ScheduleShowingModal = ({
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
+      // Combine date and time into a single datetime and convert to UTC
+      const combinedDateTime = values.scheduledDate
+        .hour(values.scheduledTime.hour())
+        .minute(values.scheduledTime.minute())
+        .second(0);
       scheduleMutation.mutate({
         propertyMatchId,
-        scheduledDate: values.scheduledDate.format('YYYY-MM-DD'),
-        scheduledTime: values.scheduledTime.format('HH:mm:ss'),
+        scheduledDateTime: toUtcString(combinedDateTime),
         notes: values.notes,
       });
     } catch {

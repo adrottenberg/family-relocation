@@ -3,6 +3,7 @@ import { EyeOutlined, CalendarOutlined } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 import type { PropertyMatchListDto } from '../../api/types';
 import MatchScoreDisplay from './MatchScoreDisplay';
+import { formatDateTime } from '../../utils/datetime';
 
 const { Text } = Typography;
 
@@ -168,7 +169,7 @@ const PropertyMatchCard = ({
                 Request Showing
               </Button>
             )}
-            {match.status === 'ShowingRequested' && onScheduleShowing && !match.scheduledShowingDate && (
+            {match.status === 'ShowingRequested' && onScheduleShowing && !match.scheduledShowingDateTime && (
               <Button
                 size="small"
                 type="primary"
@@ -183,7 +184,7 @@ const PropertyMatchCard = ({
               <>
                 {match.showings.filter(s => s.status === 'Scheduled').map((showing, idx) => (
                   <Tag key={showing.id} icon={<CalendarOutlined />} color="processing">
-                    {idx === 0 ? 'Showing: ' : ''}{new Date(showing.scheduledDate).toLocaleDateString()} {showing.scheduledTime?.substring(0, 5)}
+                    {idx === 0 ? 'Showing: ' : ''}{formatDateTime(showing.scheduledDateTime, 'MMM D [at] h:mm A')}
                   </Tag>
                 ))}
                 {match.showings.filter(s => s.status === 'Completed').length > 0 && (

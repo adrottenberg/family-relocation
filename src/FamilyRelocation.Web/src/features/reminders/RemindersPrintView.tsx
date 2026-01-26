@@ -1,11 +1,8 @@
 import { useEffect, useState, useRef } from 'react';
 import { Modal, Spin, Typography, Divider, Empty, Button, Space } from 'antd';
 import { PrinterOutlined } from '@ant-design/icons';
-import dayjs from 'dayjs';
-import utc from 'dayjs/plugin/utc';
 import { remindersApi, DueRemindersReportDto, ReminderListDto } from '../../api';
-
-dayjs.extend(utc);
+import { formatDateTime, now } from '../../utils/datetime';
 
 const { Title, Text } = Typography;
 
@@ -93,11 +90,6 @@ const RemindersPrintView = ({ open, onClose }: RemindersPrintViewProps) => {
     printWindow.print();
   };
 
-  const formatDate = (dateStr: string) => {
-    // Parse as UTC to avoid timezone conversion (dates are calendar dates, not moments in time)
-    return dayjs.utc(dateStr).format('ddd, MMM D, YYYY');
-  };
-
   const renderReminderList = (reminders: ReminderListDto[], emptyMessage: string) => {
     if (reminders.length === 0) {
       return <div className="section-empty">{emptyMessage}</div>;
@@ -111,8 +103,7 @@ const RemindersPrintView = ({ open, onClose }: RemindersPrintViewProps) => {
         </div>
         <div className="reminder-meta">
           <span className={reminder.isOverdue ? 'overdue' : ''}>
-            Due: {formatDate(reminder.dueDate)}
-            {reminder.dueTime && ` at ${reminder.dueTime.substring(0, 5)}`}
+            Due: {formatDateTime(reminder.dueDateTime, 'ddd, MMM D, YYYY [at] h:mm A')}
           </span>
           {' | '}
           <span className={`priority-${reminder.priority.toLowerCase()}`}>
@@ -162,7 +153,7 @@ const RemindersPrintView = ({ open, onClose }: RemindersPrintViewProps) => {
         <div ref={printRef}>
           <Title level={3}>Due Reminders Report</Title>
           <div className="header-date">
-            Generated: {dayjs().format('dddd, MMMM D, YYYY [at] h:mm A')}
+            Generated: {now().format('dddd, MMMM D, YYYY [at] h:mm A')}
           </div>
 
           <div className="summary">

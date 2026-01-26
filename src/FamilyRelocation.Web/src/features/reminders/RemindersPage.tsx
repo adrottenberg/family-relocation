@@ -33,9 +33,7 @@ import {
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
 import type { MenuProps } from 'antd';
 import dayjs from 'dayjs';
-import utc from 'dayjs/plugin/utc';
-
-dayjs.extend(utc);
+import { formatDateTime, toUtcString } from '../../utils/datetime';
 import {
   remindersApi,
   ReminderListDto,
@@ -107,8 +105,8 @@ const RemindersPage = () => {
       };
 
       if (filters.dateRange) {
-        params.dueDateFrom = filters.dateRange[0].format('YYYY-MM-DD');
-        params.dueDateTo = filters.dateRange[1].format('YYYY-MM-DD');
+        params.dueDateTimeFrom = toUtcString(filters.dateRange[0].startOf('day'));
+        params.dueDateTimeTo = toUtcString(filters.dateRange[1].endOf('day'));
       }
 
       const response: PaginatedList<ReminderListDto> = await remindersApi.getAll(params);
@@ -232,15 +230,7 @@ const RemindersPage = () => {
     return items;
   };
 
-  const formatDate = (dateStr: string, timeStr?: string) => {
-    // Parse as UTC to avoid timezone conversion (dates are calendar dates, not moments in time)
-    const date = dayjs.utc(dateStr);
-    let formatted = date.format('MMM D, YYYY');
-    if (timeStr) {
-      formatted += ` at ${timeStr.substring(0, 5)}`;
-    }
-    return formatted;
-  };
+  // formatDateTime from utils handles timezone conversion
 
   const columns: ColumnsType<ReminderListDto> = [
     {
@@ -268,7 +258,7 @@ const RemindersPage = () => {
     },
     {
       title: 'Due Date',
-      key: 'dueDate',
+      key: 'dueDateTime',
       render: (_, record) => {
         const isOverdue = record.isOverdue;
         const isDueToday = record.isDueToday;
@@ -279,7 +269,7 @@ const RemindersPage = () => {
               fontWeight: isOverdue || isDueToday ? 600 : 400,
             }}
           >
-            {formatDate(record.dueDate, record.dueTime)}
+            {formatDateTime(record.dueDateTime)}
             {isDueToday && !isOverdue && <Tag color="warning" style={{ marginLeft: 8 }}>Today</Tag>}
           </Text>
         );

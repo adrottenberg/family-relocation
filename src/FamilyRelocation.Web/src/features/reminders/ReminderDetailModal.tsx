@@ -14,11 +14,8 @@ import {
   FileTextOutlined,
 } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
-import dayjs from 'dayjs';
-import utc from 'dayjs/plugin/utc';
-
-dayjs.extend(utc);
 import { remindersApi, ReminderDto, ReminderPriority, ReminderStatus } from '../../api';
+import { formatDateTime } from '../../utils/datetime';
 import { ActivityDetailModal } from '../activities';
 
 const { Text, Paragraph } = Typography;
@@ -87,16 +84,6 @@ const ReminderDetailModal = ({
       setReminder(null);
     }
   }, [open, reminderId]);
-
-  const formatDate = (dateStr: string, timeStr?: string) => {
-    // Parse as UTC to avoid timezone conversion (dates are calendar dates, not moments in time)
-    const date = dayjs.utc(dateStr);
-    let formatted = date.format('dddd, MMMM D, YYYY');
-    if (timeStr) {
-      formatted += ` at ${timeStr.substring(0, 5)}`;
-    }
-    return formatted;
-  };
 
   const getEntityLink = () => {
     if (!reminder) return null;
@@ -206,13 +193,13 @@ const ReminderDetailModal = ({
             <Descriptions.Item label="Due Date">
               <Space>
                 <CalendarOutlined />
-                {formatDate(reminder.dueDate, reminder.dueTime)}
+                {formatDateTime(reminder.dueDateTime, 'dddd, MMMM D, YYYY [at] h:mm A')}
               </Space>
             </Descriptions.Item>
 
             {reminder.snoozedUntil && (
               <Descriptions.Item label="Snoozed Until">
-                {formatDate(reminder.snoozedUntil)}
+                {formatDateTime(reminder.snoozedUntil, 'dddd, MMMM D, YYYY [at] h:mm A')}
               </Descriptions.Item>
             )}
 
@@ -241,7 +228,7 @@ const ReminderDetailModal = ({
                     <Tag color="purple">{reminder.sourceActivityType}</Tag>
                     {reminder.sourceActivityTimestamp && (
                       <Text type="secondary">
-                        {dayjs(reminder.sourceActivityTimestamp).format('MMM D, YYYY [at] h:mm A')}
+                        {formatDateTime(reminder.sourceActivityTimestamp)}
                       </Text>
                     )}
                   </Space>
@@ -251,7 +238,7 @@ const ReminderDetailModal = ({
 
             <Descriptions.Item label="Created">
               <Space direction="vertical" size={0}>
-                <Text>{dayjs(reminder.createdAt).format('MMM D, YYYY [at] h:mm A')}</Text>
+                <Text>{formatDateTime(reminder.createdAt)}</Text>
                 {reminder.createdByName && (
                   <Text type="secondary">by {reminder.createdByName}</Text>
                 )}
@@ -260,7 +247,7 @@ const ReminderDetailModal = ({
 
             {reminder.completedAt && (
               <Descriptions.Item label="Completed">
-                <Text>{dayjs(reminder.completedAt).format('MMM D, YYYY [at] h:mm A')}</Text>
+                <Text>{formatDateTime(reminder.completedAt)}</Text>
               </Descriptions.Item>
             )}
           </Descriptions>

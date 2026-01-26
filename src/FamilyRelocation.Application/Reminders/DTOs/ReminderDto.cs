@@ -10,8 +10,7 @@ public class ReminderDto
     public Guid Id { get; init; }
     public string Title { get; init; } = string.Empty;
     public string? Notes { get; init; }
-    public DateTime DueDate { get; init; }
-    public TimeOnly? DueTime { get; init; }
+    public DateTime DueDateTime { get; init; }
     public ReminderPriority Priority { get; init; }
     public string EntityType { get; init; } = string.Empty;
     public Guid EntityId { get; init; }

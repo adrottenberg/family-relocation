@@ -3,13 +3,13 @@ import { Modal, Form, DatePicker, TimePicker, message } from 'antd';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { showingsApi } from '../../api';
 import dayjs from 'dayjs';
+import { toUtcString, parseUtcToLocal } from '../../utils/datetime';
 
 interface RescheduleShowingModalProps {
   open: boolean;
   onClose: () => void;
   showingId: string;
-  currentDate?: string;
-  currentTime?: string;
+  currentDateTime?: string;
   propertyInfo?: {
     street: string;
     city: string;
@@ -20,24 +20,24 @@ const RescheduleShowingModal = ({
   open,
   onClose,
   showingId,
-  currentDate,
-  currentTime,
+  currentDateTime,
   propertyInfo,
 }: RescheduleShowingModalProps) => {
   const queryClient = useQueryClient();
   const [form] = Form.useForm();
 
   useEffect(() => {
-    if (open && currentDate && currentTime) {
+    if (open && currentDateTime) {
+      const localDt = parseUtcToLocal(currentDateTime);
       form.setFieldsValue({
-        scheduledDate: dayjs(currentDate),
-        scheduledTime: dayjs(`2000-01-01T${currentTime}`),
+        scheduledDate: localDt,
+        scheduledTime: localDt,
       });
     }
-  }, [open, currentDate, currentTime, form]);
+  }, [open, currentDateTime, form]);
 
   const rescheduleMutation = useMutation({
-    mutationFn: (data: { newDate: string; newTime: string }) =>
+    mutationFn: (data: { newScheduledDateTime: string }) =>
       showingsApi.reschedule(showingId, data),
     onSuccess: () => {
       message.success('Showing rescheduled successfully');
@@ -52,9 +52,13 @@ const RescheduleShowingModal = ({
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
+      // Combine date and time into a single datetime and convert to UTC
+      const combinedDateTime = values.scheduledDate
+        .hour(values.scheduledTime.hour())
+        .minute(values.scheduledTime.minute())
+        .second(0);
       rescheduleMutation.mutate({
-        newDate: values.scheduledDate.format('YYYY-MM-DD'),
-        newTime: values.scheduledTime.format('HH:mm:ss'),
+        newScheduledDateTime: toUtcString(combinedDateTime),
       });
     } catch {
       // Validation error

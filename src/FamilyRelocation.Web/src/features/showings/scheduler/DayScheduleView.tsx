@@ -2,6 +2,7 @@ import { Typography } from 'antd';
 import dayjs, { Dayjs } from 'dayjs';
 import type { ShowingListDto } from '../../../api/types';
 import TimeSlot from './TimeSlot';
+import { parseUtcToLocal } from '../../../utils/datetime';
 
 const { Text } = Typography;
 
@@ -40,12 +41,11 @@ const generateTimeSlots = (date: Dayjs): { id: string; time: string; timeKey: st
   return slots;
 };
 
-// Normalize time string to HH:MM:SS format, rounding to nearest 30-minute slot
-const normalizeTimeToSlot = (time: string): string => {
-  // Handle formats like "10:00:00", "10:00", "10:00:00.0000000"
-  const parts = time.split(':');
-  const hours = parseInt(parts[0] || '0', 10);
-  const minutes = parseInt(parts[1] || '0', 10);
+// Normalize datetime to HH:MM:SS format (local time), rounding to nearest 30-minute slot
+const normalizeScheduledDateTimeToSlot = (scheduledDateTime: string): string => {
+  const localDt = parseUtcToLocal(scheduledDateTime);
+  const hours = localDt.hour();
+  const minutes = localDt.minute();
 
   // Round to nearest 30-minute slot
   const roundedMinutes = minutes < 15 ? 0 : minutes < 45 ? 30 : 0;
@@ -69,7 +69,7 @@ const DayScheduleView = ({
   // Create a map of time slot to showings (multiple showings can map to same slot)
   const showingsByTime: Record<string, ShowingListDto[]> = {};
   showings.forEach((showing) => {
-    const slotTime = normalizeTimeToSlot(showing.scheduledTime);
+    const slotTime = normalizeScheduledDateTimeToSlot(showing.scheduledDateTime);
     if (!showingsByTime[slotTime]) {
       showingsByTime[slotTime] = [];
     }

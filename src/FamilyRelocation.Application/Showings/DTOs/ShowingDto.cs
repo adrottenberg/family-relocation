@@ -7,8 +7,7 @@ public record ShowingDto
 {
     public required Guid Id { get; init; }
     public required Guid PropertyMatchId { get; init; }
-    public required DateOnly ScheduledDate { get; init; }
-    public required TimeOnly ScheduledTime { get; init; }
+    public required DateTime ScheduledDateTime { get; init; }
     public required string Status { get; init; }
     public string? Notes { get; init; }
     public Guid? BrokerUserId { get; init; }
@@ -36,8 +35,7 @@ public record ShowingListDto
 {
     public required Guid Id { get; init; }
     public required Guid PropertyMatchId { get; init; }
-    public required DateOnly ScheduledDate { get; init; }
-    public required TimeOnly ScheduledTime { get; init; }
+    public required DateTime ScheduledDateTime { get; init; }
     public required string Status { get; init; }
     public Guid? BrokerUserId { get; init; }
 
@@ -58,8 +56,7 @@ public record ShowingListDto
 public record ScheduleShowingRequest
 {
     public required Guid PropertyMatchId { get; init; }
-    public required DateOnly ScheduledDate { get; init; }
-    public required TimeOnly ScheduledTime { get; init; }
+    public required DateTime ScheduledDateTime { get; init; }
     public string? Notes { get; init; }
     public Guid? BrokerUserId { get; init; }
 }
@@ -69,8 +66,7 @@ public record ScheduleShowingRequest
 /// </summary>
 public record RescheduleShowingRequest
 {
-    public required DateOnly NewDate { get; init; }
-    public required TimeOnly NewTime { get; init; }
+    public required DateTime NewScheduledDateTime { get; init; }
 }
 
 /// <summary>

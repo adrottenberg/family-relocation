@@ -9,11 +9,10 @@ namespace FamilyRelocation.Application.Reminders.Commands.CreateReminder;
 /// </summary>
 public record CreateReminderCommand(
     string Title,
-    DateTime DueDate,
+    DateTime DueDateTime,
     string EntityType,
     Guid EntityId,
     string? Notes = null,
-    TimeOnly? DueTime = null,
     ReminderPriority Priority = ReminderPriority.Normal,
     Guid? AssignedToUserId = null,
     bool SendEmailNotification = false) : IRequest<ReminderDto>;

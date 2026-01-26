@@ -1,9 +1,9 @@
 import { useDroppable } from '@dnd-kit/core';
 import { Typography, Empty, Skeleton } from 'antd';
 import { CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
-import dayjs from 'dayjs';
 import type { PropertyMatchListDto } from '../../../api/types';
 import DraggableMatchCard from './DraggableMatchCard';
+import { parseUtcToLocal, today } from '../../../utils/datetime';
 
 const { Text } = Typography;
 
@@ -13,7 +13,7 @@ interface PendingMatchesSidebarProps {
 }
 
 const PendingMatchesSidebar = ({ matches, loading }: PendingMatchesSidebarProps) => {
-  const today = dayjs().startOf('day');
+  const todayStart = today();
 
   // Make sidebar a droppable zone for cancellation
   const { isOver, setNodeRef } = useDroppable({
@@ -30,7 +30,7 @@ const PendingMatchesSidebar = ({ matches, loading }: PendingMatchesSidebarProps)
     m.status === 'ShowingRequested' &&
     !m.showings?.some(s =>
       s.status === 'Scheduled' &&
-      !dayjs(s.scheduledDate).isBefore(today, 'day')
+      !parseUtcToLocal(s.scheduledDateTime).isBefore(todayStart, 'day')
     )
   );
 

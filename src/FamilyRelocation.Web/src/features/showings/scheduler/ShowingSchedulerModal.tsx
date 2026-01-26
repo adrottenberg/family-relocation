@@ -12,6 +12,7 @@ import SchedulerCalendar from './SchedulerCalendar';
 import DayScheduleView from './DayScheduleView';
 import DraggableMatchCard from './DraggableMatchCard';
 import { RescheduleShowingModal } from '../index';
+import { formatDate, toUtcString, parseUtcToLocal } from '../../../utils/datetime';
 
 const { Text } = Typography;
 
@@ -66,17 +67,17 @@ const ShowingSchedulerModal = ({
     const start = selectedDate.startOf('month').subtract(7, 'days');
     const end = selectedDate.endOf('month').add(7, 'days');
     return {
-      fromDate: start.format('YYYY-MM-DD'),
-      toDate: end.format('YYYY-MM-DD'),
+      fromDateTime: toUtcString(start.startOf('day')),
+      toDateTime: toUtcString(end.endOf('day')),
     };
   }, [selectedDate]);
 
   // Fetch all showings for the visible date range
   const { data: showings = [], isLoading: showingsLoading } = useQuery({
-    queryKey: ['showings', 'scheduler', dateRange.fromDate, dateRange.toDate],
+    queryKey: ['showings', 'scheduler', dateRange.fromDateTime, dateRange.toDateTime],
     queryFn: () => showingsApi.getAll({
-      fromDate: dateRange.fromDate,
-      toDate: dateRange.toDate,
+      fromDateTime: dateRange.fromDateTime,
+      toDateTime: dateRange.toDateTime,
     }),
     enabled: open,
   });
@@ -102,8 +103,7 @@ const ShowingSchedulerModal = ({
                   {
                     id: 'temp-' + Date.now(),
                     status: 'Scheduled',
-                    scheduledDate: request.scheduledDate,
-                    scheduledTime: request.scheduledTime,
+                    scheduledDateTime: request.scheduledDateTime,
                   },
                 ],
               }
@@ -132,8 +132,8 @@ const ShowingSchedulerModal = ({
 
   // Reschedule showing mutation
   const rescheduleMutation = useMutation({
-    mutationFn: ({ showingId, newDate, newTime }: { showingId: string; newDate: string; newTime: string }) =>
-      showingsApi.reschedule(showingId, { newDate, newTime }),
+    mutationFn: ({ showingId, newScheduledDateTime }: { showingId: string; newScheduledDateTime: string }) =>
+      showingsApi.reschedule(showingId, { newScheduledDateTime }),
     onSuccess: () => {
       message.success('Showing rescheduled successfully');
       queryClient.invalidateQueries({ queryKey: ['showings'] });
@@ -163,7 +163,7 @@ const ShowingSchedulerModal = ({
     showings
       .filter((showing) => showing.status === 'Scheduled')
       .forEach((showing) => {
-        const dateStr = showing.scheduledDate;
+        const dateStr = formatDate(showing.scheduledDateTime, 'YYYY-MM-DD');
         counts[dateStr] = (counts[dateStr] || 0) + 1;
       });
     return counts;
@@ -172,7 +172,7 @@ const ShowingSchedulerModal = ({
   // Get showings for the selected date (only Scheduled showings)
   const selectedDateShowings = useMemo(() => {
     const dateStr = selectedDate.format('YYYY-MM-DD');
-    return showings.filter((s) => s.scheduledDate === dateStr && s.status === 'Scheduled');
+    return showings.filter((s) => formatDate(s.scheduledDateTime, 'YYYY-MM-DD') === dateStr && s.status === 'Scheduled');
   }, [showings, selectedDate]);
 
   // Handle drag start
@@ -205,7 +205,8 @@ const ShowingSchedulerModal = ({
 
       // Check if slot is already occupied
       const existingShowing = showings.find((s) => {
-        const showingSlot = `${s.scheduledDate}T${s.scheduledTime}`;
+        const localDt = parseUtcToLocal(s.scheduledDateTime);
+        const showingSlot = localDt.format('YYYY-MM-DD') + 'T' + localDt.format('HH:mm:ss');
         return showingSlot === timeSlotId && s.status === 'Scheduled';
       });
 
@@ -240,13 +241,15 @@ const ShowingSchedulerModal = ({
         const [newDate, newTime] = dropId.split('T');
 
         // Don't reschedule if dropped on same slot
-        const currentSlot = `${showing.scheduledDate}T${showing.scheduledTime.substring(0, 8)}`;
+        const localDt = parseUtcToLocal(showing.scheduledDateTime);
+        const currentSlot = localDt.format('YYYY-MM-DD') + 'T' + localDt.format('HH:mm:ss');
         if (currentSlot === dropId) return;
 
+        // Build local datetime from drop target and convert to UTC
+        const newLocalDateTime = dayjs(`${newDate}T${newTime}`);
         await rescheduleMutation.mutateAsync({
           showingId: showing.id,
-          newDate,
-          newTime,
+          newScheduledDateTime: toUtcString(newLocalDateTime),
         });
       }
     }
@@ -254,10 +257,11 @@ const ShowingSchedulerModal = ({
 
   const scheduleShowing = async (matchId: string, timeSlotId: string) => {
     const [dateStr, timeStr] = timeSlotId.split('T');
+    // Build local datetime from the time slot and convert to UTC
+    const localDateTime = dayjs(`${dateStr}T${timeStr}`);
     await scheduleMutation.mutateAsync({
       propertyMatchId: matchId,
-      scheduledDate: dateStr,
-      scheduledTime: timeStr,
+      scheduledDateTime: toUtcString(localDateTime),
     });
   };
 
@@ -393,8 +397,7 @@ const ShowingSchedulerModal = ({
           showingId={rescheduleShowingId}
           open={true}
           onClose={handleRescheduleClose}
-          currentDate={rescheduleShowing.scheduledDate}
-          currentTime={rescheduleShowing.scheduledTime}
+          currentDateTime={rescheduleShowing.scheduledDateTime}
           propertyInfo={{
             street: rescheduleShowing.propertyStreet,
             city: rescheduleShowing.propertyCity,

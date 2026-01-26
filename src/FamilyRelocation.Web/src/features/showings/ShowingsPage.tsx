@@ -8,6 +8,7 @@ import ShowingsList from './ShowingsList';
 import ShowingCard from './ShowingCard';
 import RescheduleShowingModal from './RescheduleShowingModal';
 import dayjs, { Dayjs } from 'dayjs';
+import { formatDate as formatDateUtil, toUtcString } from '../../utils/datetime';
 
 const { RangePicker } = DatePicker;
 
@@ -31,8 +32,7 @@ const ShowingsPage = () => {
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [rescheduleModalData, setRescheduleModalData] = useState<{
     showingId: string;
-    date?: string;
-    time?: string;
+    scheduledDateTime?: string;
     propertyInfo?: { street: string; city: string };
   } | null>(null);
 
@@ -40,8 +40,8 @@ const ShowingsPage = () => {
     queryKey: ['showings', dateRange[0]?.format('YYYY-MM-DD'), dateRange[1]?.format('YYYY-MM-DD'), statusFilter],
     queryFn: () =>
       showingsApi.getAll({
-        fromDate: dateRange[0]?.format('YYYY-MM-DD'),
-        toDate: dateRange[1]?.format('YYYY-MM-DD'),
+        fromDateTime: dateRange[0] ? toUtcString(dateRange[0].startOf('day')) : undefined,
+        toDateTime: dateRange[1] ? toUtcString(dateRange[1].endOf('day')) : undefined,
         status: statusFilter || undefined,
       }),
   });
@@ -87,8 +87,7 @@ const ShowingsPage = () => {
   const handleReschedule = (showing: ShowingListDto) => {
     setRescheduleModalData({
       showingId: showing.id,
-      date: showing.scheduledDate,
-      time: showing.scheduledTime,
+      scheduledDateTime: showing.scheduledDateTime,
       propertyInfo: {
         street: showing.propertyStreet,
         city: showing.propertyCity,
@@ -105,7 +104,7 @@ const ShowingsPage = () => {
 
   // Group showings by date for calendar view
   const showingsByDate = (showings || []).reduce<Record<string, ShowingListDto[]>>((acc, showing) => {
-    const date = showing.scheduledDate;
+    const date = formatDateUtil(showing.scheduledDateTime, 'YYYY-MM-DD');
     if (!acc[date]) acc[date] = [];
     acc[date].push(showing);
     return acc;
@@ -225,8 +224,7 @@ const ShowingsPage = () => {
           open={true}
           onClose={() => setRescheduleModalData(null)}
           showingId={rescheduleModalData.showingId}
-          currentDate={rescheduleModalData.date}
-          currentTime={rescheduleModalData.time}
+          currentDateTime={rescheduleModalData.scheduledDateTime}
           propertyInfo={rescheduleModalData.propertyInfo}
         />
       )}

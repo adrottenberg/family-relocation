@@ -17,9 +17,9 @@ public class UpdateReminderCommandValidator : AbstractValidator<UpdateReminderCo
             .MaximumLength(200).WithMessage("Title cannot exceed 200 characters.")
             .When(x => x.Title != null);
 
-        RuleFor(x => x.DueDate)
-            .GreaterThanOrEqualTo(DateTime.UtcNow.Date).WithMessage("Due date cannot be in the past.")
-            .When(x => x.DueDate.HasValue);
+        RuleFor(x => x.DueDateTime)
+            .GreaterThanOrEqualTo(DateTime.UtcNow.AddMinutes(-5)).WithMessage("Due date/time cannot be in the past.")
+            .When(x => x.DueDateTime.HasValue);
 
         RuleFor(x => x.Notes)
             .MaximumLength(2000).WithMessage("Notes cannot exceed 2000 characters.")

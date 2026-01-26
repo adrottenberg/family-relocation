@@ -10,8 +10,7 @@ namespace FamilyRelocation.Domain.Entities;
 public class Showing : Entity<Guid>
 {
     public Guid PropertyMatchId { get; private set; }
-    public DateOnly ScheduledDate { get; private set; }
-    public TimeOnly ScheduledTime { get; private set; }
+    public DateTime ScheduledDateTime { get; private set; }
     public ShowingStatus Status { get; private set; }
     public string? Notes { get; private set; }
     public Guid? BrokerUserId { get; private set; }
@@ -33,8 +32,7 @@ public class Showing : Entity<Guid>
     /// </summary>
     public static Showing Create(
         Guid propertyMatchId,
-        DateOnly scheduledDate,
-        TimeOnly scheduledTime,
+        DateTime scheduledDateTime,
         Guid createdBy,
         string? notes = null,
         Guid? brokerUserId = null)
@@ -42,17 +40,15 @@ public class Showing : Entity<Guid>
         if (propertyMatchId == Guid.Empty)
             throw new ArgumentException("Property match ID is required", nameof(propertyMatchId));
 
-        // Validate scheduled date is not in the past
-        var scheduledDateTime = scheduledDate.ToDateTime(scheduledTime);
-        if (scheduledDateTime < DateTime.UtcNow.AddHours(-1)) // Allow some flexibility
-            throw new ArgumentException("Cannot schedule a showing in the past", nameof(scheduledDate));
+        // Validate scheduled datetime is not in the past (allow some flexibility)
+        if (scheduledDateTime < DateTime.UtcNow.AddHours(-1))
+            throw new ArgumentException("Cannot schedule a showing in the past", nameof(scheduledDateTime));
 
         return new Showing
         {
             Id = Guid.NewGuid(),
             PropertyMatchId = propertyMatchId,
-            ScheduledDate = scheduledDate,
-            ScheduledTime = scheduledTime,
+            ScheduledDateTime = DateTime.SpecifyKind(scheduledDateTime, DateTimeKind.Utc),
             Status = ShowingStatus.Scheduled,
             Notes = notes,
             BrokerUserId = brokerUserId,
@@ -64,17 +60,15 @@ public class Showing : Entity<Guid>
     /// <summary>
     /// Reschedules the showing to a new date/time.
     /// </summary>
-    public void Reschedule(DateOnly newDate, TimeOnly newTime, Guid modifiedBy)
+    public void Reschedule(DateTime newScheduledDateTime, Guid modifiedBy)
     {
         if (Status != ShowingStatus.Scheduled)
             throw new InvalidOperationException("Can only reschedule a scheduled showing");
 
-        var scheduledDateTime = newDate.ToDateTime(newTime);
-        if (scheduledDateTime < DateTime.UtcNow.AddHours(-1))
-            throw new ArgumentException("Cannot reschedule to a past date/time", nameof(newDate));
+        if (newScheduledDateTime < DateTime.UtcNow.AddHours(-1))
+            throw new ArgumentException("Cannot reschedule to a past date/time", nameof(newScheduledDateTime));
 
-        ScheduledDate = newDate;
-        ScheduledTime = newTime;
+        ScheduledDateTime = DateTime.SpecifyKind(newScheduledDateTime, DateTimeKind.Utc);
         ModifiedBy = modifiedBy;
         ModifiedAt = DateTime.UtcNow;
     }
@@ -150,11 +144,6 @@ public class Showing : Entity<Guid>
         ModifiedBy = modifiedBy;
         ModifiedAt = DateTime.UtcNow;
     }
-
-    /// <summary>
-    /// Gets the scheduled date/time as a DateTime.
-    /// </summary>
-    public DateTime ScheduledDateTime => ScheduledDate.ToDateTime(ScheduledTime);
 
     /// <summary>
     /// Indicates if the showing is upcoming (scheduled and in the future).

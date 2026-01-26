@@ -12,13 +12,16 @@ public class CreateReminderCommandHandler : IRequestHandler<CreateReminderComman
 {
     private readonly IApplicationDbContext _context;
     private readonly ICurrentUserService _currentUserService;
+    private readonly IUserTimezoneService _timezoneService;
 
     public CreateReminderCommandHandler(
         IApplicationDbContext context,
-        ICurrentUserService currentUserService)
+        ICurrentUserService currentUserService,
+        IUserTimezoneService timezoneService)
     {
         _context = context;
         _currentUserService = currentUserService;
+        _timezoneService = timezoneService;
     }
 
     public async Task<ReminderDto> Handle(CreateReminderCommand command, CancellationToken cancellationToken)
@@ -28,12 +31,11 @@ public class CreateReminderCommandHandler : IRequestHandler<CreateReminderComman
 
         var reminder = FollowUpReminder.Create(
             command.Title,
-            command.DueDate,
+            command.DueDateTime,
             command.EntityType,
             command.EntityId,
             userId,
             command.Notes,
-            command.DueTime,
             command.Priority,
             command.AssignedToUserId,
             command.SendEmailNotification);
@@ -41,13 +43,16 @@ public class CreateReminderCommandHandler : IRequestHandler<CreateReminderComman
         _context.Add(reminder);
         await _context.SaveChangesAsync(cancellationToken);
 
+        // Compute timezone-aware IsOverdue and IsDueToday
+        var isOverdue = await _timezoneService.IsOverdueAsync(reminder.EffectiveDueDateTime);
+        var isDueToday = await _timezoneService.IsTodayAsync(reminder.EffectiveDueDateTime);
+
         return new ReminderDto
         {
             Id = reminder.Id,
             Title = reminder.Title,
             Notes = reminder.Notes,
-            DueDate = reminder.DueDate,
-            DueTime = reminder.DueTime,
+            DueDateTime = reminder.DueDateTime,
             Priority = reminder.Priority,
             EntityType = reminder.EntityType,
             EntityId = reminder.EntityId,
@@ -60,8 +65,8 @@ public class CreateReminderCommandHandler : IRequestHandler<CreateReminderComman
             CreatedBy = reminder.CreatedBy,
             CompletedAt = reminder.CompletedAt,
             CompletedBy = reminder.CompletedBy,
-            IsOverdue = reminder.IsOverdue,
-            IsDueToday = reminder.IsDueToday
+            IsOverdue = isOverdue,
+            IsDueToday = isDueToday
         };
     }
 }
