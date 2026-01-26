@@ -85,7 +85,7 @@ public class ApplicantsController : ControllerBase
     /// Cannot update: board decision, created date, applicant ID.
     /// </summary>
     [HttpPut("{id:guid}")]
-    [Authorize(Roles = "Coordinator,Admin,Broker")]
+    [Authorize(Roles = "Coordinator,Admin,BoardMember,Broker")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -121,7 +121,7 @@ public class ApplicantsController : ControllerBase
     /// with IsDeleted = true. The applicant can be restored if needed.
     /// </remarks>
     [HttpDelete("{id:guid}")]
-    [Authorize(Roles = "Coordinator,Admin")]
+    [Authorize(Roles = "Coordinator,Admin,BoardMember")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(Guid id)
