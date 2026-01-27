@@ -10,6 +10,8 @@ This folder contains historical documentation that has been superseded by newer 
 
 | Reason | Files |
 |--------|-------|
+| **Corrections applied to codebase** | FINAL_CORRECTIONS_JAN_2026.md |
+| **Superseded by CLAUDE.md in root** | CLAUDE_CODE_CONTEXT.md |
 | **Superseded by newer version** | MASTER_REQUIREMENTS_UPDATES.md, MASTER_REQUIREMENTS_v4_CORRECTED_SECTIONS.md |
 | **Content merged elsewhere** | README_START_HERE.md, IMPLEMENTATION_READY_PACKAGE.md, P0_STORIES_SUMMARY.md |
 | **Duplicate information** | PRIORITIZED_USER_STORIES.md, CODE_REFERENCE_GUIDE.md |

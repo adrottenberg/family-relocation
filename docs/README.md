@@ -1,7 +1,7 @@
 # Family Relocation CRM - Documentation
 
 > **Last Updated:** January 27, 2026
-> **Version:** 1.0.0-beta
+> **Implementation Status:** ~85% Complete
 
 A custom CRM for managing Orthodox Jewish family relocation to Union County, NJ. Built with Clean Architecture + DDD + CQRS pattern.
 
@@ -12,57 +12,44 @@ A custom CRM for managing Orthodox Jewish family relocation to Union County, NJ.
 | If you want to... | Read this |
 |-------------------|-----------|
 | Understand the codebase quickly | [CLAUDE.md](../CLAUDE.md) (root) |
-| See full AI context history | [CONVERSATION_MEMORY_LOG.md](CONVERSATION_MEMORY_LOG.md) |
 | Check what's implemented | [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md) |
 | See upcoming work | [ROADMAP.md](ROADMAP.md) |
 | Run tests | [COMPREHENSIVE_TEST_PLAN.md](COMPREHENSIVE_TEST_PLAN.md) |
 
 ---
 
-## Documentation Map
+## Core Documentation (7 Files)
 
-### Core Reference (Read First)
+### Status & Planning
 
-| Document | Purpose | When to Use |
-|----------|---------|-------------|
-| [CLAUDE.md](../CLAUDE.md) | Quick reference for AI/developers | Starting any work session |
-| [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md) | What's built vs outstanding | Planning work, checking status |
-| [ROADMAP.md](ROADMAP.md) | Priorities and upcoming features | Sprint planning |
+| Document | Purpose |
+|----------|---------|
+| [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md) | What's built vs outstanding (~85% complete) |
+| [ROADMAP.md](ROADMAP.md) | Priorities P0-P3, upcoming work |
+| [USER_STORIES_COMPLETE_LIST.md](USER_STORIES_COMPLETE_LIST.md) | All 68 user stories with status |
 
-### Requirements & Specifications
+### Technical Reference
 
-| Document | Purpose | When to Use |
-|----------|---------|-------------|
-| [MASTER_REQUIREMENTS_FINAL.md](MASTER_REQUIREMENTS_FINAL.md) | Original requirements (with corrections noted) | Understanding business rules |
-| [FINAL_CORRECTIONS_JAN_2026.md](FINAL_CORRECTIONS_JAN_2026.md) | All corrections to original requirements | Checking what changed |
-| [USER_STORIES_COMPLETE_LIST.md](USER_STORIES_COMPLETE_LIST.md) | All 68 user stories with status | Story reference |
+| Document | Purpose |
+|----------|---------|
+| [SOLUTION_STRUCTURE_AND_CODE_v3.md](SOLUTION_STRUCTURE_AND_CODE_v3.md) | Authoritative code reference with examples |
+| [SECURITY_ARCHITECTURE.md](SECURITY_ARCHITECTURE.md) | Auth, roles, security zones |
+| [BRANCHING_STRATEGY.md](BRANCHING_STRATEGY.md) | Git flow, versioning, CI/CD |
 
-### Technical Architecture
+### Quality & Operations
 
-| Document | Purpose | When to Use |
-|----------|---------|-------------|
-| [SOLUTION_STRUCTURE_AND_CODE_v3.md](SOLUTION_STRUCTURE_AND_CODE_v3.md) | Complete code reference with examples | Writing new code |
-| [SECURITY_ARCHITECTURE.md](SECURITY_ARCHITECTURE.md) | Auth, roles, security zones | Auth implementation |
-| [BRANCHING_STRATEGY.md](BRANCHING_STRATEGY.md) | Git flow, versioning, CI/CD | Commits, releases |
-| [TECHNICAL_DEBT.md](TECHNICAL_DEBT.md) | Known issues to address | Refactoring decisions |
+| Document | Purpose |
+|----------|---------|
+| [COMPREHENSIVE_TEST_PLAN.md](COMPREHENSIVE_TEST_PLAN.md) | 201 manual test cases |
+| [TECHNICAL_DEBT.md](TECHNICAL_DEBT.md) | Known issues to address |
 
-### Testing & Quality
+### Historical Reference
 
-| Document | Purpose | When to Use |
-|----------|---------|-------------|
-| [COMPREHENSIVE_TEST_PLAN.md](COMPREHENSIVE_TEST_PLAN.md) | 201 manual test cases | QA testing |
-
-### Sprint History
-
-| Document | Purpose | When to Use |
-|----------|---------|-------------|
-| [sprint-plans/SPRINT_1_DETAILED_STORIES.md](sprint-plans/SPRINT_1_DETAILED_STORIES.md) | Sprint 1 implementation details | Reference for patterns |
-
-### Full Context
-
-| Document | Purpose | When to Use |
-|----------|---------|-------------|
-| [CONVERSATION_MEMORY_LOG.md](CONVERSATION_MEMORY_LOG.md) | Complete session history (70+ pages) | Resuming after break, understanding decisions |
+| Document | Purpose |
+|----------|---------|
+| [MASTER_REQUIREMENTS_FINAL.md](MASTER_REQUIREMENTS_FINAL.md) | Original business requirements |
+| [CONVERSATION_MEMORY_LOG.md](CONVERSATION_MEMORY_LOG.md) | Full planning session history |
+| [sprint-plans/](sprint-plans/) | Sprint implementation details |
 
 ---
 
@@ -70,27 +57,27 @@ A custom CRM for managing Orthodox Jewish family relocation to Union County, NJ.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                         FamilyRelocation.API                      │
-│                    (Controllers, Middleware)                      │
+│                         FamilyRelocation.API                     │
+│                    (Controllers, Middleware)                     │
 └─────────────────────────────────────────────────────────────────┘
                                   │
                                   ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                     FamilyRelocation.Application                  │
-│              (CQRS Commands/Queries, DTOs, Validators)           │
+│                     FamilyRelocation.Application                 │
+│              (CQRS Commands/Queries, DTOs, Validators)          │
 └─────────────────────────────────────────────────────────────────┘
                                   │
                                   ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                    FamilyRelocation.Infrastructure                │
-│                (EF Core, AWS S3/SES/Cognito, Services)           │
+│                    FamilyRelocation.Infrastructure               │
+│                (EF Core, AWS S3/SES/Cognito, Services)          │
 └─────────────────────────────────────────────────────────────────┘
                                   │
                                   ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                       FamilyRelocation.Domain                     │
-│            (Entities, Value Objects, Domain Events)              │
-│                    *** ZERO EXTERNAL DEPENDENCIES ***            │
+│                       FamilyRelocation.Domain                    │
+│            (Entities, Value Objects, Domain Events)             │
+│                    *** ZERO EXTERNAL DEPENDENCIES ***           │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -140,13 +127,10 @@ dotnet test
 
 ## Archived Documentation
 
-Old planning documents, superseded versions, and historical reference material is preserved in [_archive/](_archive/).
+Planning documents, superseded versions, and historical reference material is preserved in [_archive/](_archive/).
 
----
-
-## Contributing
-
-1. Read [CLAUDE.md](../CLAUDE.md) for coding standards
-2. Follow [BRANCHING_STRATEGY.md](BRANCHING_STRATEGY.md) for git workflow
-3. Update [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md) when completing features
-4. Add test cases to [COMPREHENSIVE_TEST_PLAN.md](COMPREHENSIVE_TEST_PLAN.md)
+Archived files include:
+- Old sprint plans (Sprint 2-5 detailed stories)
+- Superseded requirement versions
+- Applied corrections (now in codebase)
+- Old code reviews
