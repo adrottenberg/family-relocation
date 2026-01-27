@@ -6,6 +6,50 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A custom CRM for managing Orthodox Jewish family relocation to Union County, NJ. Built with Clean Architecture + DDD + CQRS pattern.
 
+---
+
+## MANDATORY WORKFLOW
+
+**IMPORTANT: Follow this workflow for ALL code changes.**
+
+### Before Starting Work
+
+1. Check `docs/IMPLEMENTATION_STATUS.md` to understand current state
+2. Check `docs/ROADMAP.md` for priorities
+3. If task involves a new feature, verify it's in the roadmap
+
+### After Completing Work
+
+**You MUST update documentation after completing significant work:**
+
+1. **After completing a feature:**
+   - Update `docs/IMPLEMENTATION_STATUS.md` - mark feature/component as complete
+   - Update `docs/ROADMAP.md` - move completed items, update priorities
+
+2. **After fixing bugs:**
+   - Update `docs/TECHNICAL_DEBT.md` if the bug was listed there
+
+3. **After adding new entities/APIs:**
+   - Update `docs/IMPLEMENTATION_STATUS.md` entity/API inventory sections
+
+4. **After architectural decisions:**
+   - Add to `docs/CONVERSATION_MEMORY_LOG.md` if significant
+
+### Commit Workflow
+
+When creating commits:
+1. Use conventional commit format: `feat:`, `fix:`, `docs:`, `refactor:`
+2. If the commit completes a feature, include doc updates in the same commit
+3. Always include `Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>`
+
+### PR Workflow
+
+When the user asks to create a PR:
+1. Ensure all doc updates are included
+2. Add documentation changes to PR description if applicable
+
+---
+
 ## Build & Run Commands
 
 ```bash
@@ -103,24 +147,30 @@ No raw SQL needed - queries like `a.Husband.Email.Value == email` work directly.
 - .NET 10 (C# 13) - NOT .NET 8
 - AWS services (Cognito, S3, SES) - NOT Azure
 - PostgreSQL with EF Core 10
-- React 18 + Vite + Ant Design (frontend, not yet implemented)
+- React 18 + Vite + Ant Design
 
 ## Documentation Reference
 
-- `docs/CONVERSATION_MEMORY_LOG.md` - Full project context and design decisions
-- `docs/CLAUDE_CODE_CONTEXT.md` - Quick reference for AI development
-- `docs/SOLUTION_STRUCTURE_AND_CODE_v3.md` - Complete code patterns and entity definitions
-- `docs/sprint-plans/SPRINT_1_DETAILED_STORIES.md` - Current sprint implementation details
+| Document | Purpose |
+|----------|---------|
+| `docs/README.md` | Documentation index |
+| `docs/IMPLEMENTATION_STATUS.md` | What's built vs outstanding |
+| `docs/ROADMAP.md` | Priorities and upcoming work |
+| `docs/SOLUTION_STRUCTURE_AND_CODE_v3.md` | Code patterns and examples |
+| `docs/COMPREHENSIVE_TEST_PLAN.md` | Test cases |
+| `docs/CONVERSATION_MEMORY_LOG.md` | Historical decisions |
 
 Before making architectural changes, check these docs for prior decisions.
 
 ## After Context Compaction
 
-When resuming from a compacted session (indicated by "This session is being continued from a previous conversation"), update `docs/CONVERSATION_MEMORY_LOG.md` with:
+When resuming from a compacted session (indicated by "This session is being continued from a previous conversation"):
 
-- Key decisions made in the previous session
-- Files created or significantly modified
-- Current task status and next steps
-- Any important context that should be preserved
+1. Read `docs/IMPLEMENTATION_STATUS.md` for current state
+2. Check `docs/ROADMAP.md` for priorities
+3. Update `docs/CONVERSATION_MEMORY_LOG.md` with:
+   - Key decisions made in the previous session
+   - Files created or significantly modified
+   - Current task status and next steps
 
 This ensures continuity across long development sessions.
