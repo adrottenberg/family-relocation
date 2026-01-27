@@ -40,7 +40,6 @@ A custom CRM for managing Orthodox Jewish family relocation to Union County, NJ.
 When creating commits:
 1. Use conventional commit format: `feat:`, `fix:`, `docs:`, `refactor:`
 2. If the commit completes a feature, include doc updates in the same commit
-3. Always include `Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>`
 
 ### PR Workflow
 
