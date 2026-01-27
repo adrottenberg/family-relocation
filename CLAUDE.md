@@ -84,11 +84,20 @@ A custom CRM for managing Orthodox Jewish family relocation to Union County, NJ.
 When user requests PR creation:
 1. Ensure all doc updates are committed
 2. Push branch to remote
-3. Ask user for confirmation before creating PR
-4. Include in PR description:
+3. **Transition Jira ticket to "In Review"**
+4. Ask user for confirmation before creating PR
+5. Include in PR description:
    - Jira ticket reference
    - Summary of changes
    - Documentation updates made
+
+### Jira Status Transitions
+
+| Action | Jira Status |
+|--------|-------------|
+| Start working on ticket | **In Progress** |
+| Push branch / Create PR | **In Review** |
+| PR merged | **Done** |
 
 ### 7. Version Management
 
@@ -226,11 +235,40 @@ No raw SQL needed - queries like `a.Husband.Email.Value == email` work directly.
 | `docs/IMPLEMENTATION_STATUS.md` | What's built vs outstanding |
 | `docs/ROADMAP.md` | Priorities and upcoming work |
 | `docs/BRANCHING_STRATEGY.md` | Git flow and versioning |
+| `docs/specs/` | Detailed technical specifications |
 | `docs/SOLUTION_STRUCTURE_AND_CODE_v3.md` | Code patterns and examples |
 | `docs/COMPREHENSIVE_TEST_PLAN.md` | Test cases |
 | `docs/CONVERSATION_MEMORY_LOG.md` | Historical decisions |
 
 Before making architectural changes, check these docs for prior decisions.
+
+## Documentation Architecture (Jira + Docs Hybrid)
+
+**Jira is the source of truth for task tracking.** Detailed specs live in the codebase.
+
+| Content Type | Location | When to Use |
+|--------------|----------|-------------|
+| User stories (short) | Jira ticket description | Always |
+| Acceptance criteria | Jira ticket | Always |
+| Technical specs | `docs/specs/UN-XXX-*.md` | Complex features |
+| Architecture decisions | `docs/CONVERSATION_MEMORY_LOG.md` | Significant decisions |
+| Implementation status | `docs/IMPLEMENTATION_STATUS.md` | Milestone updates |
+
+### When to Create a Spec
+
+Create a `docs/specs/UN-XXX-feature-name.md` when:
+- Feature affects multiple layers (Domain, API, Frontend)
+- API contracts need definition
+- Complex business logic requires documentation
+- Design review is beneficial before coding
+
+### Spec Workflow
+
+1. Create Jira ticket with user story + acceptance criteria
+2. If complex, create `docs/specs/UN-XXX-description.md`
+3. Add link to spec in Jira ticket description
+4. Spec can be reviewed as part of PR or separately
+5. Update spec status when implemented
 
 ## After Context Compaction
 
