@@ -12,11 +12,15 @@ import {
   Card,
   message,
   Image,
+  Modal,
+  Form,
+  InputNumber,
 } from 'antd';
 import {
   PlusOutlined,
   SearchOutlined,
   HomeOutlined,
+  DollarOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
 import { propertiesApi, PropertyListDto, PaginatedList } from '../../api';
@@ -45,6 +49,9 @@ const PropertiesListPage = () => {
     status: '',
     city: '',
   });
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [createLoading, setCreateLoading] = useState(false);
+  const [form] = Form.useForm();
 
   const fetchProperties = async (page = 1, pageSize = 20) => {
     setLoading(true);
@@ -80,6 +87,35 @@ const PropertiesListPage = () => {
 
   const handleTableChange = (newPagination: TablePaginationConfig) => {
     fetchProperties(newPagination.current ?? 1, newPagination.pageSize ?? 20);
+  };
+
+  const handleCreateListing = async () => {
+    try {
+      const values = await form.validateFields();
+      setCreateLoading(true);
+      const newProperty = await propertiesApi.create({
+        street: values.street,
+        city: values.city,
+        state: 'NJ',
+        zipCode: values.zipCode || '',
+        price: values.price,
+        bedrooms: values.bedrooms,
+        bathrooms: values.bathrooms,
+        squareFeet: values.squareFeet,
+        mlsNumber: values.mlsNumber,
+      });
+      message.success('Listing created successfully');
+      setCreateModalOpen(false);
+      form.resetFields();
+      // Navigate to the new listing
+      navigate(`/listings/${newProperty.id}`);
+    } catch (error) {
+      if (error instanceof Error) {
+        message.error(error.message || 'Failed to create listing');
+      }
+    } finally {
+      setCreateLoading(false);
+    }
   };
 
   const formatPrice = (price: number) => {
@@ -193,12 +229,12 @@ const PropertiesListPage = () => {
       <Row justify="space-between" align="middle" style={{ marginBottom: 16 }}>
         <Col>
           <Title level={2} style={{ margin: 0 }}>
-            Properties
+            Listings
           </Title>
         </Col>
         <Col>
-          <Button type="primary" icon={<PlusOutlined />}>
-            Add Property
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateModalOpen(true)}>
+            Add Listing
           </Button>
         </Col>
       </Row>
@@ -249,7 +285,7 @@ const PropertiesListPage = () => {
         </Row>
       </Card>
 
-      {/* Properties Table */}
+      {/* Listings Table */}
       <Table
         columns={columns}
         dataSource={properties}
@@ -262,6 +298,78 @@ const PropertiesListPage = () => {
           style: { cursor: 'pointer' },
         })}
       />
+
+      {/* Create Listing Modal */}
+      <Modal
+        title="Add New Listing"
+        open={createModalOpen}
+        onCancel={() => {
+          setCreateModalOpen(false);
+          form.resetFields();
+        }}
+        onOk={handleCreateListing}
+        confirmLoading={createLoading}
+        width={600}
+      >
+        <Form form={form} layout="vertical">
+          <Row gutter={16}>
+            <Col span={16}>
+              <Form.Item name="street" label="Street Address" rules={[{ required: true, message: 'Street address is required' }]}>
+                <Input placeholder="123 Main St" />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item name="city" label="City" rules={[{ required: true, message: 'City is required' }]}>
+                <Select placeholder="Select city">
+                  <Option value="Union">Union</Option>
+                  <Option value="Roselle Park">Roselle Park</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={8}>
+              <Form.Item name="zipCode" label="Zip Code">
+                <Input placeholder="07083" />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item name="mlsNumber" label="MLS #">
+                <Input placeholder="MLS Number" />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item name="price" label="Price" rules={[{ required: true, message: 'Price is required' }]}>
+                <InputNumber
+                  prefix={<DollarOutlined />}
+                  style={{ width: '100%' }}
+                  min={0}
+                  formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                  parser={(value) => Number(value?.replace(/\$\s?|(,*)/g, '') || 0) as unknown as 0}
+                  placeholder="500,000"
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={8}>
+              <Form.Item name="bedrooms" label="Bedrooms" rules={[{ required: true, message: 'Bedrooms is required' }]}>
+                <InputNumber style={{ width: '100%' }} min={0} placeholder="4" />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item name="bathrooms" label="Bathrooms" rules={[{ required: true, message: 'Bathrooms is required' }]}>
+                <InputNumber style={{ width: '100%' }} min={0} step={0.5} placeholder="2.5" />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item name="squareFeet" label="Square Feet">
+                <InputNumber style={{ width: '100%' }} min={0} placeholder="2,000" />
+              </Form.Item>
+            </Col>
+          </Row>
+        </Form>
+      </Modal>
     </div>
   );
 };
