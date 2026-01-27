@@ -39,6 +39,7 @@ const SetBoardDecisionModal = ({ open, onClose, applicant }: SetBoardDecisionMod
       message.success(data.message || 'Board decision recorded successfully');
       queryClient.invalidateQueries({ queryKey: ['applicant', applicant.id] });
       queryClient.invalidateQueries({ queryKey: ['applicants'] });
+      queryClient.invalidateQueries({ queryKey: ['pipeline'] });
       form.resetFields();
       onClose();
     },

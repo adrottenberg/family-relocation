@@ -100,6 +100,7 @@ const DocumentUploadModal = ({ open, onClose, applicant }: DocumentUploadModalPr
       message.success(`${docType?.displayName || 'Document'} uploaded successfully`);
       queryClient.invalidateQueries({ queryKey: ['applicant', applicant.id] });
       queryClient.invalidateQueries({ queryKey: ['applicantDocuments', applicant.id] });
+      queryClient.invalidateQueries({ queryKey: ['pipeline'] });
       setUploadStates((prev) => ({
         ...prev,
         [documentTypeId]: { file: null, uploading: false, progress: 0, replaceMode: false },

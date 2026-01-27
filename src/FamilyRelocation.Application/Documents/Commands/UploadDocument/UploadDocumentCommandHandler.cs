@@ -2,6 +2,7 @@ using FamilyRelocation.Application.Common.Exceptions;
 using FamilyRelocation.Application.Common.Interfaces;
 using FamilyRelocation.Application.Documents.DTOs;
 using FamilyRelocation.Domain.Entities;
+using FamilyRelocation.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -73,6 +74,9 @@ public class UploadDocumentCommandHandler : IRequestHandler<UploadDocumentComman
                 $"Updated document: {documentType.DisplayName} ({command.FileName})",
                 cancellationToken);
 
+            // Check for auto-transition (in case this was a re-upload that completes requirements)
+            await TryAutoTransitionToSearchingAsync(command.ApplicantId, cancellationToken);
+
             return new ApplicantDocumentDto
             {
                 Id = existingDocument.Id,
@@ -108,6 +112,9 @@ public class UploadDocumentCommandHandler : IRequestHandler<UploadDocumentComman
             $"Uploaded document: {documentType.DisplayName} ({command.FileName})",
             cancellationToken);
 
+        // Check for auto-transition from AwaitingAgreements to Searching
+        await TryAutoTransitionToSearchingAsync(command.ApplicantId, cancellationToken);
+
         return new ApplicantDocumentDto
         {
             Id = newDocument.Id,
@@ -120,5 +127,62 @@ public class UploadDocumentCommandHandler : IRequestHandler<UploadDocumentComman
             UploadedAt = newDocument.UploadedAt,
             UploadedBy = newDocument.UploadedBy
         };
+    }
+
+    /// <summary>
+    /// Checks if all required documents for AwaitingAgreements → Searching transition are uploaded,
+    /// and if so, automatically transitions the housing search to the Searching stage.
+    /// </summary>
+    private async Task TryAutoTransitionToSearchingAsync(Guid applicantId, CancellationToken cancellationToken)
+    {
+        // Get the applicant's active housing search in AwaitingAgreements stage
+        var housingSearch = await _context.Set<HousingSearch>()
+            .FirstOrDefaultAsync(h =>
+                h.ApplicantId == applicantId &&
+                h.Stage == HousingSearchStage.AwaitingAgreements,
+                cancellationToken);
+
+        if (housingSearch == null)
+            return; // No housing search in AwaitingAgreements stage
+
+        // Get required document types for AwaitingAgreements → Searching transition
+        var requiredDocTypeIds = await _context.Set<StageTransitionRequirement>()
+            .Where(r =>
+                r.FromStage == HousingSearchStage.AwaitingAgreements &&
+                r.ToStage == HousingSearchStage.Searching &&
+                r.IsRequired)
+            .Select(r => r.DocumentTypeId)
+            .ToListAsync(cancellationToken);
+
+        if (requiredDocTypeIds.Count == 0)
+            return; // No required documents configured
+
+        // Get uploaded document type IDs for this applicant
+        var uploadedDocTypeIds = await _context.Set<ApplicantDocument>()
+            .Where(d => d.ApplicantId == applicantId)
+            .Select(d => d.DocumentTypeId)
+            .ToListAsync(cancellationToken);
+
+        // Check if all required documents are uploaded
+        var allRequiredUploaded = requiredDocTypeIds.All(reqId => uploadedDocTypeIds.Contains(reqId));
+
+        if (!allRequiredUploaded)
+            return; // Not all required documents uploaded yet
+
+        var userId = _currentUserService.UserId;
+        if (userId == null)
+            return; // No authenticated user to attribute the change to
+
+        // Auto-transition to Searching stage
+        housingSearch.StartSearching(userId.Value);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        // Log the auto-transition
+        await _activityLogger.LogAsync(
+            "HousingSearch",
+            housingSearch.Id,
+            "StageChanged",
+            "Automatically transitioned to Searching stage (all required documents uploaded)",
+            cancellationToken);
     }
 }

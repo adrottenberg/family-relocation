@@ -131,6 +131,7 @@ const CreateApplicantModal = ({ open, onClose }: CreateApplicantModalProps) => {
     onSuccess: (data) => {
       message.success('Applicant created successfully');
       queryClient.invalidateQueries({ queryKey: ['applicants'] });
+      queryClient.invalidateQueries({ queryKey: ['pipeline'] });
       form.resetFields();
       onClose();
       // Navigate to the new applicant's detail page
