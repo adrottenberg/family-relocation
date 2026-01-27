@@ -60,7 +60,9 @@ public static class PropertyMatchMapper
             PropertyPrice = match.Property.Price.Amount,
             PropertyBedrooms = match.Property.Bedrooms,
             PropertyBathrooms = match.Property.Bathrooms,
-            PropertyPhotoUrl = match.Property.PrimaryPhoto?.Url,
+            PropertyPhotoUrl = match.Property.PrimaryPhoto != null
+                ? $"/api/properties/{match.Property.Id}/photos/{match.Property.PrimaryPhoto.Id}/image"
+                : null,
             ApplicantId = match.HousingSearch.ApplicantId,
             ApplicantName = match.HousingSearch.Applicant.FamilyName,
             Showings = showings ?? []

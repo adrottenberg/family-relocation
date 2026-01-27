@@ -4,7 +4,6 @@ import {
   Typography,
   Table,
   Button,
-  Space,
   Tag,
   Input,
   Select,
@@ -12,6 +11,7 @@ import {
   Col,
   Card,
   message,
+  Image,
 } from 'antd';
 import {
   PlusOutlined,
@@ -92,17 +92,45 @@ const PropertiesListPage = () => {
 
   const columns: ColumnsType<PropertyListDto> = [
     {
+      title: '',
+      key: 'photo',
+      width: 80,
+      render: (_, record) => (
+        record.primaryPhotoUrl ? (
+          <Image
+            src={record.primaryPhotoUrl}
+            alt={record.street}
+            width={60}
+            height={45}
+            style={{ objectFit: 'cover', borderRadius: 4 }}
+            preview={false}
+          />
+        ) : (
+          <div
+            style={{
+              width: 60,
+              height: 45,
+              background: '#f0f0f0',
+              borderRadius: 4,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <HomeOutlined style={{ color: '#999' }} />
+          </div>
+        )
+      ),
+    },
+    {
       title: 'Address',
       key: 'address',
       render: (_, record) => (
-        <Space>
-          <HomeOutlined />
-          <span>
-            <strong>{record.street}</strong>
-            <br />
-            <span style={{ color: '#888' }}>{record.city}</span>
-          </span>
-        </Space>
+        <span>
+          <strong>{record.street}</strong>
+          <br />
+          <span style={{ color: '#888' }}>{record.city}</span>
+        </span>
       ),
     },
     {
