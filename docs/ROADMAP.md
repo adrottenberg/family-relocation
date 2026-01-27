@@ -140,6 +140,7 @@ Items mentioned in requirements but not yet prioritized:
 
 | Feature | Source | Notes |
 |---------|--------|-------|
+| User timezone settings UI | Timezone plan | API + UI for users to change timezone (defaults to America/New_York) |
 | Default broker assignment | FINAL_CORRECTIONS | System config for default broker |
 | Walking distance map visualization | Requirements | Show map with shul walking routes |
 | Property comparison view | User request | Side-by-side property comparison |
