@@ -16,12 +16,12 @@ A custom CRM for managing Orthodox Jewish family relocation to Union County, NJ.
 
 **Every code change MUST have a Jira ticket.** Before starting any work:
 
-1. **Check if ticket exists** in Jira project UV (Union Vaad CRM)
+1. **Check if ticket exists** in Jira project UN (Union Vaad)
 2. **If no ticket exists**, create one using the Jira MCP:
    - Use appropriate type: Story (feature), Task (technical), Bug (defect)
    - Link to parent Epic if applicable
    - Add priority label (P0, P1, P2, P3)
-3. **Reference the ticket** in branch names and commits (e.g., `feature/UV-123-description`)
+3. **Reference the ticket** in branch names and commits (e.g., `feature/UN-87-description`)
 
 ### 2. Branching Strategy (Git Flow - STRICTLY ENFORCED)
 
