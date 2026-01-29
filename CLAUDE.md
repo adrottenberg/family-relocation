@@ -60,6 +60,34 @@ A custom CRM for managing Orthodox Jewish family relocation to Union County, NJ.
    ```
 2. Keep commits atomic and focused
 
+#### API Endpoint Changes
+
+When creating or modifying API endpoints, you MUST:
+
+1. **Update Postman collection** - Add/update requests in the Postman collection file
+2. **Update .http file** - Add/update requests in the API test file
+3. **Regenerate Swagger** - Run the API to generate updated OpenAPI spec:
+   ```bash
+   dotnet run --project src/FamilyRelocation.API --launch-profile https
+   ```
+   Then access `/swagger` to verify changes
+
+#### Database Migrations
+
+When creating new EF Core migrations:
+
+1. **Create migration:**
+   ```bash
+   dotnet ef migrations add <MigrationName> --project src/FamilyRelocation.Infrastructure --startup-project src/FamilyRelocation.API
+   ```
+
+2. **Apply migration BEFORE running API or deploying:**
+   ```bash
+   dotnet ef database update --project src/FamilyRelocation.Infrastructure --startup-project src/FamilyRelocation.API
+   ```
+
+**Important:** Migrations must be applied before the API runs against that database. For deployments, run migrations as part of the deployment pipeline before starting the application.
+
 ### 5. After Completing Work
 
 **You MUST update BOTH Jira AND documentation:**
