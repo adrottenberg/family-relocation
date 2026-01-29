@@ -339,6 +339,9 @@ Use the Atlassian REST API via PowerShell for Jira operations.
 **Common Operations:**
 
 ```powershell
+# IMPORTANT: Force TLS 1.2 to avoid timeout issues with Atlassian API
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
 # Load credentials from .env file
 Get-Content .env | ForEach-Object {
     if ($_ -match '^([^#][^=]+)=(.*)$') {
