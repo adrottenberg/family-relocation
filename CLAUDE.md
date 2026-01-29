@@ -17,7 +17,7 @@ A custom CRM for managing Orthodox Jewish family relocation to Union County, NJ.
 **Every code change MUST have a Jira ticket.** Before starting any work:
 
 1. **Check if ticket exists** in Jira project UN (Union Vaad)
-2. **If no ticket exists**, create one using the Jira MCP:
+2. **If no ticket exists**, create one using the Jira REST API (see Jira API Reference below)
    - Use appropriate type: Story (feature), Task (technical), Bug (defect)
    - Link to parent Epic if applicable
    - Add priority label (P0, P1, P2, P3)
@@ -329,3 +329,57 @@ This ensures continuity across long development sessions.
 3. **In Progress** - Actively being coded
 4. **In Review** - PR created, awaiting review
 5. **Done** - Merged and complete
+
+### Jira API Reference
+
+Use the Atlassian REST API via PowerShell for Jira operations.
+
+**Credentials:** Stored in `.env` file (gitignored). Contains `JIRA_API_TOKEN`, `JIRA_USER_EMAIL`, `JIRA_BASE_URL`.
+
+**Common Operations:**
+
+```powershell
+# Load credentials from .env file
+Get-Content .env | ForEach-Object {
+    if ($_ -match '^([^#][^=]+)=(.*)$') {
+        [Environment]::SetEnvironmentVariable($matches[1], $matches[2])
+    }
+}
+$email = $env:JIRA_USER_EMAIL
+$token = $env:JIRA_API_TOKEN
+$baseUrl = $env:JIRA_BASE_URL
+$cred = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("${email}:${token}"))
+$headers = @{
+    Authorization = "Basic $cred"
+    Accept = "application/json"
+    "Content-Type" = "application/json"
+}
+
+# Get issue details
+Invoke-RestMethod -Uri "$baseUrl/rest/api/3/issue/UN-86" -Headers $headers
+
+# Get available transitions for an issue
+Invoke-RestMethod -Uri "$baseUrl/rest/api/3/issue/UN-86/transitions" -Headers $headers
+
+# Transition an issue (e.g., to "In Review" = ID 51)
+$body = @{ transition = @{ id = "51" } } | ConvertTo-Json
+Invoke-RestMethod -Uri "$baseUrl/rest/api/3/issue/UN-86/transitions" -Headers $headers -Method Post -Body $body
+
+# Create a new issue
+$newIssue = @{
+    fields = @{
+        project = @{ key = "UN" }
+        summary = "Issue title"
+        description = @{ type = "doc"; version = 1; content = @(@{ type = "paragraph"; content = @(@{ type = "text"; text = "Description" }) }) }
+        issuetype = @{ name = "Story" }  # Story, Task, or Bug
+    }
+} | ConvertTo-Json -Depth 10
+Invoke-RestMethod -Uri "$baseUrl/rest/api/3/issue" -Headers $headers -Method Post -Body $newIssue
+```
+
+**Transition IDs:**
+- 11: Backlog
+- 21: Selected for Development
+- 31: In Progress
+- 41: Done
+- 51: In Review
