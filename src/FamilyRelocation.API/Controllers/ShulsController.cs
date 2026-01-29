@@ -29,6 +29,7 @@ public class ShulsController : ControllerBase
     /// Gets a paginated list of shuls with optional filtering.
     /// </summary>
     [HttpGet]
+    [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAll([FromQuery] GetShulsQuery query)
     {
@@ -40,6 +41,7 @@ public class ShulsController : ControllerBase
     /// Gets a shul by ID.
     /// </summary>
     [HttpGet("{id:guid}")]
+    [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetById(Guid id)
