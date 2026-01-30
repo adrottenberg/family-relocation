@@ -2,6 +2,33 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+---
+
+## ⛔ STOP - READ THIS FIRST ⛔
+
+**Before making ANY code changes (fixes, features, refactors), you MUST:**
+
+1. **CREATE A JIRA TICKET FIRST** - No exceptions. Even "quick fixes" need tickets.
+2. **Get user approval** - Ask "Would you like me to create a ticket and fix this?"
+3. **Create a feature/bugfix branch** - Never edit code on `develop` or `master`
+
+**When user reports a bug or requests a change:**
+- ✅ DO: Investigate → Create Jira ticket → Ask if user wants you to implement
+- ❌ DON'T: Investigate → Start coding immediately
+
+**This applies to ALL code changes, including:**
+- Bug fixes (even one-line fixes)
+- New features
+- Refactoring
+- Configuration changes
+- Test updates
+
+**The only exceptions are:**
+- Documentation-only changes (*.md files, comments)
+- Investigation/research (reading files, running queries)
+
+---
+
 ## Project Overview
 
 A custom CRM for managing Orthodox Jewish family relocation to Union County, NJ. Built with Clean Architecture + DDD + CQRS pattern.
@@ -232,7 +259,7 @@ No raw SQL needed - queries like `a.Husband.Email.Value == email` work directly.
 | Wife | Spouse |
 | ShabbosShul | ShabbosLocation |
 | City (Union/Roselle Park) | Neighborhood |
-| Property | Listing |
+| Listing | Property |
 
 ## Critical Design Decisions
 
