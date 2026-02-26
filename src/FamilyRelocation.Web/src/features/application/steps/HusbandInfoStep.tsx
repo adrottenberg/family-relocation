@@ -22,8 +22,6 @@ const HusbandInfoStep = ({ data, onNext }: HusbandInfoStepProps) => {
     fatherName?: string;
     email?: string;
     phones?: { number: string; type: string }[];
-    occupation?: string;
-    employerName?: string;
   }) => {
     onNext({
       husband: {
@@ -36,8 +34,6 @@ const HusbandInfoStep = ({ data, onNext }: HusbandInfoStepProps) => {
           type: p.type || 'Mobile',
           isPrimary: i === 0,
         })),
-        occupation: values.occupation,
-        employerName: values.employerName,
       },
     });
   };
@@ -56,8 +52,6 @@ const HusbandInfoStep = ({ data, onNext }: HusbandInfoStepProps) => {
         fatherName: data.husband?.fatherName || '',
         email: data.husband?.email || '',
         phones: initialPhones,
-        occupation: data.husband?.occupation || '',
-        employerName: data.husband?.employerName || '',
       }}
       onFinish={handleFinish}
     >
@@ -123,14 +117,6 @@ const HusbandInfoStep = ({ data, onNext }: HusbandInfoStepProps) => {
             </>
           )}
         </Form.List>
-      </Form.Item>
-
-      <Form.Item name="occupation" label="Occupation">
-        <Input placeholder="Enter occupation" />
-      </Form.Item>
-
-      <Form.Item name="employerName" label="Employer Name">
-        <Input placeholder="Enter employer name" />
       </Form.Item>
 
       <div className="step-buttons-right">

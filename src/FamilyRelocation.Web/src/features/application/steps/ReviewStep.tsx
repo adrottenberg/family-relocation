@@ -47,12 +47,6 @@ const ReviewStep = ({ data, onSubmit, onBack, isLoading }: ReviewStepProps) => {
           <span className="review-label">Phone:</span>
           <span className="review-value">{formatPhone(data.husband?.phoneNumbers?.[0]?.number)}</span>
         </div>
-        {data.husband?.occupation && (
-          <div className="review-field">
-            <span className="review-label">Occupation:</span>
-            <span className="review-value">{data.husband.occupation}</span>
-          </div>
-        )}
       </div>
 
       {/* Wife Info */}
