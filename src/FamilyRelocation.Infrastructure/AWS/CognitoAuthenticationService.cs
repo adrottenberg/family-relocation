@@ -204,6 +204,19 @@ public class CognitoAuthenticationService : IAuthenticationService
             return OperationResult.SuccessResult(
                 "If an account exists with this email, a password reset code has been sent.");
         }
+        catch (NotAuthorizedException)
+        {
+            // User is in FORCE_CHANGE_PASSWORD state - must complete initial login first
+            return OperationResult.ErrorResult(
+                "Password reset is not available for this account. Please sign in with your temporary password to set a new password.",
+                AuthErrorType.PasswordResetRequired);
+        }
+        catch (AmazonCognitoIdentityProviderException)
+        {
+            return OperationResult.ErrorResult(
+                "An error occurred processing your request. Please try again later.",
+                AuthErrorType.Unknown);
+        }
     }
 
     public async Task<OperationResult> ConfirmPasswordResetAsync(string email, string code, string newPassword)
@@ -235,6 +248,18 @@ public class CognitoAuthenticationService : IAuthenticationService
         catch (InvalidPasswordException ex)
         {
             return OperationResult.ErrorResult(ex.Message, AuthErrorType.InvalidPassword);
+        }
+        catch (NotAuthorizedException)
+        {
+            return OperationResult.ErrorResult(
+                "Password reset is not available for this account. Please sign in with your temporary password to set a new password.",
+                AuthErrorType.PasswordResetRequired);
+        }
+        catch (AmazonCognitoIdentityProviderException)
+        {
+            return OperationResult.ErrorResult(
+                "An error occurred processing your request. Please try again later.",
+                AuthErrorType.Unknown);
         }
     }
 
