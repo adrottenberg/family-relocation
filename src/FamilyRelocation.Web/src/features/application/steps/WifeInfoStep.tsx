@@ -23,8 +23,6 @@ const WifeInfoStep = ({ data, onNext, onBack }: WifeInfoStepProps) => {
     fatherName?: string;
     email?: string;
     phones?: { number: string; type: string }[];
-    occupation?: string;
-    employerName?: string;
     highSchool?: string;
   }) => {
     onNext({
@@ -38,8 +36,6 @@ const WifeInfoStep = ({ data, onNext, onBack }: WifeInfoStepProps) => {
           type: p.type || 'Mobile',
           isPrimary: i === 0,
         })),
-        occupation: values.occupation,
-        employerName: values.employerName,
         highSchool: values.highSchool,
       },
     });
@@ -59,8 +55,6 @@ const WifeInfoStep = ({ data, onNext, onBack }: WifeInfoStepProps) => {
         fatherName: data.wife?.fatherName || '',
         email: data.wife?.email || '',
         phones: initialPhones,
-        occupation: data.wife?.occupation || '',
-        employerName: data.wife?.employerName || '',
         highSchool: data.wife?.highSchool || '',
       }}
       onFinish={handleFinish}
@@ -127,14 +121,6 @@ const WifeInfoStep = ({ data, onNext, onBack }: WifeInfoStepProps) => {
             </>
           )}
         </Form.List>
-      </Form.Item>
-
-      <Form.Item name="occupation" label="Occupation">
-        <Input placeholder="Enter occupation" />
-      </Form.Item>
-
-      <Form.Item name="employerName" label="Employer Name">
-        <Input placeholder="Enter employer name" />
       </Form.Item>
 
       <Form.Item name="highSchool" label="High School">

@@ -19,8 +19,6 @@ interface FormValues {
     fatherName?: string;
     email?: string;
     phoneNumbers?: { number: string; type: string; isPrimary: boolean }[];
-    occupation?: string;
-    employerName?: string;
   };
   wife?: {
     firstName: string;
@@ -28,8 +26,6 @@ interface FormValues {
     fatherName?: string;
     email?: string;
     phoneNumbers?: { number: string; type: string; isPrimary: boolean }[];
-    occupation?: string;
-    employerName?: string;
     highSchool?: string;
   };
   address?: {
@@ -243,13 +239,6 @@ const CreateApplicantModal = ({ open, onClose }: CreateApplicantModalProps) => {
               )}
             </Form.List>
 
-            <Form.Item name={['husband', 'occupation']} label="Occupation" style={{ marginTop: 16 }}>
-              <Input />
-            </Form.Item>
-
-            <Form.Item name={['husband', 'employerName']} label="Employer">
-              <Input />
-            </Form.Item>
           </Panel>
 
           {/* Wife Section */}
@@ -311,15 +300,7 @@ const CreateApplicantModal = ({ open, onClose }: CreateApplicantModalProps) => {
               )}
             </Form.List>
 
-            <Form.Item name={['wife', 'occupation']} label="Occupation" style={{ marginTop: 16 }}>
-              <Input />
-            </Form.Item>
-
-            <Form.Item name={['wife', 'employerName']} label="Employer">
-              <Input />
-            </Form.Item>
-
-            <Form.Item name={['wife', 'highSchool']} label="High School">
+            <Form.Item name={['wife', 'highSchool']} label="High School" style={{ marginTop: 16 }}>
               <Input />
             </Form.Item>
           </Panel>

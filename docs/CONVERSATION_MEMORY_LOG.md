@@ -3421,6 +3421,120 @@ src/FamilyRelocation.Web/src/App.tsx - Tried key={Date.now()} on LoginPage route
 
 ---
 
+## 14. OPEN ARCHITECTURAL QUESTION: EF Core Dependency in Application Layer
+
+**Date:** January 29, 2026
+**Status:** UNDECIDED - Documented for future consideration
+
+### Background
+
+The Application layer currently has a direct `PackageReference` to `Microsoft.EntityFrameworkCore` (v10.0.2). This is used by 67 handler files for async LINQ extension methods that EF Core provides.
+
+**Current usage in handlers:**
+```csharp
+using Microsoft.EntityFrameworkCore;
+
+// Extension methods used:
+.ToListAsync()
+.FirstOrDefaultAsync()
+.SingleOrDefaultAsync()
+.AnyAsync()
+.CountAsync()
+.Include() / .ThenInclude()
+.AsNoTracking()
+```
+
+The `IApplicationDbContext` interface itself is clean - it returns `IQueryable<T>` from `System.Linq`. But standard LINQ doesn't have async versions of these methods; only EF Core provides them.
+
+### Clean Architecture Concern
+
+In strict Clean Architecture, the Application layer should not depend on infrastructure concerns. EF Core is an ORM (infrastructure). The question is whether to refactor to remove this dependency.
+
+### Options Considered
+
+#### Option 1: Extend IApplicationDbContext with Async Execution Methods
+
+```csharp
+public interface IApplicationDbContext
+{
+    IQueryable<TEntity> Set<TEntity>() where TEntity : class;
+
+    // Add async execution methods
+    Task<List<T>> ToListAsync<T>(IQueryable<T> query, CancellationToken ct = default);
+    Task<T?> FirstOrDefaultAsync<T>(IQueryable<T> query, CancellationToken ct = default);
+    Task<bool> AnyAsync<T>(IQueryable<T> query, Expression<Func<T, bool>> predicate, CancellationToken ct = default);
+    Task<int> CountAsync<T>(IQueryable<T> query, CancellationToken ct = default);
+    // etc.
+}
+```
+
+#### Option 2: Create Separate IAsyncQueryExecutor Interface
+
+Similar to Option 1 but as a separate injected dependency.
+
+#### Option 3: Accept the Dependency as Pragmatic
+
+Keep the current implementation and document it as an intentional compromise.
+
+### Pros of Removing the Dependency (Options 1 or 2)
+
+| Pro | Explanation |
+|-----|-------------|
+| Architectural purity | Application layer would have no infrastructure dependencies |
+| Cleaner unit tests | Can mock interface methods directly without EF Core mocking complexity |
+| Explicit abstraction | Makes the dependency on query execution explicit rather than implicit |
+
+### Cons of Removing the Dependency
+
+| Con | Explanation |
+|-----|-------------|
+| Large refactoring cost | 67 files would need modification |
+| Loss of fluent LINQ style | `await query.ToListAsync(ct)` becomes `await _context.ToListAsync(query, ct)` |
+| Include/ThenInclude complexity | Eager loading is extremely difficult to abstract cleanly due to complex expression tree chaining |
+| Questionable ORM swappability | Switching ORMs would require rewriting query logic anyway; queries are implicitly EF-aware |
+| IQueryable is already leaky | The abstraction already leaks EF concerns since not all LINQ translates to SQL |
+| Marginal testing benefit | Integration tests against real DB are still needed regardless |
+
+### The Include/ThenInclude Problem
+
+This is the hardest part to abstract:
+
+```csharp
+_context.Set<Property>()
+    .Include(p => p.Photos)
+    .ThenInclude(photo => photo.Metadata)
+    .FirstOrDefaultAsync(p => p.Id == id, ct);
+```
+
+`ThenInclude` chains depend on the previous `Include`'s type, using complex generic type gymnastics that are painful to replicate in an abstraction.
+
+### Current Assessment
+
+The dependency is on **query extension methods**, not on `DbContext` directly. This is a "lighter" form of coupling than having EF Core types in method signatures.
+
+Arguments for accepting the dependency:
+- EF Core is a stable, well-maintained Microsoft library
+- The 67-file refactoring cost is high for uncertain benefit
+- True ORM independence is an illusion when using `IQueryable`
+- The fluent LINQ style improves code readability
+
+Arguments for removing it:
+- Clean Architecture principles matter for long-term maintainability
+- Unit testing would be cleaner
+- Makes infrastructure boundaries explicit
+
+### Decision
+
+**UNDECIDED** - This remains an open question. If the team decides architectural purity is worth the refactoring cost, Option 1 (extending `IApplicationDbContext`) is recommended over Option 2. Otherwise, Option 3 (accepting the dependency) is the pragmatic choice.
+
+### Related Files
+
+- `src/FamilyRelocation.Application/FamilyRelocation.Application.csproj` - Contains the EF Core PackageReference
+- `src/FamilyRelocation.Application/Common/Interfaces/IApplicationDbContext.cs` - The abstraction interface
+- 67 handler files with `using Microsoft.EntityFrameworkCore;`
+
+---
+
 **END OF CONVERSATION MEMORY LOG**
 
 This document captures our complete collaboration. Use it to quickly re-establish context in future sessions.

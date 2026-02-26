@@ -312,8 +312,6 @@ const ApplicantDetailPage = () => {
               <tr><td><strong>Father's Name</strong></td><td>${husband.fatherName || '-'}</td></tr>
               <tr><td><strong>Email</strong></td><td>${husband.email || '-'}</td></tr>
               <tr><td><strong>Phone</strong></td><td>${getPrimaryPhone(husband.phoneNumbers)}</td></tr>
-              <tr><td><strong>Occupation</strong></td><td>${husband.occupation || '-'}</td></tr>
-              <tr><td><strong>Employer</strong></td><td>${husband.employerName || '-'}</td></tr>
             </table>
           </div>
           ${wife ? `
@@ -324,7 +322,6 @@ const ApplicantDetailPage = () => {
               <tr><td><strong>Father's Name</strong></td><td>${wife.fatherName || '-'}</td></tr>
               <tr><td><strong>Email</strong></td><td>${wife.email || '-'}</td></tr>
               <tr><td><strong>Phone</strong></td><td>${getPrimaryPhone(wife.phoneNumbers)}</td></tr>
-              <tr><td><strong>Occupation</strong></td><td>${wife.occupation || '-'}</td></tr>
               <tr><td><strong>High School</strong></td><td>${wife.highSchool || '-'}</td></tr>
             </table>
           </div>
@@ -765,12 +762,6 @@ const OverviewTab = ({ applicant }: OverviewTabProps) => {
             <Descriptions.Item label="Phone">
               {formatPhones(husband.phoneNumbers)}
             </Descriptions.Item>
-            <Descriptions.Item label="Occupation">
-              {husband.occupation || '-'}
-            </Descriptions.Item>
-            <Descriptions.Item label="Employer">
-              {husband.employerName || '-'}
-            </Descriptions.Item>
           </Descriptions>
         </Card>
 
@@ -789,9 +780,6 @@ const OverviewTab = ({ applicant }: OverviewTabProps) => {
               </Descriptions.Item>
               <Descriptions.Item label="Phone">
                 {formatPhones(wife.phoneNumbers)}
-              </Descriptions.Item>
-              <Descriptions.Item label="Occupation">
-                {wife.occupation || '-'}
               </Descriptions.Item>
               <Descriptions.Item label="High School">
                 {wife.highSchool || '-'}

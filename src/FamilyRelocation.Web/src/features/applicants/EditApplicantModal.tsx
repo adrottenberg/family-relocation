@@ -21,8 +21,6 @@ interface FormValues {
     fatherName?: string;
     email?: string;
     phoneNumbers?: { number: string; type: string; isPrimary: boolean }[];
-    occupation?: string;
-    employerName?: string;
   };
   wife?: {
     firstName: string;
@@ -30,8 +28,6 @@ interface FormValues {
     fatherName?: string;
     email?: string;
     phoneNumbers?: { number: string; type: string; isPrimary: boolean }[];
-    occupation?: string;
-    employerName?: string;
     highSchool?: string;
   };
   address?: {
@@ -94,8 +90,6 @@ const EditApplicantModal = ({ open, onClose, applicant }: EditApplicantModalProp
             type: p.type,
             isPrimary: p.isPrimary,
           })) || [{ number: '', type: 'Mobile', isPrimary: true }],
-          occupation: applicant.husband.occupation,
-          employerName: applicant.husband.employerName,
         },
         wife: applicant.wife ? {
           firstName: applicant.wife.firstName,
@@ -107,8 +101,6 @@ const EditApplicantModal = ({ open, onClose, applicant }: EditApplicantModalProp
             type: p.type,
             isPrimary: p.isPrimary,
           })) || [],
-          occupation: applicant.wife.occupation,
-          employerName: applicant.wife.employerName,
           highSchool: applicant.wife.highSchool,
         } : undefined,
         address: applicant.address ? {
@@ -261,13 +253,6 @@ const EditApplicantModal = ({ open, onClose, applicant }: EditApplicantModalProp
               )}
             </Form.List>
 
-            <Form.Item name={['husband', 'occupation']} label="Occupation" style={{ marginTop: 16 }}>
-              <Input />
-            </Form.Item>
-
-            <Form.Item name={['husband', 'employerName']} label="Employer">
-              <Input />
-            </Form.Item>
           </Panel>
 
           {/* Wife Section */}
@@ -329,15 +314,7 @@ const EditApplicantModal = ({ open, onClose, applicant }: EditApplicantModalProp
               )}
             </Form.List>
 
-            <Form.Item name={['wife', 'occupation']} label="Occupation" style={{ marginTop: 16 }}>
-              <Input />
-            </Form.Item>
-
-            <Form.Item name={['wife', 'employerName']} label="Employer">
-              <Input />
-            </Form.Item>
-
-            <Form.Item name={['wife', 'highSchool']} label="High School">
+            <Form.Item name={['wife', 'highSchool']} label="High School" style={{ marginTop: 16 }}>
               <Input />
             </Form.Item>
           </Panel>
